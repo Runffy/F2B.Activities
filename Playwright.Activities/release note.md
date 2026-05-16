@@ -2,6 +2,50 @@
 
 本文档说明当前版本 `Playwright.Activities` 的 Activity 清单、用途、入参、出参和参数含义。
 
+## 版本 [20260516 2101]
+
+### 本版重点（建议发布说明）
+- Activity 变更（高优先级）：
+  - 新增 `Browser.GetActivatedTab`（`BrowserGetActivatedTabActivity`）
+  - 新增 `Browser.GetLocalStorage`（`BrowserGetLocalStorageActivity`）
+  - 新增 `Browser.GetSessionStorage`（`BrowserGetSessionStorageActivity`）
+  - 新增 `Tab.GetLocalStorage`（`TabGetLocalStorageActivity`）
+  - 新增 `Tab.GetSessionStorage`（`TabGetSessionStorageActivity`）
+  - 新增 `Element.SendKeys`（`ElementSendKeysActivity`）
+  - 新增 `Tab.SendKeys`（`TabSendKeysActivity`）
+  - 移除 `Tab.Activate`（`TabActivateActivity`，由 `Browser.SwitchTab(ByType=Tab)` 覆盖）
+  - 增强 `Browser.SwitchTab`：支持 `ByType=Tab` + `InputTab`，并新增 `TabInfo` 出参
+  - 增强 `Browser.NewTab`、`Element.ClickForNewTab`：新增 `TabInfo` 出参
+- 稳定性修复：`Element.SelectGetSelected` 改为“JS 端序列化 + C# 端 JSON 解析”路径，避免 Playwright 泛型反序列化导致的空引用异常。
+- 稳定性修复：`GetLocalStorage/GetSessionStorage` 改为 JSON 解析路径，并统一当前活动 Tab 同步，降低 Browser 级 Storage 读取错上下文概率。
+- 启动增强：`Browser.Open` 在 `UseSystemDir=True` 首次启动失败时，自动执行一次恢复流程：
+  - 结束所有 `msedge` 进程
+  - 等待约 2 秒
+  - 自动重试 1 次启动
+  - 若仍失败再抛异常
+- 可诊断性增强：`UseSystemDir=True` 失败信息增加 `UserDataDir`、当前 `msedge` PID 列表、占用特征判断、Playwright 原始错误，便于现场排障。
+- E2E 覆盖增强（OpenRPA + 纯 C#）：
+  - Click 系列 `Validate=None/ElementDisappear/ElementAppear` 覆盖更完整
+  - `SelectGetSelected` 增加值级断言（`text/value/index` 精确匹配）
+  - Storage 断言从“非空”升级为“精确值”
+  - 补充 `Browser.Open` 多模式测试矩阵（系统目录/临时隔离/指定目录）
+
+## 版本 [20260515 1053]
+
+### 上次优化（已落地）
+- `FindElement` 系列 `WaitState` 改为下拉枚举（`None/Visible/Attached/Hidden/Detached`），不再 free text。
+- Element 操作类统一支持 `Element/Selector` 二选一：
+  - 优先用 `Element`
+  - 无 `Element` 时使用 `Selector + Tab` 路径定位
+  - 设计器增加校验：必须二选一，且用 `Selector` 时必须提供 `Tab`
+- `FindElement` 系列 `DelayBefore` 默认值统一为 `300`。
+
+### 本次优化（已落地）
+- 所有 Element 操作类统一具备 `DelayBefore` 入参，默认值 `300`。
+- 所有 `bool` 输入参数统一改为下拉选择（`True/False`）：
+  - 包含 Browser 与 Element 分类中的全部布尔输入参数。
+- 已新增 `bool?` 下拉转换器能力（`True/False/None`），后续若出现可空布尔输入可直接复用。
+
 ## 说明
 
 - 所有 `Timeout` 单位均为毫秒（ms）。
@@ -105,8 +149,8 @@
   - `Selector` (`string`)：Playwright 选择器。
   - `Index` (`int`, 默认 `0`)：匹配集合索引。
   - `Timeout` (`int?`, 默认 `15000`)：等待超时。
-  - `WaitState` (`string`)：`visible/attached/hidden/detached`。
-  - `DelayBefore` (`int`, 默认 `0`)：执行前延迟。
+  - `WaitState` (`FindElementWaitState`)：`None/Visible/Attached/Hidden/Detached`（下拉）。
+  - `DelayBefore` (`int`, 默认 `300`)：执行前延迟。
 - 出参：
   - `Element` (`PwElement`)
 
@@ -185,6 +229,14 @@
 ---
 
 ## Element 类 Activity
+
+- 大多数 Element 操作 Activity 统一支持目标元素二选一：
+  - `Element`（已有元素对象）
+  - `Selector + Tab`（按选择器在页面中定位）
+- 设计器会校验：
+  - `Element` 与 `Selector` 必须且只能填写一个
+  - 使用 `Selector` 时必须提供 `Tab`
+- 所有 Element 操作 Activity 统一提供 `DelayBefore`（默认 `300`）。
 
 ### Element.Exists
 - 功能：判断元素是否存在。
@@ -280,8 +332,8 @@
   - `Selector` (`string`)
   - `Index` (`int`, 默认 `0`)
   - `Timeout` (`int?`, 默认 `15000`)
-  - `WaitState` (`string`)
-  - `DelayBefore` (`int`, 默认 `0`)
+  - `WaitState` (`FindElementWaitState`)：`None/Visible/Attached/Hidden/Detached`（下拉）。
+  - `DelayBefore` (`int`, 默认 `300`)
 - 出参：
   - `FoundElement` (`PwElement`)
 
