@@ -7,8 +7,8 @@
     <ProjectGuid>f574735b-3d08-46d3-85a5-bafaa03a4b06</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>F2B.OS</RootNamespace>
-    <AssemblyName>F2B.OS</AssemblyName>
+    <RootNamespace>F2B.Basic</RootNamespace>
+    <AssemblyName>F2B.Basic</AssemblyName>
     <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -60,6 +60,8 @@
     <Compile Include="RunCmdCommandDesigner.cs" />
     <Compile Include="StartFileActivity.cs" />
     <Compile Include="StartFileDesigner.cs" />
+    <Compile Include="ThrowSystemExceptionActivity.cs" />
+    <Compile Include="ThrowSystemExceptionDesigner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

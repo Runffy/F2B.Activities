@@ -6,7 +6,7 @@ using System.Threading;
 using System.Windows;
 using WinForms = System.Windows.Forms;
 
-namespace F2B.OS
+namespace F2B.Basic
 {
     [Designer(typeof(MessageBoxDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("Message Box")]

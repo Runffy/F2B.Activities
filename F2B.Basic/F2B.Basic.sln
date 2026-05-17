@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36203.30 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "F2B.OS", "F2B.OS\F2B.OS.csproj", "{F574735B-3D08-46D3-85A5-BAFAA03A4B06}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "F2B.Basic", "F2B.Basic\F2B.Basic.csproj", "{F574735B-3D08-46D3-85A5-BAFAA03A4B06}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

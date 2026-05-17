@@ -11,15 +11,14 @@ using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
 
-namespace F2B.OS
+namespace F2B.Basic
 {
-    public sealed class LogMessageDesigner : ActivityDesigner
+    public sealed class MessageBoxDesigner : ActivityDesigner
     {
-        private readonly ComboBox levelComboBox;
-        private readonly Border messageEditorBorder;
-        private readonly ExpressionTextBox messageExpressionBox;
+        private readonly Border _messageEditorBorder;
+        private readonly ExpressionTextBox _messageExpressionBox;
 
-        public LogMessageDesigner()
+        public MessageBoxDesigner()
         {
             var border = new Border
             {
@@ -31,20 +30,12 @@ namespace F2B.OS
             var panel = new StackPanel();
             panel.Children.Add(new TextBlock
             {
-                Text = "Log Message",
+                Text = "Message Box",
                 FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(0, 0, 0, 6)
             });
 
-            panel.Children.Add(CreateLabeledLevelDropdown(out levelComboBox));
-
-            panel.Children.Add(CreateLabeledExpressionEditor(
-                "Message",
-                "ModelItem.Message",
-                typeof(object),
-                "Any object",
-                out messageEditorBorder,
-                out messageExpressionBox));
+            panel.Children.Add(CreateLabeledExpressionEditor("Message", "ModelItem.Message", typeof(string), "Required message", out _messageEditorBorder, out _messageExpressionBox));
 
             border.Child = panel;
             Content = border;
@@ -57,22 +48,25 @@ namespace F2B.OS
             Type expressionType,
             string hint,
             out Border editorBorder,
-            out ExpressionTextBox expressionTextBox)
+            out ExpressionTextBox expressionTextBox,
+            string converterParameter = "In")
         {
             var row = new DockPanel { LastChildFill = true, Margin = new Thickness(0, 2, 0, 2) };
             row.Children.Add(new TextBlock
             {
                 Text = label,
-                Width = 60,
+                Width = 80,
                 VerticalAlignment = VerticalAlignment.Center
             });
 
             expressionTextBox = new ExpressionTextBox
             {
-                Margin = new Thickness(4, 0, 0, 0),
-                MinWidth = 180,
+                Margin = new Thickness(0, 0, 0, 0),
+                MinWidth = 200,
                 HintText = hint,
-                ExpressionType = expressionType
+                ExpressionType = expressionType,
+                MinLines = 1,
+                MaxLines = 1
             };
 
             BindingOperations.SetBinding(expressionTextBox, ExpressionTextBox.OwnerActivityProperty, new Binding("ModelItem"));
@@ -80,12 +74,12 @@ namespace F2B.OS
             {
                 Mode = BindingMode.TwoWay,
                 Converter = new ArgumentToExpressionConverter(),
-                ConverterParameter = "In"
+                ConverterParameter = converterParameter
             });
 
             editorBorder = new Border
             {
-                Margin = new Thickness(0, 0, 0, 0),
+                Margin = new Thickness(4, 0, 0, 0),
                 BorderBrush = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
                 Child = expressionTextBox
@@ -95,62 +89,23 @@ namespace F2B.OS
             return row;
         }
 
-        private static FrameworkElement CreateLabeledLevelDropdown(out ComboBox combo)
+        private static FrameworkElement CreateLabeledExpressionEditor(
+            string label,
+            string bindingPath,
+            Type expressionType,
+            string hint,
+            string converterParameter = "In")
         {
-            var row = new DockPanel { LastChildFill = true, Margin = new Thickness(0, 2, 0, 2) };
-            row.Children.Add(new TextBlock
-            {
-                Text = "Level",
-                Width = 60,
-                VerticalAlignment = VerticalAlignment.Center
-            });
-
-            var localCombo = new ComboBox
-            {
-                Margin = new Thickness(4, 0, 0, 0),
-                MinWidth = 180,
-                ItemsSource = new[] { "INFO", "WARN", "ERROR" }
-            };
-
-            localCombo.SelectionChanged += (s, e) =>
-            {
-                if (!(localCombo.Tag is LogMessageDesigner owner) || owner.ModelItem == null || localCombo.SelectedItem == null)
-                {
-                    return;
-                }
-
-                owner.ModelItem.Properties["Level"].SetValue(new global::System.Activities.InArgument<string>(localCombo.SelectedItem.ToString()));
-            };
-            localCombo.Tag = null;
-
-            row.Children.Add(localCombo);
-            combo = localCombo;
-            return row;
+            return CreateLabeledExpressionEditor(label, bindingPath, expressionType, hint, out _, out _, converterParameter);
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            levelComboBox.Tag = this;
-            string current = "INFO";
-            try
+            if (ModelItem == null)
             {
-                var modelValue = ModelItem.GetValue<string>("Level");
-                if (!string.IsNullOrWhiteSpace(modelValue))
-                {
-                    current = modelValue.Trim().ToUpperInvariant();
-                }
-            }
-            catch
-            {
-                current = "INFO";
+                return;
             }
 
-            if (current != "INFO" && current != "WARN" && current != "ERROR")
-            {
-                current = "INFO";
-            }
-
-            levelComboBox.SelectedItem = current;
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
             RefreshRequiredBorders();
         }
@@ -162,7 +117,7 @@ namespace F2B.OS
 
         private void RefreshRequiredBorders()
         {
-            SetRequiredBorder(messageEditorBorder, IsArgumentFilled(ModelItem, "Message", messageExpressionBox));
+            SetRequiredBorder(_messageEditorBorder, IsArgumentFilled(ModelItem, "Message", _messageExpressionBox));
         }
 
         private static bool IsArgumentFilled(ModelItem modelItem, string propertyName, ExpressionTextBox editor)

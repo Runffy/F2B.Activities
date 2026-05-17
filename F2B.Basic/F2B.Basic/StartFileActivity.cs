@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 
-namespace F2B.OS
+namespace F2B.Basic
 {
     [Designer(typeof(StartFileDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("Start File")]

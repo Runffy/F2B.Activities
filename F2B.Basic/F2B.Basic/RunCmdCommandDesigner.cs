@@ -1,5 +1,6 @@
 using OpenRPA.Interfaces;
 using System;
+using System.Activities;
 using System.Activities.Presentation;
 using System.Activities.Presentation.Converters;
 using System.Activities.Presentation.Model;
@@ -11,14 +12,14 @@ using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
 
-namespace F2B.OS
+namespace F2B.Basic
 {
-    public sealed class MessageBoxDesigner : ActivityDesigner
+    public sealed class RunCmdCommandDesigner : ActivityDesigner
     {
-        private readonly Border _messageEditorBorder;
-        private readonly ExpressionTextBox _messageExpressionBox;
+        private readonly Border _commandEditorBorder;
+        private readonly ExpressionTextBox _commandExpressionBox;
 
-        public MessageBoxDesigner()
+        public RunCmdCommandDesigner()
         {
             var border = new Border
             {
@@ -30,12 +31,12 @@ namespace F2B.OS
             var panel = new StackPanel();
             panel.Children.Add(new TextBlock
             {
-                Text = "Message Box",
+                Text = "Run CMD Command",
                 FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(0, 0, 0, 6)
             });
 
-            panel.Children.Add(CreateLabeledExpressionEditor("Message", "ModelItem.Message", typeof(string), "Required message", out _messageEditorBorder, out _messageExpressionBox));
+            panel.Children.Add(CreateLabeledExpressionEditor("Command", "ModelItem.Command", typeof(string), "cmd /c ...", out _commandEditorBorder, out _commandExpressionBox));
 
             border.Child = panel;
             Content = border;
@@ -89,16 +90,6 @@ namespace F2B.OS
             return row;
         }
 
-        private static FrameworkElement CreateLabeledExpressionEditor(
-            string label,
-            string bindingPath,
-            Type expressionType,
-            string hint,
-            string converterParameter = "In")
-        {
-            return CreateLabeledExpressionEditor(label, bindingPath, expressionType, hint, out _, out _, converterParameter);
-        }
-
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             if (ModelItem == null)
@@ -117,7 +108,7 @@ namespace F2B.OS
 
         private void RefreshRequiredBorders()
         {
-            SetRequiredBorder(_messageEditorBorder, IsArgumentFilled(ModelItem, "Message", _messageExpressionBox));
+            SetRequiredBorder(_commandEditorBorder, IsArgumentFilled(ModelItem, "Command", _commandExpressionBox));
         }
 
         private static bool IsArgumentFilled(ModelItem modelItem, string propertyName, ExpressionTextBox editor)

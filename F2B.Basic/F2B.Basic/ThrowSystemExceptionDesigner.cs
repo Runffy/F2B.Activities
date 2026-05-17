@@ -1,6 +1,4 @@
-using OpenRPA.Interfaces;
 using System;
-using System.Activities;
 using System.Activities.Presentation;
 using System.Activities.Presentation.Converters;
 using System.Activities.Presentation.Model;
@@ -12,16 +10,14 @@ using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
 
-namespace F2B.OS
+namespace F2B.Basic
 {
-    public sealed class StartFileDesigner : ActivityDesigner
+    public sealed class ThrowSystemExceptionDesigner : ActivityDesigner
     {
-        private readonly ComboBox _waitForExitComboBox;
-        private readonly ComboBox _showWindowComboBox;
-        private readonly Border _pathEditorBorder;
-        private readonly ExpressionTextBox _pathExpressionBox;
+        private readonly Border _messageEditorBorder;
+        private readonly ExpressionTextBox _messageExpressionBox;
 
-        public StartFileDesigner()
+        public ThrowSystemExceptionDesigner()
         {
             var border = new Border
             {
@@ -33,18 +29,12 @@ namespace F2B.OS
             var panel = new StackPanel();
             panel.Children.Add(new TextBlock
             {
-                Text = "Start File",
+                Text = "Throw System Exception",
                 FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(0, 0, 0, 6)
             });
 
-            panel.Children.Add(CreateLabeledExpressionEditor("Path", "ModelItem.Path", typeof(string), "File / folder / URL", out _pathEditorBorder, out _pathExpressionBox));
-            panel.Children.Add(CreateLabeledExpressionEditor("Operation", "ModelItem.Operation", typeof(string), "open"));
-            panel.Children.Add(CreateLabeledExpressionEditor("Arguments", "ModelItem.Arguments", typeof(string), "Optional args"));
-            panel.Children.Add(CreateLabeledExpressionEditor("Working dir", "ModelItem.WorkingDirectory", typeof(string), "Optional"));
-            panel.Children.Add(CreateLabeledBooleanDropdown("Wait for exit", out _waitForExitComboBox));
-            panel.Children.Add(CreateLabeledBooleanDropdown("Show window", out _showWindowComboBox));
-            panel.Children.Add(CreateLabeledExpressionEditor("Result", "ModelItem.Result", typeof(string), "Result string", "Out"));
+            panel.Children.Add(CreateLabeledExpressionEditor("Message", "ModelItem.Message", typeof(string), "Required message", out _messageEditorBorder, out _messageExpressionBox));
 
             border.Child = panel;
             Content = border;
@@ -57,8 +47,7 @@ namespace F2B.OS
             Type expressionType,
             string hint,
             out Border editorBorder,
-            out ExpressionTextBox expressionTextBox,
-            string converterParameter = "In")
+            out ExpressionTextBox expressionTextBox)
         {
             var row = new DockPanel { LastChildFill = true, Margin = new Thickness(0, 2, 0, 2) };
             row.Children.Add(new TextBlock
@@ -83,7 +72,7 @@ namespace F2B.OS
             {
                 Mode = BindingMode.TwoWay,
                 Converter = new ArgumentToExpressionConverter(),
-                ConverterParameter = converterParameter
+                ConverterParameter = "In"
             });
 
             editorBorder = new Border
@@ -98,50 +87,12 @@ namespace F2B.OS
             return row;
         }
 
-        private static FrameworkElement CreateLabeledExpressionEditor(
-            string label,
-            string bindingPath,
-            Type expressionType,
-            string hint,
-            string converterParameter = "In")
-        {
-            return CreateLabeledExpressionEditor(label, bindingPath, expressionType, hint, out _, out _, converterParameter);
-        }
-
-        private static FrameworkElement CreateLabeledBooleanDropdown(string label, out ComboBox combo)
-        {
-            var row = new DockPanel { LastChildFill = true, Margin = new Thickness(0, 2, 0, 2) };
-            row.Children.Add(new TextBlock
-            {
-                Text = label,
-                Width = 80,
-                VerticalAlignment = VerticalAlignment.Center
-            });
-
-            var localCombo = new ComboBox
-            {
-                Margin = new Thickness(4, 0, 0, 0),
-                MinWidth = 200,
-                ItemsSource = new[] { "True", "False" }
-            };
-
-            row.Children.Add(localCombo);
-            combo = localCombo;
-            return row;
-        }
-
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             if (ModelItem == null)
             {
                 return;
             }
-
-            _waitForExitComboBox.SelectionChanged += OnWaitForExitSelectionChanged;
-            _showWindowComboBox.SelectionChanged += OnShowWindowSelectionChanged;
-
-            _waitForExitComboBox.SelectedItem = GetBoolString("WaitForExit", false);
-            _showWindowComboBox.SelectedItem = GetBoolString("ShowWindow", true);
 
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
             RefreshRequiredBorders();
@@ -152,44 +103,9 @@ namespace F2B.OS
             Dispatcher.BeginInvoke(new Action(RefreshRequiredBorders), DispatcherPriority.Background);
         }
 
-        private void OnWaitForExitSelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (ModelItem == null || _waitForExitComboBox.SelectedItem == null)
-            {
-                return;
-            }
-
-            bool value = string.Equals(_waitForExitComboBox.SelectedItem.ToString(), "True", StringComparison.OrdinalIgnoreCase);
-            ModelItem.Properties["WaitForExit"].SetValue(new InArgument<bool>(value));
-        }
-
-        private void OnShowWindowSelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (ModelItem == null || _showWindowComboBox.SelectedItem == null)
-            {
-                return;
-            }
-
-            bool value = string.Equals(_showWindowComboBox.SelectedItem.ToString(), "True", StringComparison.OrdinalIgnoreCase);
-            ModelItem.Properties["ShowWindow"].SetValue(new InArgument<bool>(value));
-        }
-
-        private string GetBoolString(string propertyName, bool defaultValue)
-        {
-            try
-            {
-                bool value = ModelItem.GetValue<bool>(propertyName);
-                return value ? "True" : "False";
-            }
-            catch
-            {
-                return defaultValue ? "True" : "False";
-            }
-        }
-
         private void RefreshRequiredBorders()
         {
-            SetRequiredBorder(_pathEditorBorder, IsArgumentFilled(ModelItem, "Path", _pathExpressionBox));
+            SetRequiredBorder(_messageEditorBorder, IsArgumentFilled(ModelItem, "Message", _messageExpressionBox));
         }
 
         private static bool IsArgumentFilled(ModelItem modelItem, string propertyName, ExpressionTextBox editor)

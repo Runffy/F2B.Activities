@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Windows;
 
-namespace F2B.OS
+namespace F2B.Basic
 {
     [Designer(typeof(RunCmdCommandDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("Run CMD Command")]

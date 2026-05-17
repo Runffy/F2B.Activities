@@ -10,7 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Windows;
 
-namespace F2B.OS
+namespace F2B.Basic
 {
     [Designer(typeof(LogMessageDesigner), typeof(global::System.ComponentModel.Design.IDesigner))]
     [DisplayName("Log Message")]
