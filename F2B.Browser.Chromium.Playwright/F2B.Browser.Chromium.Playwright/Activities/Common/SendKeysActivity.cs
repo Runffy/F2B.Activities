@@ -10,10 +10,10 @@ namespace F2B.Browser.Chromium.Playwright
         Element
     }
 
-    [DisplayName("Send Target Keys")]
+    [DisplayName("Sendkeys")]
     [Description("Send keyboard keys to a tab or element.")]
     [Designer(typeof(CanvasFieldsActivityDesigner))]
-    public sealed class SendKeysActivity : CodeActivity
+    public sealed class SendkeysActivity : CodeActivity
     {
         [DisplayName("Base On")]
         [Description("Choose whether to send keys to a tab or element.")]

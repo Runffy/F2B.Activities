@@ -563,21 +563,21 @@ namespace F2B.Browser.Chromium.Playwright
             var typeName = activityType.Name;
             switch (typeName)
             {
-                case nameof(ElementClickForDownloadActivity):
+                case nameof(ClickForDownloadActivity):
                     return DesignerMode.ClickForDownload;
-                case nameof(ElementGetChildrenActivity):
+                case nameof(GetChildrenActivity):
                     return DesignerMode.GetChildren;
-                case nameof(ElementInputActivity):
+                case nameof(InputActivity):
                     return DesignerMode.Input;
-                case nameof(SendKeysActivity):
+                case nameof(SendkeysActivity):
                     return DesignerMode.SendKeys;
-                case nameof(ElementSetAttributeActivity):
+                case nameof(SetAttributeActivity):
                     return DesignerMode.SetAttribute;
-                case nameof(ElementTakeScreenshotActivity):
+                case nameof(TakeScreenshotActivity):
                     return DesignerMode.TakeScreenshot;
                 case nameof(RunJsActivity):
                     return DesignerMode.RunJs;
-                case nameof(ElementSelectActivity):
+                case nameof(SelectActivity):
                     return DesignerMode.Select;
                 default:
                     return DesignerMode.General;

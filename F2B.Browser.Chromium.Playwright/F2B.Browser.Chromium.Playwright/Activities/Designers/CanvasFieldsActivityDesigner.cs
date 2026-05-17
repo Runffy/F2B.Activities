@@ -1063,25 +1063,25 @@ namespace F2B.Browser.Chromium.Playwright
                     return DesignerMode.GetStorage;
                 case nameof(BrowserGetLatestTabActivity):
                     return DesignerMode.BrowserGetLatestTab;
-                case nameof(BrowserNewTabActivity):
+                case nameof(NewTabActivity):
                     return DesignerMode.BrowserNewTab;
-                case nameof(TabBackActivity):
+                case nameof(BackActivity):
                     return DesignerMode.TabBack;
                 case nameof(TabCloseActivity):
                     return DesignerMode.TabClose;
-                case nameof(TabElementExistsActivity):
+                case nameof(ElementExistsActivity):
                     return DesignerMode.TabElementExists;
-                case nameof(TabForwardActivity):
+                case nameof(ForwardActivity):
                     return DesignerMode.TabForward;
                 case nameof(TabGetInfoActivity):
                     return DesignerMode.TabGetInfo;
-                case nameof(TabNavigateUrlActivity):
+                case nameof(NavigateUrlActivity):
                     return DesignerMode.TabNavigateUrl;
-                case nameof(TabRefreshActivity):
+                case nameof(RefreshActivity):
                     return DesignerMode.TabRefresh;
                 case nameof(RunJsActivity):
                     return DesignerMode.RunJs;
-                case nameof(SendKeysActivity):
+                case nameof(SendkeysActivity):
                     return DesignerMode.SendKeys;
                 default:
                     return DesignerMode.None;

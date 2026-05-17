@@ -31,13 +31,6 @@ namespace F2B.Basic
             };
 
             var panel = new StackPanel();
-            panel.Children.Add(new TextBlock
-            {
-                Text = "Start File",
-                FontWeight = FontWeights.SemiBold,
-                Margin = new Thickness(0, 0, 0, 6)
-            });
-
             panel.Children.Add(CreateLabeledExpressionEditor("Path", "ModelItem.Path", typeof(string), "File / folder / URL", out _pathEditorBorder, out _pathExpressionBox));
             panel.Children.Add(CreateLabeledExpressionEditor("Operation", "ModelItem.Operation", typeof(string), "open"));
             panel.Children.Add(CreateLabeledExpressionEditor("Arguments", "ModelItem.Arguments", typeof(string), "Optional args"));

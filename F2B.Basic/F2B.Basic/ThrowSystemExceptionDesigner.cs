@@ -27,13 +27,6 @@ namespace F2B.Basic
             };
 
             var panel = new StackPanel();
-            panel.Children.Add(new TextBlock
-            {
-                Text = "Throw System Exception",
-                FontWeight = FontWeights.SemiBold,
-                Margin = new Thickness(0, 0, 0, 6)
-            });
-
             panel.Children.Add(CreateLabeledExpressionEditor("Message", "ModelItem.Message", typeof(string), "Required message", out _messageEditorBorder, out _messageExpressionBox));
 
             border.Child = panel;

@@ -76,9 +76,20 @@ namespace F2B.Browser.Chromium.Playwright
             _cleanupRuntimeUserDataDir = cleanupAfterClose;
             var usePersistentContext = !string.IsNullOrWhiteSpace(effectiveUserDataDir);
 
+            if (useSystemDir)
+            {
+                var existingEdgeCount = GetRunningEdgePids().Count;
+                if (existingEdgeCount > 0)
+                {
+                    KillAllEdgeProcesses();
+                    Thread.Sleep(2000);
+                }
+            }
+
             try
             {
                 LaunchBrowserContext(headless, executablePath, startMaximized, args, usePersistentContext, effectiveUserDataDir);
+                CloseAllExistingTabsInContext();
             }
             catch (PlaywrightException ex) when (useSystemDir)
             {
@@ -91,6 +102,7 @@ namespace F2B.Browser.Chromium.Playwright
                 try
                 {
                     LaunchBrowserContext(headless, executablePath, startMaximized, args, usePersistentContext, effectiveUserDataDir);
+                    CloseAllExistingTabsInContext();
                 }
                 catch (PlaywrightException retryEx)
                 {
@@ -125,6 +137,7 @@ namespace F2B.Browser.Chromium.Playwright
                     Headless = headless,
                     ExecutablePath = executablePath,
                     Args = args.Count == 0 ? null : args,
+                    IgnoreDefaultArgs = new[] { "--enable-automation" },
                     ViewportSize = startMaximized ? ViewportSize.NoViewport : null
                 };
                 _context = _playwright.Chromium
@@ -139,7 +152,8 @@ namespace F2B.Browser.Chromium.Playwright
             {
                 Headless = headless,
                 ExecutablePath = executablePath,
-                Args = args.Count == 0 ? null : args
+                Args = args.Count == 0 ? null : args,
+                IgnoreDefaultArgs = new[] { "--enable-automation" }
             };
 
             _browser = _playwright.Chromium.LaunchAsync(launchOptions).GetAwaiter().GetResult();
@@ -487,6 +501,61 @@ namespace F2B.Browser.Chromium.Playwright
             }
 
             return killed;
+        }
+
+        private void CloseAllExistingTabsInContext()
+        {
+            if (_context == null)
+            {
+                return;
+            }
+
+            var pages = _context.Pages?.Where(p => p != null && !p.IsClosed).ToList();
+            if (pages == null || pages.Count == 0)
+            {
+                return;
+            }
+
+            IPage keeper = null;
+            try
+            {
+                keeper = _context.NewPageAsync().GetAwaiter().GetResult();
+            }
+            catch
+            {
+                keeper = pages[0];
+            }
+
+            pages = _context.Pages?.Where(p => p != null && !p.IsClosed).ToList() ?? new List<IPage>();
+            foreach (var page in pages)
+            {
+                if (keeper != null && ReferenceEquals(page, keeper))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    page.CloseAsync().GetAwaiter().GetResult();
+                }
+                catch
+                {
+                }
+            }
+
+            _tabs.Clear();
+            if (keeper != null && !keeper.IsClosed)
+            {
+                _tabs.Add(keeper);
+                _currentPage = keeper;
+                return;
+            }
+
+            _currentPage = _context.Pages.FirstOrDefault(p => p != null && !p.IsClosed);
+            if (_currentPage != null)
+            {
+                _tabs.Add(_currentPage);
+            }
         }
 
         private static bool IsUserDataDirInUseError(string message)

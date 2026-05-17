@@ -87,9 +87,9 @@
         <ow:ThrowBusinessRuleException sap2010:WorkflowViewState.IdRef="ThrowBusinessRuleException_1" Message="Step002 FAIL: vBrowser Is Nothing" />
       </If.Else>
     </If>
-    <fbcp:NewTabActivity TabInfo="{x:Null}" Browser="[vBrowser]" DisplayName="**Step 003** Browser.NewTab -&gt; vTabMain" sap2010:WorkflowViewState.IdRef="BrowserNewTabActivity_1" Tab="[vTabMain]" Timeout="[15000]" Url="http://127.0.0.1:8000/" />
-    <fbcp:NewTabActivity TabInfo="{x:Null}" Browser="[vBrowser]" DisplayName="**Step 004** Browser.NewTab -&gt; vTabAlpha" sap2010:WorkflowViewState.IdRef="BrowserNewTabActivity_2" Tab="[vTabAlpha]" Timeout="[15000]" Url="http://127.0.0.1:8000/new-tab?name=alpha" />
-    <fbcp:NewTabActivity TabInfo="{x:Null}" Browser="[vBrowser]" DisplayName="**Step 005** Browser.NewTab -&gt; vTabBeta" sap2010:WorkflowViewState.IdRef="BrowserNewTabActivity_3" Tab="[vTabBeta]" Timeout="[15000]" Url="http://127.0.0.1:8000/new-tab?name=beta" />
+    <fbcp:BrowserNewTabActivity TabInfo="{x:Null}" Browser="[vBrowser]" DisplayName="**Step 003** Browser.NewTab -&gt; vTabMain" sap2010:WorkflowViewState.IdRef="BrowserNewTabActivity_1" Tab="[vTabMain]" Timeout="[15000]" Url="http://127.0.0.1:8000/" />
+    <fbcp:BrowserNewTabActivity TabInfo="{x:Null}" Browser="[vBrowser]" DisplayName="**Step 004** Browser.NewTab -&gt; vTabAlpha" sap2010:WorkflowViewState.IdRef="BrowserNewTabActivity_2" Tab="[vTabAlpha]" Timeout="[15000]" Url="http://127.0.0.1:8000/new-tab?name=alpha" />
+    <fbcp:BrowserNewTabActivity TabInfo="{x:Null}" Browser="[vBrowser]" DisplayName="**Step 005** Browser.NewTab -&gt; vTabBeta" sap2010:WorkflowViewState.IdRef="BrowserNewTabActivity_3" Tab="[vTabBeta]" Timeout="[15000]" Url="http://127.0.0.1:8000/new-tab?name=beta" />
     <If Condition="[vTabMain IsNot Nothing AndAlso vTabAlpha IsNot Nothing AndAlso vTabBeta IsNot Nothing]" DisplayName="**Step 006** 三个 Tab 均不为空" sap2010:WorkflowViewState.IdRef="If_2">
       <If.Then>
         <WriteLine sap2010:WorkflowViewState.IdRef="WriteLine_3" Text="Step006 OK" />
@@ -179,7 +179,7 @@
       </If.Else>
     </If>
     <fbcp:BrowserSwitchTabActivity Index="{x:Null}" TabInfo="{x:Null}" Title="{x:Null}" TitleRe="{x:Null}" Url="{x:Null}" UrlRe="{x:Null}" Browser="[vBrowser]" ByType="Tab" DisplayName="**Step 026** SwitchTab ByType=Tab(vTabMain)" sap2010:WorkflowViewState.IdRef="BrowserSwitchTabActivity_5" InputTab="[vTabMain]" Tab="[vTabSwitch]" />
-    <fbcp:NavigateUrlActivity DisplayName="**Step 027** Tab.NavigateUrl(nav_case=tab_main)" sap2010:WorkflowViewState.IdRef="TabNavigateUrlActivity_1" Tab="[vTabMain]" Timeout="[15000]" Url="http://127.0.0.1:8000/?nav_case=tab_main" />
+    <fbcp:TabNavigateUrlActivity DisplayName="**Step 027** Tab.NavigateUrl(nav_case=tab_main)" sap2010:WorkflowViewState.IdRef="TabNavigateUrlActivity_1" Tab="[vTabMain]" Timeout="[15000]" Url="http://127.0.0.1:8000/?nav_case=tab_main" />
     <fbcp:TabGetInfoActivity DisplayName="**Step 028** Tab.GetInfo(vTabMain)" sap2010:WorkflowViewState.IdRef="TabGetInfoActivity_3" Info="[vTabInfoMain]" Tab="[vTabMain]" />
     <If Condition="[vTabInfoMain.Url.Contains(&quot;nav_case=tab_main&quot;) AndAlso Not vTabInfoMain.Url.Contains(&quot;name=alpha&quot;) AndAlso Not vTabInfoMain.Url.Contains(&quot;name=beta&quot;)]" DisplayName="Step028 URL 精确断言" sap2010:WorkflowViewState.IdRef="If_8">
       <If.Then>
@@ -213,7 +213,7 @@
         <ow:ThrowBusinessRuleException Message="Step032 FAIL" />
       </If.Else>
     </If>
-    <fbcp:ElementExistsActivity DisplayName="**Step 033** Tab.ElementExists(#main-title)" Exists="[vExists]" sap2010:WorkflowViewState.IdRef="TabElementExistsActivity_1" Index="[0]" Selector="#main-title" Tab="[vTabMain]" />
+    <fbcp:TabElementExistsActivity DisplayName="**Step 033** Tab.ElementExists(#main-title)" Exists="[vExists]" sap2010:WorkflowViewState.IdRef="TabElementExistsActivity_1" Index="[0]" Selector="#main-title" Tab="[vTabMain]" />
     <If Condition="[vExists]" DisplayName="**Step 034** 断言 vExists == True" sap2010:WorkflowViewState.IdRef="If_11">
       <If.Then>
         <WriteLine Text="Step034 OK" />
@@ -222,8 +222,8 @@
         <ow:ThrowBusinessRuleException Message="Step034 FAIL" />
       </If.Else>
     </If>
-    <fbcp:SendkeysActivity BaseOn="Tab" Delay="[20]" DisplayName="**Step 035** SendKeys(BaseOn=Tab)" InputElement="{x:Null}" InputTab="[vTabMain]" Keys="Tab" Selector="{x:Null}" />
-    <fbcp:NavigateUrlActivity DisplayName="**Step 036** Tab.NavigateUrl(/page2)" Tab="[vTabMain]" Timeout="[15000]" Url="http://127.0.0.1:8000/page2" />
+    <fbcp:SendKeysActivity BaseOn="Tab" Delay="[20]" DisplayName="**Step 035** SendKeys(BaseOn=Tab)" InputElement="{x:Null}" InputTab="[vTabMain]" Keys="Tab" Selector="{x:Null}" />
+    <fbcp:TabNavigateUrlActivity DisplayName="**Step 036** Tab.NavigateUrl(/page2)" Tab="[vTabMain]" Timeout="[15000]" Url="http://127.0.0.1:8000/page2" />
     <fbcp:TabGetInfoActivity DisplayName="**Step 037** Tab.GetInfo(vTabMain)" Info="[vTabInfoMain]" Tab="[vTabMain]" />
     <If Condition="[vTabInfoMain.Url.Contains(&quot;/page2&quot;)]" DisplayName="**Step 038** 断言 url 包含 /page2">
       <If.Then>
@@ -233,7 +233,7 @@
         <ow:ThrowBusinessRuleException Message="Step038 FAIL" />
       </If.Else>
     </If>
-    <fbcp:BackActivity DisplayName="**Step 039** Tab.Back" Tab="[vTabMain]" />
+    <fbcp:TabBackActivity DisplayName="**Step 039** Tab.Back" Tab="[vTabMain]" />
     <fbcp:TabGetInfoActivity DisplayName="**Step 040** Tab.GetInfo(vTabMain)" Info="[vTabInfoMain]" Tab="[vTabMain]" />
     <If Condition="[vTabInfoMain.Url.Contains(&quot;nav_case=tab_main&quot;)]" DisplayName="**Step 041** 断言回退到 nav_case">
       <If.Then>
@@ -243,7 +243,7 @@
         <ow:ThrowBusinessRuleException Message="Step041 FAIL" />
       </If.Else>
     </If>
-    <fbcp:ForwardActivity DisplayName="**Step 042** Tab.Forward" Tab="[vTabMain]" />
+    <fbcp:TabForwardActivity DisplayName="**Step 042** Tab.Forward" Tab="[vTabMain]" />
     <fbcp:TabGetInfoActivity DisplayName="**Step 043** Tab.GetInfo(vTabMain)" Info="[vTabInfoMain]" Tab="[vTabMain]" />
     <If Condition="[vTabInfoMain.Url.Contains(&quot;/page2&quot;)]" DisplayName="**Step 044** 断言前进到 /page2">
       <If.Then>
@@ -253,7 +253,7 @@
         <ow:ThrowBusinessRuleException Message="Step044 FAIL" />
       </If.Else>
     </If>
-    <fbcp:RefreshActivity DisplayName="**Step 045** Tab.Refresh" Tab="[vTabMain]" />
+    <fbcp:TabRefreshActivity DisplayName="**Step 045** Tab.Refresh" Tab="[vTabMain]" />
     <fbcp:TabGetInfoActivity DisplayName="**Step 046** Tab.GetInfo(vTabMain)" Info="[vTabInfoMain]" Tab="[vTabMain]" />
     <If Condition="[vTabInfoMain.Url.Contains(&quot;/page2&quot;)]" DisplayName="**Step 047** 刷新后仍在 /page2">
       <If.Then>
@@ -263,12 +263,12 @@
         <ow:ThrowBusinessRuleException Message="Step047 FAIL" />
       </If.Else>
     </If>
-    <fbcp:NavigateUrlActivity DisplayName="**Step 048** Tab.NavigateUrl(/)" Tab="[vTabMain]" Timeout="[15000]" Url="http://127.0.0.1:8000/" />
-    <fbcp:ClickActivity Element="{x:Null}" Modifiers="{x:Null}" ValidationSelector="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 049** Element.Click(#btn-click)" InputTab="[vTabMain]" Interval="500" Selector="#btn-click" Timeout="15000" />
-    <fbcp:ClickActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 050** Element.Click(#btn-click-disappear)" InputTab="[vTabMain]" Interval="500" Selector="#btn-click-disappear" Timeout="15000" Validate="ElementDisappear" ValidationSelector="#click-disappear-target" />
-    <fbcp:ClickActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 051** Element.Click(#btn-click-appear)" InputTab="[vTabMain]" Interval="500" Selector="#btn-click-appear" Timeout="15000" Validate="ElementAppear" ValidationSelector="#marker-appeared" sap2010:WorkflowViewState.IdRef="ElementClickActivity_3" />
-    <fbcp:DoubleClickActivity Element="{x:Null}" Modifiers="{x:Null}" ValidationSelector="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 052** Element.DoubleClick(#btn-dblclick)" InputTab="[vTabMain]" Interval="500" Selector="#btn-dblclick" Timeout="15000" sap2010:WorkflowViewState.IdRef="DoubleElementClickActivity_1" />
-    <fbcp:ClickForNewTabActivity Element="{x:Null}" Modifiers="{x:Null}" ValidationSelector="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 053** Element.ClickForNewTab(#link-new-tab)" InputTab="[vTabMain]" Interval="500" Selector="#link-new-tab" Tab="[vTabSwitch]" TabInfo="[vTabInfoSwitch]" Timeout="15000" sap2010:WorkflowViewState.IdRef="ElementClickForBrowserNewTabActivity_1" />
+    <fbcp:TabNavigateUrlActivity DisplayName="**Step 048** Tab.NavigateUrl(/)" Tab="[vTabMain]" Timeout="[15000]" Url="http://127.0.0.1:8000/" />
+    <fbcp:ElementClickActivity Element="{x:Null}" Modifiers="{x:Null}" ValidationSelector="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 049** Element.Click(#btn-click)" InputTab="[vTabMain]" Interval="500" Selector="#btn-click" Timeout="15000" />
+    <fbcp:ElementClickActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 050** Element.Click(#btn-click-disappear)" InputTab="[vTabMain]" Interval="500" Selector="#btn-click-disappear" Timeout="15000" Validate="ElementDisappear" ValidationSelector="#click-disappear-target" />
+    <fbcp:ElementClickActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 051** Element.Click(#btn-click-appear)" InputTab="[vTabMain]" Interval="500" Selector="#btn-click-appear" Timeout="15000" Validate="ElementAppear" ValidationSelector="#marker-appeared" sap2010:WorkflowViewState.IdRef="ElementClickActivity_3" />
+    <fbcp:DoubleElementClickActivity Element="{x:Null}" Modifiers="{x:Null}" ValidationSelector="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 052** Element.DoubleClick(#btn-dblclick)" InputTab="[vTabMain]" Interval="500" Selector="#btn-dblclick" Timeout="15000" sap2010:WorkflowViewState.IdRef="DoubleElementClickActivity_1" />
+    <fbcp:ElementClickForBrowserNewTabActivity Element="{x:Null}" Modifiers="{x:Null}" ValidationSelector="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 053** Element.ClickForNewTab(#link-new-tab)" InputTab="[vTabMain]" Interval="500" Selector="#link-new-tab" Tab="[vTabSwitch]" TabInfo="[vTabInfoSwitch]" Timeout="15000" sap2010:WorkflowViewState.IdRef="ElementClickForBrowserNewTabActivity_1" />
     <If Condition="[vTabInfoSwitch IsNot Nothing AndAlso vTabInfoSwitch.Title.Contains(&quot;Mock New Tab&quot;)]" DisplayName="**Step 054** 断言 clickForNewTab 输出 TabInfo" sap2010:WorkflowViewState.IdRef="If_12">
       <If.Then>
         <WriteLine sap2010:WorkflowViewState.IdRef="WriteLine_10" Text="Step054 OK" />
@@ -286,7 +286,7 @@
         <ow:ThrowBusinessRuleException Message="FIX SwitchBackToMain: FAIL（当前仍非主标签）" />
       </If.Else>
     </If>
-    <fbcp:ClickForDownloadActivity Element="{x:Null}" Modifiers="{x:Null}" ValidationSelector="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 055** Element.ClickForDownload(#link-download)" Download="[vDownload]" sap2010:WorkflowViewState.IdRef="ElementClickForDownloadActivity_1" InputTab="[vTabMain]" Interval="500" SaveAsPath="D:\Temp\mock-download.txt" Selector="#link-download" Timeout="15000" />
+    <fbcp:ElementClickForDownloadActivity Element="{x:Null}" Modifiers="{x:Null}" ValidationSelector="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 055** Element.ClickForDownload(#link-download)" Download="[vDownload]" sap2010:WorkflowViewState.IdRef="ElementClickForDownloadActivity_1" InputTab="[vTabMain]" Interval="500" SaveAsPath="D:\Temp\mock-download.txt" Selector="#link-download" Timeout="15000" />
     <If Condition="[vDownload IsNot Nothing AndAlso vDownload.SavedPath IsNot Nothing AndAlso vDownload.SavedPath &lt;&gt; &quot;&quot;]" DisplayName="**Step 056** 断言下载信息" sap2010:WorkflowViewState.IdRef="If_13">
       <If.Then>
         <WriteLine sap2010:WorkflowViewState.IdRef="WriteLine_11" Text="Step056 OK" />
@@ -295,9 +295,9 @@
         <ow:ThrowBusinessRuleException sap2010:WorkflowViewState.IdRef="ThrowBusinessRuleException_10" Message="Step056 FAIL" />
       </If.Else>
     </If>
-    <fbcp:DoubleClickActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 056.1** DoubleClick + ElementDisappear" InputTab="[vTabMain]" Interval="500" Selector="#btn-dblclick-disappear" Timeout="15000" Validate="ElementDisappear" ValidationSelector="#dbl-disappear-target" />
-    <fbcp:DoubleClickActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 056.2** DoubleClick + ElementAppear" InputTab="[vTabMain]" Interval="500" Selector="#btn-dblclick-appear" Timeout="15000" Validate="ElementAppear" ValidationSelector="#dbl-marker-appeared" />
-    <fbcp:ClickForNewTabActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 056.3** ClickForNewTab + ElementDisappear" InputTab="[vTabMain]" Interval="500" Selector="#link-new-tab-disappear" Tab="[vTabSwitch]" TabInfo="[vTabInfoSwitch]" Timeout="15000" Validate="ElementDisappear" ValidationSelector="#newtab-disappear-target" />
+    <fbcp:DoubleElementClickActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 056.1** DoubleClick + ElementDisappear" InputTab="[vTabMain]" Interval="500" Selector="#btn-dblclick-disappear" Timeout="15000" Validate="ElementDisappear" ValidationSelector="#dbl-disappear-target" />
+    <fbcp:DoubleElementClickActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 056.2** DoubleClick + ElementAppear" InputTab="[vTabMain]" Interval="500" Selector="#btn-dblclick-appear" Timeout="15000" Validate="ElementAppear" ValidationSelector="#dbl-marker-appeared" />
+    <fbcp:ElementClickForBrowserNewTabActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 056.3** ClickForNewTab + ElementDisappear" InputTab="[vTabMain]" Interval="500" Selector="#link-new-tab-disappear" Tab="[vTabSwitch]" TabInfo="[vTabInfoSwitch]" Timeout="15000" Validate="ElementDisappear" ValidationSelector="#newtab-disappear-target" />
     <If Condition="[vTabInfoSwitch IsNot Nothing AndAlso vTabInfoSwitch.Url IsNot Nothing AndAlso vTabInfoSwitch.Url.Contains(&quot;from-link-disappear&quot;)]" DisplayName="**Step 056.4** 断言 newtab(disappear) 已打开">
       <If.Then>
         <WriteLine Text="Step056.4 OK" />
@@ -308,7 +308,7 @@
     </If>
     <fbcp:TabCloseActivity DisplayName="**Step 056.5** 关闭 newtab(disappear)" Tab="[vTabSwitch]" />
     <fbcp:BrowserSwitchTabActivity Index="{x:Null}" Title="{x:Null}" TitleRe="{x:Null}" Url="{x:Null}" UrlRe="{x:Null}" Browser="[vBrowser]" ByType="Tab" DisplayName="**Step 056.6** 切回主 Tab" InputTab="[vTabMain]" Tab="[vTabSwitch]" TabInfo="[vTabInfoSwitch]" />
-    <fbcp:ClickForNewTabActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 056.7** ClickForNewTab + ElementAppear" InputTab="[vTabMain]" Interval="500" Selector="#link-new-tab-appear" Tab="[vTabSwitch]" TabInfo="[vTabInfoSwitch]" Timeout="15000" Validate="ElementAppear" ValidationSelector="#newtab-marker-appeared" />
+    <fbcp:ElementClickForBrowserNewTabActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 056.7** ClickForNewTab + ElementAppear" InputTab="[vTabMain]" Interval="500" Selector="#link-new-tab-appear" Tab="[vTabSwitch]" TabInfo="[vTabInfoSwitch]" Timeout="15000" Validate="ElementAppear" ValidationSelector="#newtab-marker-appeared" />
     <If Condition="[vTabInfoSwitch IsNot Nothing AndAlso vTabInfoSwitch.Url IsNot Nothing AndAlso vTabInfoSwitch.Url.Contains(&quot;from-link-appear&quot;)]" DisplayName="**Step 056.8** 断言 newtab(appear) 已打开">
       <If.Then>
         <WriteLine Text="Step056.8 OK" />
@@ -319,7 +319,7 @@
     </If>
     <fbcp:TabCloseActivity DisplayName="**Step 056.9** 关闭 newtab(appear)" Tab="[vTabSwitch]" />
     <fbcp:BrowserSwitchTabActivity Index="{x:Null}" Title="{x:Null}" TitleRe="{x:Null}" Url="{x:Null}" UrlRe="{x:Null}" Browser="[vBrowser]" ByType="Tab" DisplayName="**Step 056.10** 再切回主 Tab" InputTab="[vTabMain]" Tab="[vTabSwitch]" TabInfo="[vTabInfoSwitch]" />
-    <fbcp:ClickForDownloadActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 056.11** ClickForDownload + ElementDisappear" Download="[vDownload]" InputTab="[vTabMain]" Interval="500" SaveAsPath="D:\Temp\mock-download-disappear.txt" Selector="#link-download-disappear" Timeout="15000" Validate="ElementDisappear" ValidationSelector="#download-disappear-target" />
+    <fbcp:ElementClickForDownloadActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 056.11** ClickForDownload + ElementDisappear" Download="[vDownload]" InputTab="[vTabMain]" Interval="500" SaveAsPath="D:\Temp\mock-download-disappear.txt" Selector="#link-download-disappear" Timeout="15000" Validate="ElementDisappear" ValidationSelector="#download-disappear-target" />
     <If Condition="[vDownload IsNot Nothing AndAlso vDownload.SavedPath IsNot Nothing AndAlso vDownload.SavedPath &lt;&gt; &quot;&quot;]" DisplayName="**Step 056.12** 断言下载(disappear) 成功">
       <If.Then>
         <WriteLine Text="Step056.12 OK" />
@@ -328,7 +328,7 @@
         <ow:ThrowBusinessRuleException Message="Step056.12 FAIL: download(disappear) 失败" />
       </If.Else>
     </If>
-    <fbcp:ClickForDownloadActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 056.13** ClickForDownload + ElementAppear" Download="[vDownload]" InputTab="[vTabMain]" Interval="500" SaveAsPath="D:\Temp\mock-download-appear.txt" Selector="#link-download-appear" Timeout="15000" Validate="ElementAppear" ValidationSelector="#download-marker-appeared" />
+    <fbcp:ElementClickForDownloadActivity Element="{x:Null}" Modifiers="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 056.13** ClickForDownload + ElementAppear" Download="[vDownload]" InputTab="[vTabMain]" Interval="500" SaveAsPath="D:\Temp\mock-download-appear.txt" Selector="#link-download-appear" Timeout="15000" Validate="ElementAppear" ValidationSelector="#download-marker-appeared" />
     <If Condition="[vDownload IsNot Nothing AndAlso vDownload.SavedPath IsNot Nothing AndAlso vDownload.SavedPath &lt;&gt; &quot;&quot;]" DisplayName="**Step 056.14** 断言下载(appear) 成功">
       <If.Then>
         <WriteLine Text="Step056.14 OK" />
@@ -337,9 +337,9 @@
         <ow:ThrowBusinessRuleException Message="Step056.14 FAIL: download(appear) 失败" />
       </If.Else>
     </If>
-    <fbcp:InputActivity Element="{x:Null}" TypeDelay="{x:Null}" DelayBefore="300" DisplayName="**Step 057** Element.Input(Fill)" sap2010:WorkflowViewState.IdRef="ElementInputActivity_1" InputTab="[vTabMain]" Interval="500" Selector="#input-text" ValidateContentAfterInputted="True" Value="hello-fill" />
-    <fbcp:InputActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 058** Element.Input(Type)" sap2010:WorkflowViewState.IdRef="ElementInputActivity_2" InputMethod="Type" InputTab="[vTabMain]" Interval="500" Selector="#input-text" TypeDelay="[30]" Value="-typed" />
-    <fbcp:GetInputValueActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 059** Element.InputGetValue" sap2010:WorkflowViewState.IdRef="ElementInputGetValueActivity_1" InputTab="[vTabMain]" Selector="#input-text" Value="[vInputValue]" />
+    <fbcp:ElementInputActivity Element="{x:Null}" TypeDelay="{x:Null}" DelayBefore="300" DisplayName="**Step 057** Element.Input(Fill)" sap2010:WorkflowViewState.IdRef="ElementInputActivity_1" InputTab="[vTabMain]" Interval="500" Selector="#input-text" ValidateContentAfterInputted="True" Value="hello-fill" />
+    <fbcp:ElementInputActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 058** Element.Input(Type)" sap2010:WorkflowViewState.IdRef="ElementInputActivity_2" InputMethod="Type" InputTab="[vTabMain]" Interval="500" Selector="#input-text" TypeDelay="[30]" Value="-typed" />
+    <fbcp:ElementInputGetValueActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 059** Element.InputGetValue" sap2010:WorkflowViewState.IdRef="ElementInputGetValueActivity_1" InputTab="[vTabMain]" Selector="#input-text" Value="[vInputValue]" />
     <If Condition="[vInputValue IsNot Nothing AndAlso vInputValue.Contains(&quot;typed&quot;)]" DisplayName="**Step 060** 断言输入值" sap2010:WorkflowViewState.IdRef="If_14">
       <If.Then>
         <WriteLine Text="Step060 OK" sap2010:WorkflowViewState.IdRef="WriteLine_25" />
@@ -348,10 +348,10 @@
         <ow:ThrowBusinessRuleException Message="Step060 FAIL" sap2010:WorkflowViewState.IdRef="ThrowBusinessRuleException_23" />
       </If.Else>
     </If>
-    <fbcp:SelectActivity Element="{x:Null}" Indices="{x:Null}" Values="{x:Null}" DelayBefore="300" DisplayName="**Step 061** Element.Select(Text)" sap2010:WorkflowViewState.IdRef="ElementSelectActivity_1" InputTab="[vTabMain]" Interval="500" Selector="#select-fruit" Texts="[New String() {&quot;banana&quot;}]" />
-    <fbcp:SelectActivity Element="{x:Null}" Indices="{x:Null}" Texts="{x:Null}" DelayBefore="300" DisplayName="**Step 062** Element.Select(Value)" sap2010:WorkflowViewState.IdRef="ElementSelectActivity_2" InputTab="[vTabMain]" Interval="500" Selector="#select-fruit" ValType="Value" Values="[New String() {&quot;orange&quot;}]" />
-    <fbcp:SelectActivity Element="{x:Null}" Texts="{x:Null}" Values="{x:Null}" DelayBefore="300" DisplayName="**Step 063** Element.Select(Index)" sap2010:WorkflowViewState.IdRef="ElementSelectActivity_3" Indices="[New Int32() {1}]" InputTab="[vTabMain]" Interval="500" Selector="#select-fruit" ValType="Index" />
-    <fbcp:GetSelectedActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 064** Element.SelectGetSelected" sap2010:WorkflowViewState.IdRef="ElementSelectGetSelectedActivity_1" InputTab="[vTabMain]" Selected="[vSelected]" Selector="#select-fruit" />
+    <fbcp:ElementSelectActivity Element="{x:Null}" Indices="{x:Null}" Values="{x:Null}" DelayBefore="300" DisplayName="**Step 061** Element.Select(Text)" sap2010:WorkflowViewState.IdRef="ElementSelectActivity_1" InputTab="[vTabMain]" Interval="500" Selector="#select-fruit" Texts="[New String() {&quot;banana&quot;}]" />
+    <fbcp:ElementSelectActivity Element="{x:Null}" Indices="{x:Null}" Texts="{x:Null}" DelayBefore="300" DisplayName="**Step 062** Element.Select(Value)" sap2010:WorkflowViewState.IdRef="ElementSelectActivity_2" InputTab="[vTabMain]" Interval="500" Selector="#select-fruit" ValType="Value" Values="[New String() {&quot;orange&quot;}]" />
+    <fbcp:ElementSelectActivity Element="{x:Null}" Texts="{x:Null}" Values="{x:Null}" DelayBefore="300" DisplayName="**Step 063** Element.Select(Index)" sap2010:WorkflowViewState.IdRef="ElementSelectActivity_3" Indices="[New Int32() {1}]" InputTab="[vTabMain]" Interval="500" Selector="#select-fruit" ValType="Index" />
+    <fbcp:ElementSelectGetSelectedActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 064** Element.SelectGetSelected" sap2010:WorkflowViewState.IdRef="ElementSelectGetSelectedActivity_1" InputTab="[vTabMain]" Selected="[vSelected]" Selector="#select-fruit" />
     <If Condition="[vSelected IsNot Nothing AndAlso vSelected.Count = 1 AndAlso vSelected(0).ContainsKey(&quot;text&quot;) AndAlso vSelected(0).ContainsKey(&quot;value&quot;) AndAlso vSelected(0).ContainsKey(&quot;index&quot;) AndAlso vSelected(0)(&quot;text&quot;) IsNot Nothing AndAlso vSelected(0)(&quot;value&quot;) IsNot Nothing AndAlso vSelected(0)(&quot;text&quot;).ToString() = &quot;apple&quot; AndAlso vSelected(0)(&quot;value&quot;).ToString() = &quot;apple&quot; AndAlso Convert.ToInt32(vSelected(0)(&quot;index&quot;)) = 1]" DisplayName="**Step 065** 精确断言 selected(text/value/index)" sap2010:WorkflowViewState.IdRef="If_15">
       <If.Then>
         <WriteLine sap2010:WorkflowViewState.IdRef="WriteLine_12" Text="Step065 OK" />
@@ -360,8 +360,8 @@
         <ow:ThrowBusinessRuleException sap2010:WorkflowViewState.IdRef="ThrowBusinessRuleException_11" Message="Step065 FAIL: SelectGetSelected 值不匹配预期(index=1,text=value=apple)" />
       </If.Else>
     </If>
-    <fbcp:CheckActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 066** Element.Check" sap2010:WorkflowViewState.IdRef="ElementCheckActivity_1" InputTab="[vTabMain]" Selector="#check-accept" />
-    <fbcp:IsCheckedActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 067** Element.IsChecked" sap2010:WorkflowViewState.IdRef="ElementIsCheckedActivity_1" InputTab="[vTabMain]" IsChecked="[vChecked]" Selector="#check-accept" />
+    <fbcp:ElementCheckActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 066** Element.Check" sap2010:WorkflowViewState.IdRef="ElementCheckActivity_1" InputTab="[vTabMain]" Selector="#check-accept" />
+    <fbcp:ElementIsCheckedActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 067** Element.IsChecked" sap2010:WorkflowViewState.IdRef="ElementIsCheckedActivity_1" InputTab="[vTabMain]" IsChecked="[vChecked]" Selector="#check-accept" />
     <If Condition="[vChecked]" DisplayName="**Step 068** 断言 checked=True" sap2010:WorkflowViewState.IdRef="If_16">
       <If.Then>
         <WriteLine sap2010:WorkflowViewState.IdRef="WriteLine_13" Text="Step068 OK" />
@@ -370,8 +370,8 @@
         <ow:ThrowBusinessRuleException sap2010:WorkflowViewState.IdRef="ThrowBusinessRuleException_12" Message="Step068 FAIL" />
       </If.Else>
     </If>
-    <fbcp:UncheckActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 069** Element.Uncheck" sap2010:WorkflowViewState.IdRef="ElementUncheckActivity_1" InputTab="[vTabMain]" Selector="#check-accept" />
-    <fbcp:IsCheckedActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 070** Element.IsChecked" sap2010:WorkflowViewState.IdRef="ElementIsCheckedActivity_2" InputTab="[vTabMain]" IsChecked="[vChecked]" Selector="#check-accept" />
+    <fbcp:ElementUncheckActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 069** Element.Uncheck" sap2010:WorkflowViewState.IdRef="ElementUncheckActivity_1" InputTab="[vTabMain]" Selector="#check-accept" />
+    <fbcp:ElementIsCheckedActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 070** Element.IsChecked" sap2010:WorkflowViewState.IdRef="ElementIsCheckedActivity_2" InputTab="[vTabMain]" IsChecked="[vChecked]" Selector="#check-accept" />
     <If Condition="[Not vChecked]" DisplayName="**Step 071** 断言 checked=False" sap2010:WorkflowViewState.IdRef="If_17">
       <If.Then>
         <WriteLine sap2010:WorkflowViewState.IdRef="WriteLine_14" Text="Step071 OK" />
@@ -380,7 +380,7 @@
         <ow:ThrowBusinessRuleException sap2010:WorkflowViewState.IdRef="ThrowBusinessRuleException_13" Message="Step071 FAIL" />
       </If.Else>
     </If>
-    <fbcp:SendkeysActivity BaseOn="Element" Delay="{x:Null}" DelayBefore="300" DisplayName="**Step 072** SendKeys(TargetType=Selector)" InputElement="{x:Null}" sap2010:WorkflowViewState.IdRef="SendKeysActivity_2" InputTab="[vTabMain]" Keys="A" Selector="#key-capture" TargetType="Selector" />
+    <fbcp:SendKeysActivity BaseOn="Element" Delay="{x:Null}" DelayBefore="300" DisplayName="**Step 072** SendKeys(TargetType=Selector)" InputElement="{x:Null}" sap2010:WorkflowViewState.IdRef="SendKeysActivity_2" InputTab="[vTabMain]" Keys="A" Selector="#key-capture" TargetType="Selector" />
     <fbcp:FindElementActivity BaseOn="Tab" DelayBefore="300" DisplayName="**Step 073** FindElement(BaseOn=Tab,#parent-box)" Element="{x:Null}" ElementResult="[vElemParentBox]" sap2010:WorkflowViewState.IdRef="FindElementActivity_2" Index="0" Selector="#parent-box" Tab="[vTabMain]">
       <fbcp:FindElementActivity.Timeout>
         <InArgument x:TypeArguments="s:Nullable(x:Int32)">
@@ -403,7 +403,7 @@
         <ow:ThrowBusinessRuleException Message="Step075 FAIL" sap2010:WorkflowViewState.IdRef="ThrowBusinessRuleException_24" />
       </If.Else>
     </If>
-    <fbcp:ElementExistsActivity DisplayName="**Step 076** Tab.ElementExists(#toggle-target)" Exists="[vExists]" sap2010:WorkflowViewState.IdRef="TabElementExistsActivity_3" Index="[0]" Selector="#toggle-target" Tab="[vTabMain]" />
+    <fbcp:TabElementExistsActivity DisplayName="**Step 076** Tab.ElementExists(#toggle-target)" Exists="[vExists]" sap2010:WorkflowViewState.IdRef="TabElementExistsActivity_3" Index="[0]" Selector="#toggle-target" Tab="[vTabMain]" />
     <If Condition="[vExists]" DisplayName="**Step 077** 断言 exists=True" sap2010:WorkflowViewState.IdRef="If_19">
       <If.Then>
         <WriteLine Text="Step077 OK" sap2010:WorkflowViewState.IdRef="WriteLine_27" />
@@ -412,7 +412,7 @@
         <ow:ThrowBusinessRuleException Message="Step077 FAIL" sap2010:WorkflowViewState.IdRef="ThrowBusinessRuleException_25" />
       </If.Else>
     </If>
-    <fbcp:GetTextActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 078** Element.GetText(#child-a)" sap2010:WorkflowViewState.IdRef="ElementGetTextActivity_1" InputTab="[vTabMain]" Selector="#child-a" Text="[vText]" />
+    <fbcp:ElementGetTextActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 078** Element.GetText(#child-a)" sap2010:WorkflowViewState.IdRef="ElementGetTextActivity_1" InputTab="[vTabMain]" Selector="#child-a" Text="[vText]" />
     <If Condition="[vText IsNot Nothing AndAlso vText &lt;&gt; &quot;&quot;]" DisplayName="**Step 079** 断言文本非空" sap2010:WorkflowViewState.IdRef="If_20">
       <If.Then>
         <WriteLine Text="Step079 OK" sap2010:WorkflowViewState.IdRef="WriteLine_28" />
@@ -421,9 +421,9 @@
         <ow:ThrowBusinessRuleException Message="Step079 FAIL" sap2010:WorkflowViewState.IdRef="ThrowBusinessRuleException_26" />
       </If.Else>
     </If>
-    <fbcp:GetAttributeActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 080** Element.GetAttribute(data-custom)" sap2010:WorkflowViewState.IdRef="ElementGetAttributeActivity_1" InputTab="[vTabMain]" Name="data-custom" Selector="#attr-target" Value="[vAttr]" />
-    <fbcp:SetAttributeActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 081** Element.SetAttribute(data-custom)" sap2010:WorkflowViewState.IdRef="ElementSetAttributeActivity_1" InputTab="[vTabMain]" Name="data-custom" Selector="#attr-target" Value="from-openrpa" />
-    <fbcp:GetAttributeActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 082** Element.GetAttribute(data-custom)" sap2010:WorkflowViewState.IdRef="ElementGetAttributeActivity_2" InputTab="[vTabMain]" Name="data-custom" Selector="#attr-target" Value="[vAttr]" />
+    <fbcp:ElementGetAttributeActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 080** Element.GetAttribute(data-custom)" sap2010:WorkflowViewState.IdRef="ElementGetAttributeActivity_1" InputTab="[vTabMain]" Name="data-custom" Selector="#attr-target" Value="[vAttr]" />
+    <fbcp:ElementSetAttributeActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 081** Element.SetAttribute(data-custom)" sap2010:WorkflowViewState.IdRef="ElementSetAttributeActivity_1" InputTab="[vTabMain]" Name="data-custom" Selector="#attr-target" Value="from-openrpa" />
+    <fbcp:ElementGetAttributeActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 082** Element.GetAttribute(data-custom)" sap2010:WorkflowViewState.IdRef="ElementGetAttributeActivity_2" InputTab="[vTabMain]" Name="data-custom" Selector="#attr-target" Value="[vAttr]" />
     <If Condition="[vAttr = &quot;from-openrpa&quot;]" DisplayName="**Step 083** 断言属性值更新" sap2010:WorkflowViewState.IdRef="If_21">
       <If.Then>
         <WriteLine sap2010:WorkflowViewState.IdRef="WriteLine_15" Text="Step083 OK" />
@@ -432,7 +432,7 @@
         <ow:ThrowBusinessRuleException sap2010:WorkflowViewState.IdRef="ThrowBusinessRuleException_14" Message="Step083 FAIL" />
       </If.Else>
     </If>
-    <fbcp:GetRectActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 084** Element.GetRect" sap2010:WorkflowViewState.IdRef="ElementGetRectActivity_1" InputTab="[vTabMain]" Rect="[vRect]" Selector="#screenshot-target" />
+    <fbcp:ElementGetRectActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 084** Element.GetRect" sap2010:WorkflowViewState.IdRef="ElementGetRectActivity_1" InputTab="[vTabMain]" Rect="[vRect]" Selector="#screenshot-target" />
     <If Condition="[vRect IsNot Nothing AndAlso vRect.Width &gt; 0 AndAlso vRect.Height &gt; 0]" DisplayName="**Step 085** 断言 rect 合法" sap2010:WorkflowViewState.IdRef="If_22">
       <If.Then>
         <WriteLine Text="Step085 OK" />
@@ -441,7 +441,7 @@
         <ow:ThrowBusinessRuleException Message="Step085 FAIL" />
       </If.Else>
     </If>
-    <fbcp:TakeScreenshotActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 086** Element.TakeScreenshot" sap2010:WorkflowViewState.IdRef="ElementTakeScreenshotActivity_1" InputTab="[vTabMain]" Path="D:\Temp\element-shot.png" Selector="#screenshot-target" />
+    <fbcp:ElementTakeScreenshotActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 086** Element.TakeScreenshot" sap2010:WorkflowViewState.IdRef="ElementTakeScreenshotActivity_1" InputTab="[vTabMain]" Path="D:\Temp\element-shot.png" Selector="#screenshot-target" />
     <fbcp:RunJsActivity Arg="{x:Null}" BaseOn="Element" DelayBefore="300" DisplayName="**Step 087** RunJs(TargetType=Selector, textContent)" InputElement="{x:Null}" sap2010:WorkflowViewState.IdRef="RunJsActivity_2" InputTab="[vTabMain]" Result="[vJsResult]" Script="(el)=&gt;el.textContent" Selector="#main-title" TargetType="Selector" />
     <If Condition="[vJsResult IsNot Nothing]" DisplayName="**Step 088** 断言 RunJs 返回非空" sap2010:WorkflowViewState.IdRef="If_23">
       <If.Then>
@@ -451,7 +451,7 @@
         <ow:ThrowBusinessRuleException Message="Step088 FAIL" />
       </If.Else>
     </If>
-    <fbcp:GetChildrenActivity Element="{x:Null}" ChildSelector=".child-node" Children="[vElemChildren]" Deepdive="True" DelayBefore="300" DisplayName="**Step 089** Element.GetChildren" sap2010:WorkflowViewState.IdRef="ElementGetChildrenActivity_1" InputTab="[vTabMain]" Selector="#parent-box" />
+    <fbcp:ElementGetChildrenActivity Element="{x:Null}" ChildSelector=".child-node" Children="[vElemChildren]" Deepdive="True" DelayBefore="300" DisplayName="**Step 089** Element.GetChildren" sap2010:WorkflowViewState.IdRef="ElementGetChildrenActivity_1" InputTab="[vTabMain]" Selector="#parent-box" />
     <If Condition="[vElemChildren IsNot Nothing AndAlso vElemChildren.Length &gt; 0]" DisplayName="**Step 090** 断言 children 非空" sap2010:WorkflowViewState.IdRef="If_24">
       <If.Then>
         <WriteLine Text="Step090 OK" />
@@ -460,7 +460,7 @@
         <ow:ThrowBusinessRuleException Message="Step090 FAIL" />
       </If.Else>
     </If>
-    <fbcp:GetParentActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 091** Element.GetParent(level=1)" InputTab="[vTabMain]" Level="[1]" Parent="[vElemParent]" Selector="#child-c-inner" />
+    <fbcp:ElementGetParentActivity Element="{x:Null}" DelayBefore="300" DisplayName="**Step 091** Element.GetParent(level=1)" InputTab="[vTabMain]" Level="[1]" Parent="[vElemParent]" Selector="#child-c-inner" />
     <If Condition="[vElemParent IsNot Nothing]" DisplayName="**Step 092** 断言 parent 非空">
       <If.Then>
         <WriteLine Text="Step092 OK" />
@@ -476,8 +476,8 @@
         </InArgument>
       </fbcp:FindElementActivity.Timeout>
     </fbcp:FindElementActivity>
-    <fbcp:InputActivity InputTab="{x:Null}" Selector="{x:Null}" TypeDelay="{x:Null}" DelayBefore="300" DisplayName="**Step 094** Element.Input(TargetType=Element)" Element="[vElemInput]" Interval="500" TargetType="Element" Value="element-mode" />
-    <fbcp:GetInputValueActivity InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="**Step 095** Element.InputGetValue(TargetType=Element)" Element="[vElemInput]" TargetType="Element" Value="[vInputValue]" />
+    <fbcp:ElementInputActivity InputTab="{x:Null}" Selector="{x:Null}" TypeDelay="{x:Null}" DelayBefore="300" DisplayName="**Step 094** Element.Input(TargetType=Element)" Element="[vElemInput]" Interval="500" TargetType="Element" Value="element-mode" />
+    <fbcp:ElementInputGetValueActivity InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="**Step 095** Element.InputGetValue(TargetType=Element)" Element="[vElemInput]" TargetType="Element" Value="[vInputValue]" />
     <If Condition="[vInputValue = &quot;element-mode&quot;]" DisplayName="**Step 096** 断言 element-mode">
       <If.Then>
         <WriteLine Text="Step096 OK" />
@@ -486,7 +486,7 @@
         <ow:ThrowBusinessRuleException Message="Step096 FAIL" />
       </If.Else>
     </If>
-    <fbcp:SendkeysActivity BaseOn="Element" Delay="{x:Null}" DelayBefore="300" DisplayName="**Step 097** SendKeys(TargetType=Element)" InputTab="{x:Null}" Selector="{x:Null}" sap2010:WorkflowViewState.IdRef="SendKeysActivity_3" InputElement="[vElemInput]" Keys="B" TargetType="Element" />
+    <fbcp:SendKeysActivity BaseOn="Element" Delay="{x:Null}" DelayBefore="300" DisplayName="**Step 097** SendKeys(TargetType=Element)" InputTab="{x:Null}" Selector="{x:Null}" sap2010:WorkflowViewState.IdRef="SendKeysActivity_3" InputElement="[vElemInput]" Keys="B" TargetType="Element" />
     <fbcp:RunJsActivity Arg="{x:Null}" BaseOn="Element" DelayBefore="300" DisplayName="**Step 098** RunJs(TargetType=Element, value)" InputTab="{x:Null}" Selector="{x:Null}" sap2010:WorkflowViewState.IdRef="RunJsActivity_3" InputElement="[vElemInput]" Result="[vJsResult]" Script="(el)=&gt;el.value" TargetType="Element" />
     <If Condition="[vJsResult IsNot Nothing]" DisplayName="**Step 099** 断言 value 非空" sap2010:WorkflowViewState.IdRef="If_25">
       <If.Then>
@@ -503,8 +503,8 @@
         </InArgument>
       </fbcp:FindElementActivity.Timeout>
     </fbcp:FindElementActivity>
-    <fbcp:CheckActivity InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="**Step 101** Element.Check(TargetType=Element)" Element="[vElemCheckbox]" sap2010:WorkflowViewState.IdRef="ElementCheckActivity_2" TargetType="Element" />
-    <fbcp:IsCheckedActivity InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="**Step 102** Element.IsChecked(TargetType=Element)" Element="[vElemCheckbox]" sap2010:WorkflowViewState.IdRef="ElementIsCheckedActivity_3" IsChecked="[vChecked]" TargetType="Element" />
+    <fbcp:ElementCheckActivity InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="**Step 101** Element.Check(TargetType=Element)" Element="[vElemCheckbox]" sap2010:WorkflowViewState.IdRef="ElementCheckActivity_2" TargetType="Element" />
+    <fbcp:ElementIsCheckedActivity InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="**Step 102** Element.IsChecked(TargetType=Element)" Element="[vElemCheckbox]" sap2010:WorkflowViewState.IdRef="ElementIsCheckedActivity_3" IsChecked="[vChecked]" TargetType="Element" />
     <If Condition="[vChecked]" DisplayName="**Step 103** 断言 checked=True" sap2010:WorkflowViewState.IdRef="If_26">
       <If.Then>
         <WriteLine Text="Step103 OK" />
@@ -513,8 +513,8 @@
         <ow:ThrowBusinessRuleException Message="Step103 FAIL" />
       </If.Else>
     </If>
-    <fbcp:UncheckActivity InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="**Step 104** Element.Uncheck(TargetType=Element)" Element="[vElemCheckbox]" sap2010:WorkflowViewState.IdRef="ElementUncheckActivity_2" TargetType="Element" />
-    <fbcp:IsCheckedActivity InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="**Step 105** Element.IsChecked(TargetType=Element)" Element="[vElemCheckbox]" sap2010:WorkflowViewState.IdRef="ElementIsCheckedActivity_4" IsChecked="[vChecked]" TargetType="Element" />
+    <fbcp:ElementUncheckActivity InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="**Step 104** Element.Uncheck(TargetType=Element)" Element="[vElemCheckbox]" sap2010:WorkflowViewState.IdRef="ElementUncheckActivity_2" TargetType="Element" />
+    <fbcp:ElementIsCheckedActivity InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="**Step 105** Element.IsChecked(TargetType=Element)" Element="[vElemCheckbox]" sap2010:WorkflowViewState.IdRef="ElementIsCheckedActivity_4" IsChecked="[vChecked]" TargetType="Element" />
     <If Condition="[Not vChecked]" DisplayName="**Step 106** 断言 checked=False" sap2010:WorkflowViewState.IdRef="If_27">
       <If.Then>
         <WriteLine Text="Step106 OK" />
@@ -523,8 +523,8 @@
         <ow:ThrowBusinessRuleException Message="Step106 FAIL" />
       </If.Else>
     </If>
-    <fbcp:ClickActivity Element="{x:Null}" Modifiers="{x:Null}" ValidationSelector="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 107** Element.Click(#btn-set-cookie)" sap2010:WorkflowViewState.IdRef="ElementClickActivity_1" InputTab="[vTabMain]" Interval="500" Selector="#btn-set-cookie" Timeout="15000" />
-    <fbcp:ClickActivity Element="{x:Null}" Modifiers="{x:Null}" ValidationSelector="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 108** Element.Click(#btn-set-storage)" sap2010:WorkflowViewState.IdRef="ElementClickActivity_2" InputTab="[vTabMain]" Interval="500" Selector="#btn-set-storage" Timeout="15000" />
+    <fbcp:ElementClickActivity Element="{x:Null}" Modifiers="{x:Null}" ValidationSelector="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 107** Element.Click(#btn-set-cookie)" sap2010:WorkflowViewState.IdRef="ElementClickActivity_1" InputTab="[vTabMain]" Interval="500" Selector="#btn-set-cookie" Timeout="15000" />
+    <fbcp:ElementClickActivity Element="{x:Null}" Modifiers="{x:Null}" ValidationSelector="{x:Null}" Count="1" DelayBefore="300" DisplayName="**Step 108** Element.Click(#btn-set-storage)" sap2010:WorkflowViewState.IdRef="ElementClickActivity_2" InputTab="[vTabMain]" Interval="500" Selector="#btn-set-storage" Timeout="15000" />
     <fbcp:GetCookiesActivity BaseOn="Tab" Cookies="[vCookiesTab]" DisplayName="**Step 109** GetCookies(BaseOn=Tab)" InputTab="[vTabMain]" sap2010:WorkflowViewState.IdRef="TabGetCookiesActivity_1" />
     <fbcp:GetStorageActivity BaseOn="Tab" DisplayName="**Step 110** GetStorage(BaseOn=Tab, Scope=Local)" InputTab="[vTabMain]" Scope="Local" Storage="[vStorageTabLocal]" sap2010:WorkflowViewState.IdRef="TabGetLocalStorageActivity_1" />
     <fbcp:GetStorageActivity BaseOn="Tab" DisplayName="**Step 111** GetStorage(BaseOn=Tab, Scope=Session)" InputTab="[vTabMain]" Scope="Session" Storage="[vStorageTabSession]" sap2010:WorkflowViewState.IdRef="TabGetSessionStorageActivity_1" />
@@ -636,7 +636,7 @@
         <ow:ThrowBusinessRuleException Message="Step122.6 FAIL: Storages.AsString() 不包含 mock.local.seed" />
       </If.Else>
     </If>
-    <fbcp:ElementExistsActivity DisplayName="**Step 123** Tab.ElementExists(#op-log li)" Exists="[vExists]" sap2010:WorkflowViewState.IdRef="TabElementExistsActivity_2" Index="0" Selector="#op-log li" Tab="[vTabMain]" />
+    <fbcp:TabElementExistsActivity DisplayName="**Step 123** Tab.ElementExists(#op-log li)" Exists="[vExists]" sap2010:WorkflowViewState.IdRef="TabElementExistsActivity_2" Index="0" Selector="#op-log li" Tab="[vTabMain]" />
     <If Condition="[vExists]" DisplayName="**Step 124** 断言日志存在" sap2010:WorkflowViewState.IdRef="If_31">
       <If.Then>
         <WriteLine sap2010:WorkflowViewState.IdRef="WriteLine_21" Text="Step124 OK" />

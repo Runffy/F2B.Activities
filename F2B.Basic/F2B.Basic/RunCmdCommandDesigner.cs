@@ -29,13 +29,6 @@ namespace F2B.Basic
             };
 
             var panel = new StackPanel();
-            panel.Children.Add(new TextBlock
-            {
-                Text = "Run CMD Command",
-                FontWeight = FontWeights.SemiBold,
-                Margin = new Thickness(0, 0, 0, 6)
-            });
-
             panel.Children.Add(CreateLabeledExpressionEditor("Command", "ModelItem.Command", typeof(string), "cmd /c ...", out _commandEditorBorder, out _commandExpressionBox));
 
             border.Child = panel;
