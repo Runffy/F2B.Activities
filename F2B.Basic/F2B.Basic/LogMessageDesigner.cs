@@ -18,6 +18,7 @@ namespace F2B.Basic
         private readonly ComboBox levelComboBox;
         private readonly Border messageEditorBorder;
         private readonly ExpressionTextBox messageExpressionBox;
+        private bool isSyncingLevel;
 
         public LogMessageDesigner()
         {
@@ -29,13 +30,6 @@ namespace F2B.Basic
             };
 
             var panel = new StackPanel();
-            panel.Children.Add(new TextBlock
-            {
-                Text = "Log Message",
-                FontWeight = FontWeights.SemiBold,
-                Margin = new Thickness(0, 0, 0, 6)
-            });
-
             panel.Children.Add(CreateLabeledLevelDropdown(out levelComboBox));
 
             panel.Children.Add(CreateLabeledExpressionEditor(
@@ -119,7 +113,28 @@ namespace F2B.Basic
                     return;
                 }
 
-                owner.ModelItem.Properties["Level"].SetValue(new global::System.Activities.InArgument<string>(localCombo.SelectedItem.ToString()));
+                if (owner.isSyncingLevel)
+                {
+                    return;
+                }
+
+                string selectedLevel = localCombo.SelectedItem.ToString();
+                string currentLevel = null;
+                try
+                {
+                    currentLevel = owner.ModelItem.GetValue<string>("Level");
+                }
+                catch
+                {
+                    // Keep designer resilient; fallback to write value below.
+                }
+
+                if (string.Equals((currentLevel ?? string.Empty).Trim(), selectedLevel, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                owner.ModelItem.Properties["Level"].SetValue(new global::System.Activities.InArgument<string>(selectedLevel));
             };
             localCombo.Tag = null;
 
@@ -150,7 +165,9 @@ namespace F2B.Basic
                 current = "INFO";
             }
 
+            isSyncingLevel = true;
             levelComboBox.SelectedItem = current;
+            isSyncingLevel = false;
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
             RefreshRequiredBorders();
         }

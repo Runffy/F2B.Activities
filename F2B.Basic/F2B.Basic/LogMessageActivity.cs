@@ -84,6 +84,9 @@ namespace F2B.Basic
                 EscapeCsv(level),
                 EscapeCsv(message));
             File.AppendAllText(logfile, line + Environment.NewLine);
+
+            string consoleLine = $"[{level}] {message}";
+            Console.WriteLine(consoleLine);
         }
 
         private static WorkflowMetadata ResolveWorkflowMetadata(CodeActivityContext context)

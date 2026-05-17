@@ -62,6 +62,8 @@
     <Compile Include="StartFileDesigner.cs" />
     <Compile Include="ThrowSystemExceptionActivity.cs" />
     <Compile Include="ThrowSystemExceptionDesigner.cs" />
+    <Compile Include="UnitTestScopeActivity.cs" />
+    <Compile Include="UnitTestScopeDesigner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
