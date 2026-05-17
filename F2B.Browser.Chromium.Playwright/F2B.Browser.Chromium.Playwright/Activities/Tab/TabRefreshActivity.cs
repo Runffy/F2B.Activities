@@ -1,0 +1,22 @@
+using System.Activities;
+using System.ComponentModel;
+
+namespace F2B.Browser.Chromium.Playwright
+{
+    [DisplayName("Refresh Tab")]
+    [Description("Refresh the specified tab.")]
+    [Designer(typeof(CanvasFieldsActivityDesigner))]
+    public sealed class TabRefreshActivity : CodeActivity
+    {
+        [DisplayName("Input Tab")]
+        [Description("Tab instance to refresh.")]
+        [RequiredArgument]
+        [Category("Input")]
+        public InArgument<PwTab> Tab { get; set; }
+
+        protected override void Execute(CodeActivityContext context)
+        {
+            Tab.Get(context).Refresh();
+        }
+    }
+}
