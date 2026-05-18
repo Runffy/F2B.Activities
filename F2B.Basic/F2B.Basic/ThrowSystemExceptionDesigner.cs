@@ -53,7 +53,8 @@ namespace F2B.Basic
             expressionTextBox = new ExpressionTextBox
             {
                 Margin = new Thickness(0, 0, 0, 0),
-                MinWidth = 200,
+                Width = 200,
+                MaxWidth = 200,
                 HintText = hint,
                 ExpressionType = expressionType,
                 MinLines = 1,

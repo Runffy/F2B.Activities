@@ -86,6 +86,7 @@
   <ItemGroup>
     <Compile Include="PlaywrightSyncClient.cs" />
     <Compile Include="Activities\ActivityArgumentHelper.cs" />
+    <Compile Include="Activities\Common\ElementLocatorActivity.cs" />
     <Compile Include="Activities\Common\FindElementActivity.cs" />
     <Compile Include="Activities\Common\ParallelFindElementActivity.cs" />
     <Compile Include="Activities\Common\GetCookiesActivity.cs" />

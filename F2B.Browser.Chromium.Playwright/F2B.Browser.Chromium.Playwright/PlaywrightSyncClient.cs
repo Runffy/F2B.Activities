@@ -942,6 +942,28 @@ namespace F2B.Browser.Chromium.Playwright
             return new PwElement(_client, _page, target);
         }
 
+        public ILocator Locate(string selector, double? timeout = null, int delayBefore = 300)
+        {
+            _client.EnsureTabAlive(_page);
+            if (string.IsNullOrWhiteSpace(selector))
+            {
+                throw new ArgumentException("selector 不能为空。", nameof(selector));
+            }
+
+            PlaywrightSyncClient.ApplyDelay(delayBefore);
+            var locator = _page.Locator(selector);
+            if (timeout.HasValue)
+            {
+                locator.First.WaitForAsync(new LocatorWaitForOptions
+                {
+                    Timeout = (float)Math.Max(0, timeout.Value),
+                    State = WaitForSelectorState.Attached
+                }).GetAwaiter().GetResult();
+            }
+
+            return locator;
+        }
+
         public bool ElementExists(string selector, int index = 0)
         {
             _client.EnsureTabAlive(_page);
@@ -1422,6 +1444,28 @@ namespace F2B.Browser.Chromium.Playwright
             }
 
             return new PwElement(_client, _page, target);
+        }
+
+        public ILocator Locate(string selector, double? timeout = null, int delayBefore = 300)
+        {
+            _client.EnsureTabAlive(_page);
+            if (string.IsNullOrWhiteSpace(selector))
+            {
+                throw new ArgumentException("selector 不能为空。", nameof(selector));
+            }
+
+            PlaywrightSyncClient.ApplyDelay(delayBefore);
+            var locator = _locator.Locator(selector);
+            if (timeout.HasValue)
+            {
+                locator.First.WaitForAsync(new LocatorWaitForOptions
+                {
+                    Timeout = (float)Math.Max(0, timeout.Value),
+                    State = WaitForSelectorState.Attached
+                }).GetAwaiter().GetResult();
+            }
+
+            return locator;
         }
 
         public PwElement GetParent(int level = 1)

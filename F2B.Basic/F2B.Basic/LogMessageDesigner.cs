@@ -64,7 +64,8 @@ namespace F2B.Basic
             expressionTextBox = new ExpressionTextBox
             {
                 Margin = new Thickness(4, 0, 0, 0),
-                MinWidth = 180,
+                Width = 200,
+                MaxWidth = 200,
                 HintText = hint,
                 ExpressionType = expressionType
             };
@@ -102,7 +103,8 @@ namespace F2B.Basic
             var localCombo = new ComboBox
             {
                 Margin = new Thickness(4, 0, 0, 0),
-                MinWidth = 180,
+                Width = 200,
+                MaxWidth = 200,
                 ItemsSource = new[] { "INFO", "WARN", "ERROR" }
             };
 
