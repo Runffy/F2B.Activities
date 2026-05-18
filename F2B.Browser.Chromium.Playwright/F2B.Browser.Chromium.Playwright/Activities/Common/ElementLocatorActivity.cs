@@ -1,12 +1,11 @@
 using System;
 using System.Activities;
 using System.ComponentModel;
-using Microsoft.Playwright;
 
 namespace F2B.Browser.Chromium.Playwright
 {
     [DisplayName("Element Locator")]
-    [Description("Locate a selector from PwTab or PwElement and return native Playwright ILocator.")]
+    [Description("Locate a selector from PwTab or PwElement and return sync wrapper PwLocator.")]
     public sealed class ElementLocatorActivity : CodeActivity
     {
         [DisplayName("Parent Object")]
@@ -34,9 +33,9 @@ namespace F2B.Browser.Chromium.Playwright
         public InArgument<int> DelayBefore { get; set; } = 300;
 
         [DisplayName("Locator Result")]
-        [Description("Outputs native Playwright locator.")]
+        [Description("Outputs sync locator wrapper.")]
         [Category("Output")]
-        public OutArgument<ILocator> LocatorResult { get; set; }
+        public OutArgument<PwLocator> LocatorResult { get; set; }
 
         protected override void Execute(CodeActivityContext context)
         {
@@ -60,7 +59,7 @@ namespace F2B.Browser.Chromium.Playwright
                 delayBefore = 0;
             }
 
-            ILocator locator;
+            PwLocator locator;
             if (parent is PwTab tab)
             {
                 locator = tab.Locate(selector, timeoutMs, delayBefore);

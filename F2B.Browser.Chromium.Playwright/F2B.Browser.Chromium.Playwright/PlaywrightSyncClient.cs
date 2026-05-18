@@ -942,7 +942,7 @@ namespace F2B.Browser.Chromium.Playwright
             return new PwElement(_client, _page, target);
         }
 
-        public ILocator Locate(string selector, double? timeout = null, int delayBefore = 300)
+        public PwLocator Locate(string selector, double? timeout = null, int delayBefore = 300)
         {
             _client.EnsureTabAlive(_page);
             if (string.IsNullOrWhiteSpace(selector))
@@ -961,7 +961,7 @@ namespace F2B.Browser.Chromium.Playwright
                 }).GetAwaiter().GetResult();
             }
 
-            return locator;
+            return new PwLocator(_client, _page, locator);
         }
 
         public bool ElementExists(string selector, int index = 0)
@@ -1053,6 +1053,70 @@ namespace F2B.Browser.Chromium.Playwright
                 Title = _page.TitleAsync().GetAwaiter().GetResult(),
                 IsClosed = _page.IsClosed
             };
+        }
+    }
+
+    public sealed class PwLocator
+    {
+        private readonly PlaywrightSyncClient _client;
+        private readonly IPage _page;
+        private readonly ILocator _locator;
+
+        internal PwLocator(PlaywrightSyncClient client, IPage page, ILocator locator)
+        {
+            _client = client;
+            _page = page;
+            _locator = locator ?? throw new ArgumentNullException(nameof(locator));
+        }
+
+        public int Count()
+        {
+            EnsureAlive();
+            return _locator.CountAsync().GetAwaiter().GetResult();
+        }
+
+        public PwLocator Locate(string selector, double? timeout = null, int delayBefore = 0)
+        {
+            EnsureAlive();
+            if (string.IsNullOrWhiteSpace(selector))
+            {
+                throw new ArgumentException("selector 不能为空。", nameof(selector));
+            }
+
+            PlaywrightSyncClient.ApplyDelay(delayBefore);
+            var child = _locator.Locator(selector);
+            if (timeout.HasValue)
+            {
+                child.First.WaitForAsync(new LocatorWaitForOptions
+                {
+                    Timeout = (float)Math.Max(0, timeout.Value),
+                    State = WaitForSelectorState.Attached
+                }).GetAwaiter().GetResult();
+            }
+
+            return new PwLocator(_client, _page, child);
+        }
+
+        public PwLocator First()
+        {
+            EnsureAlive();
+            return new PwLocator(_client, _page, _locator.First);
+        }
+
+        public PwLocator Nth(int index)
+        {
+            EnsureAlive();
+            return new PwLocator(_client, _page, _locator.Nth(index));
+        }
+
+        public ILocator AsNative()
+        {
+            return _locator;
+        }
+
+        private void EnsureAlive()
+        {
+            _client.EnsureTabAlive(_page);
         }
     }
 
@@ -1446,7 +1510,7 @@ namespace F2B.Browser.Chromium.Playwright
             return new PwElement(_client, _page, target);
         }
 
-        public ILocator Locate(string selector, double? timeout = null, int delayBefore = 300)
+        public PwLocator Locate(string selector, double? timeout = null, int delayBefore = 300)
         {
             _client.EnsureTabAlive(_page);
             if (string.IsNullOrWhiteSpace(selector))
@@ -1465,7 +1529,7 @@ namespace F2B.Browser.Chromium.Playwright
                 }).GetAwaiter().GetResult();
             }
 
-            return locator;
+            return new PwLocator(_client, _page, locator);
         }
 
         public PwElement GetParent(int level = 1)
