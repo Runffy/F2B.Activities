@@ -56,6 +56,11 @@ namespace F2B.Browser.Chromium.Playwright
 
         protected PwElement ResolveTargetElement(CodeActivityContext context)
         {
+            return ResolveTargetElement(context, null);
+        }
+
+        protected PwElement ResolveTargetElement(CodeActivityContext context, double? timeout)
+        {
             var delayBefore = ActivityArgumentHelper.GetOrDefault(DelayBefore, context, 300);
             if (TargetType == ElementTargetType.Element)
             {
@@ -81,7 +86,9 @@ namespace F2B.Browser.Chromium.Playwright
                 throw new ArgumentException("Tab must be provided when TargetType=Selector.");
             }
 
-            return tab.FindElement(selector, index: 0, timeout: null, waitState: null, delayBefore: delayBefore);
+            var effectiveTimeout = timeout.HasValue ? Math.Max(0, timeout.Value) : (double?)null;
+            var waitState = effectiveTimeout.HasValue ? "attached" : null;
+            return tab.FindElement(selector, index: 0, timeout: effectiveTimeout, waitState: waitState, delayBefore: delayBefore);
         }
 
         protected override void CacheMetadata(CodeActivityMetadata metadata)

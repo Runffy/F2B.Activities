@@ -81,8 +81,12 @@ namespace F2B.Browser.Chromium.Playwright
                 var existingEdgeCount = GetRunningEdgePids().Count;
                 if (existingEdgeCount > 0)
                 {
-                    KillAllEdgeProcesses();
+                    var killedCount = KillAllEdgeProcesses();
                     Thread.Sleep(2000);
+                    if (killedCount > 0)
+                    {
+                        TrySetEdgeExitTypeNormal(effectiveUserDataDir);
+                    }
                 }
             }
 
@@ -98,6 +102,10 @@ namespace F2B.Browser.Chromium.Playwright
                 // UseSystemDir=True 时，首次失败后尝试清理残留 Edge 进程并重试一次。
                 var killedCount = KillAllEdgeProcesses();
                 Thread.Sleep(2000);
+                if (killedCount > 0)
+                {
+                    TrySetEdgeExitTypeNormal(effectiveUserDataDir);
+                }
 
                 try
                 {
@@ -503,6 +511,161 @@ namespace F2B.Browser.Chromium.Playwright
             return killed;
         }
 
+        private static void TrySetEdgeExitTypeNormal(string userDataDir)
+        {
+            try
+            {
+                foreach (var preferencesPath in GetEdgePreferencesPaths(userDataDir))
+                {
+                    try
+                    {
+                        RewritePreferencesExitTypeToNormal(preferencesPath);
+                    }
+                    catch
+                    {
+                        // 某些 Profile 可能被占用；忽略单文件失败，避免影响主流程。
+                    }
+                }
+            }
+            catch
+            {
+                // 仅做最佳努力修复，失败不阻断 OpenBrowser 主流程。
+            }
+        }
+
+        private static IEnumerable<string> GetEdgePreferencesPaths(string userDataDir)
+        {
+            var paths = new List<string>();
+            if (string.IsNullOrWhiteSpace(userDataDir) || !Directory.Exists(userDataDir))
+            {
+                return paths;
+            }
+
+            var directPreferences = Path.Combine(userDataDir, "Preferences");
+            if (File.Exists(directPreferences))
+            {
+                paths.Add(directPreferences);
+            }
+
+            try
+            {
+                foreach (var profileDir in Directory.GetDirectories(userDataDir))
+                {
+                    var profileName = Path.GetFileName(profileDir);
+                    if (!string.Equals(profileName, "Default", StringComparison.OrdinalIgnoreCase) &&
+                        !profileName.StartsWith("Profile ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    var preferencesPath = Path.Combine(profileDir, "Preferences");
+                    if (File.Exists(preferencesPath))
+                    {
+                        paths.Add(preferencesPath);
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return paths;
+        }
+
+        private static void RewritePreferencesExitTypeToNormal(string preferencesPath)
+        {
+            if (string.IsNullOrWhiteSpace(preferencesPath) || !File.Exists(preferencesPath))
+            {
+                return;
+            }
+
+            var content = File.ReadAllText(preferencesPath);
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return;
+            }
+
+            using (var doc = JsonDocument.Parse(content))
+            using (var stream = new MemoryStream())
+            {
+                var updated = false;
+                using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
+                {
+                    WriteJsonWithExitTypeOverride(doc.RootElement, writer, ref updated);
+                }
+
+                if (!updated)
+                {
+                    return;
+                }
+
+                File.WriteAllBytes(preferencesPath, stream.ToArray());
+            }
+        }
+
+        private static void WriteJsonWithExitTypeOverride(JsonElement element, Utf8JsonWriter writer, ref bool updated)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    writer.WriteStartObject();
+                    foreach (var property in element.EnumerateObject())
+                    {
+                        if (string.Equals(property.Name, "exit_type", StringComparison.OrdinalIgnoreCase))
+                        {
+                            writer.WriteString(property.Name, "Normal");
+                            updated = true;
+                            continue;
+                        }
+
+                        writer.WritePropertyName(property.Name);
+                        WriteJsonWithExitTypeOverride(property.Value, writer, ref updated);
+                    }
+                    writer.WriteEndObject();
+                    break;
+                case JsonValueKind.Array:
+                    writer.WriteStartArray();
+                    foreach (var item in element.EnumerateArray())
+                    {
+                        WriteJsonWithExitTypeOverride(item, writer, ref updated);
+                    }
+                    writer.WriteEndArray();
+                    break;
+                case JsonValueKind.String:
+                    writer.WriteStringValue(element.GetString());
+                    break;
+                case JsonValueKind.Number:
+                    if (element.TryGetInt32(out var i32))
+                    {
+                        writer.WriteNumberValue(i32);
+                    }
+                    else if (element.TryGetInt64(out var i64))
+                    {
+                        writer.WriteNumberValue(i64);
+                    }
+                    else if (element.TryGetDecimal(out var dec))
+                    {
+                        writer.WriteNumberValue(dec);
+                    }
+                    else
+                    {
+                        writer.WriteNumberValue(element.GetDouble());
+                    }
+                    break;
+                case JsonValueKind.True:
+                    writer.WriteBooleanValue(true);
+                    break;
+                case JsonValueKind.False:
+                    writer.WriteBooleanValue(false);
+                    break;
+                case JsonValueKind.Null:
+                case JsonValueKind.Undefined:
+                default:
+                    writer.WriteNullValue();
+                    break;
+            }
+        }
+
         private void CloseAllExistingTabsInContext()
         {
             if (_context == null)
@@ -904,6 +1067,59 @@ namespace F2B.Browser.Chromium.Playwright
 
         internal IPage Page => _page;
 
+        /// <summary>Current document URL; read fresh from the page each access.</summary>
+        public string Url
+        {
+            get
+            {
+                if (_page == null)
+                {
+                    return string.Empty;
+                }
+
+                if (_page.IsClosed)
+                {
+                    return _page.Url ?? string.Empty;
+                }
+
+                _client.EnsureTabAlive(_page);
+                return _page.Url ?? string.Empty;
+            }
+        }
+
+        /// <summary>Document title; read fresh each access (async API wrapped synchronously).</summary>
+        public string Title
+        {
+            get
+            {
+                if (_page == null || _page.IsClosed)
+                {
+                    return string.Empty;
+                }
+
+                _client.EnsureTabAlive(_page);
+                return _page.TitleAsync().GetAwaiter().GetResult() ?? string.Empty;
+            }
+        }
+
+        /// <summary>Whether this tab is closed.</summary>
+        public bool IsClosed => _page == null || _page.IsClosed;
+
+        /// <summary>Full page HTML; read fresh each access.</summary>
+        public string Html
+        {
+            get
+            {
+                if (_page == null || _page.IsClosed)
+                {
+                    return string.Empty;
+                }
+
+                _client.EnsureTabAlive(_page);
+                return _page.ContentAsync().GetAwaiter().GetResult() ?? string.Empty;
+            }
+        }
+
         public void Activate()
         {
             _client.EnsureTabAlive(_page);
@@ -1046,12 +1262,11 @@ namespace F2B.Browser.Chromium.Playwright
 
         public TabInfo GetInfo()
         {
-            _client.EnsureTabAlive(_page);
             return new TabInfo
             {
-                Url = _page.Url,
-                Title = _page.TitleAsync().GetAwaiter().GetResult(),
-                IsClosed = _page.IsClosed
+                Url = Url,
+                Title = Title,
+                IsClosed = IsClosed
             };
         }
     }
@@ -1132,6 +1347,35 @@ namespace F2B.Browser.Chromium.Playwright
             _page = page;
             _locator = locator;
         }
+
+        /// <summary>元素标签名 (<c>tagName</c>)，每次访问即时读取。</summary>
+        public string Tag =>
+            ReadStringWhenTabAlive(() =>
+                _locator.EvaluateAsync<string>("el => el.tagName").GetAwaiter().GetResult());
+
+        /// <summary>元素外层 HTML (<c>outerHTML</c>)，每次访问即时读取。</summary>
+        public string Html =>
+            ReadStringWhenTabAlive(() =>
+                _locator.EvaluateAsync<string>("el => el.outerHTML").GetAwaiter().GetResult());
+
+        /// <summary>元素内部 HTML (<c>innerHTML</c>)，每次访问即时读取。</summary>
+        public string InnerHtml =>
+            ReadStringWhenTabAlive(() => _locator.InnerHTMLAsync().GetAwaiter().GetResult());
+
+        /// <summary>
+        /// 仅当前元素「直接子级」文本节点拼接（不含子元素内部的文字），每次访问即时读取。
+        /// </summary>
+        public string Text =>
+            ReadStringWhenTabAlive(() =>
+                _locator.EvaluateAsync<string>(
+                        "el => { if (!el) return ''; let s = ''; for (const n of el.childNodes) { if (n.nodeType === 3) s += n.textContent; } return s; }")
+                    .GetAwaiter().GetResult());
+
+        /// <summary>
+        /// 当前元素及其所有后代在页面上的渲染文本（DOM <c>innerText</c>，含子标签内文字），每次访问即时读取。
+        /// </summary>
+        public string InnerText =>
+            ReadStringWhenTabAlive(() => _locator.InnerTextAsync().GetAwaiter().GetResult());
 
         public bool Exists()
         {
@@ -1613,12 +1857,15 @@ namespace F2B.Browser.Chromium.Playwright
             };
         }
 
-        public T RunJs<T>(string script, object arg = null)
+        public T RunJs<T>(string script, object arg = null, float? timeoutMs = null)
         {
-            return _locator.EvaluateAsync<T>(script, arg).GetAwaiter().GetResult();
+            var options = timeoutMs.HasValue
+                ? new LocatorEvaluateOptions { Timeout = timeoutMs.Value }
+                : null;
+            return _locator.EvaluateAsync<T>(script, arg, options).GetAwaiter().GetResult();
         }
 
-        public void SendKeys(string keys, int? delay = null)
+        public void SendKeys(string keys, int? delay = null, float? timeoutMs = null)
         {
             if (string.IsNullOrWhiteSpace(keys))
             {
@@ -1627,8 +1874,20 @@ namespace F2B.Browser.Chromium.Playwright
 
             _locator.PressAsync(keys, new LocatorPressOptions
             {
-                Delay = delay.HasValue ? (float?)delay.Value : null
+                Delay = delay.HasValue ? (float?)delay.Value : null,
+                Timeout = timeoutMs
             }).GetAwaiter().GetResult();
+        }
+
+        private string ReadStringWhenTabAlive(Func<string> read)
+        {
+            if (_page == null || _page.IsClosed)
+            {
+                return string.Empty;
+            }
+
+            _client.EnsureTabAlive(_page);
+            return read() ?? string.Empty;
         }
 
         private sealed class AttributePayload

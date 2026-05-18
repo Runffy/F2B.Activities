@@ -1,3 +1,4 @@
+using System;
 using System.Activities;
 using System.ComponentModel;
 using Microsoft.Playwright;
@@ -81,7 +82,16 @@ namespace F2B.Browser.Chromium.Playwright
 
         protected override void Execute(CodeActivityContext context)
         {
-            var download = ResolveTargetElement(context).ClickForDownload(
+            var totalTimeout = ActivityArgumentHelper.GetOrDefault(Timeout, context, 15000);
+            var budget = new TimeoutBudget(totalTimeout);
+            var target = ResolveTargetElement(context, budget.RemainingAsNullableDouble());
+            var remaining = budget.RemainingMs;
+            if (remaining <= 0)
+            {
+                throw new TimeoutException("ClickForDownload timeout before operation: no remaining timeout budget after locating target.");
+            }
+
+            var download = target.ClickForDownload(
                 saveAsPath: SaveAsPath == null ? null : SaveAsPath.Get(context),
                 button: Button,
                 count: ActivityArgumentHelper.GetOrDefault(Count, context, 1),
@@ -90,7 +100,7 @@ namespace F2B.Browser.Chromium.Playwright
                 force: Force,
                 validate: Validate,
                 validationSelector: ValidationSelector == null ? null : ValidationSelector.Get(context),
-                timeout: ActivityArgumentHelper.GetOrDefault(Timeout, context, 15000));
+                timeout: remaining);
             Download?.Set(context, download);
         }
     }

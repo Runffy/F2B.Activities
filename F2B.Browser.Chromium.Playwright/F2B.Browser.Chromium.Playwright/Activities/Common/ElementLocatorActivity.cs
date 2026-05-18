@@ -6,6 +6,7 @@ namespace F2B.Browser.Chromium.Playwright
 {
     [DisplayName("Element Locator")]
     [Description("Locate a selector from PwTab or PwElement and return sync wrapper PwLocator.")]
+    [Designer(typeof(ParentSelectorActivityDesigner))]
     public sealed class ElementLocatorActivity : CodeActivity
     {
         [DisplayName("Parent Object")]

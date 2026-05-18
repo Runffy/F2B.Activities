@@ -5,13 +5,11 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
 using System.Windows;
-using System.Windows.Markup;
 
 namespace F2B.Basic
 {
     [Designer(typeof(UnitTestScopeDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("UnitTest Scope")]
-    [ContentProperty("Body")]
     public sealed class UnitTestScopeActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {
         [Browsable(false)]

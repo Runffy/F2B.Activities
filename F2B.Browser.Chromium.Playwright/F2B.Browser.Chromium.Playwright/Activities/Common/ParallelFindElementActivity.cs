@@ -9,6 +9,7 @@ namespace F2B.Browser.Chromium.Playwright
 {
     [DisplayName("Parallel Find Element")]
     [Description("Find the first selector that satisfies the specified wait state within timeout.")]
+    [Designer(typeof(ParentSelectorActivityDesigner))]
     public sealed class ParallelFindElementActivity : CodeActivity
     {
         private const int PollIntervalMs = 100;

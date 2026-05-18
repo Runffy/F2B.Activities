@@ -49,6 +49,12 @@ namespace F2B.Browser.Chromium.Playwright
         [DefaultValue(300)]
         public InArgument<int> DelayBefore { get; set; } = 300;
 
+        [DisplayName("Timeout")]
+        [Description("Total timeout in milliseconds for locate + send keys when BaseOn=Element.")]
+        [Category("Time")]
+        [DefaultValue(15000)]
+        public InArgument<int> Timeout { get; set; } = 15000;
+
         [DisplayName("Keys")]
         [Description("Key content to send.")]
         [RequiredArgument]
@@ -77,13 +83,21 @@ namespace F2B.Browser.Chromium.Playwright
                     tab.SendKeys(keys: keys, delay: delay);
                     break;
                 default:
-                    var element = ResolveElementTarget(context);
-                    element.SendKeys(keys: keys, delay: delay);
+                    var totalMs = ActivityArgumentHelper.GetOrDefault(Timeout, context, 15000);
+                    var budget = new TimeoutBudget(totalMs);
+                    var element = ResolveElementTarget(context, budget.RemainingAsNullableDouble());
+                    var remaining = budget.RemainingMs;
+                    if (remaining <= 0)
+                    {
+                        throw new TimeoutException("Sendkeys timeout before operation: no remaining timeout budget after locating target.");
+                    }
+
+                    element.SendKeys(keys: keys, delay: delay, timeoutMs: remaining);
                     break;
             }
         }
 
-        private PwElement ResolveElementTarget(CodeActivityContext context)
+        private PwElement ResolveElementTarget(CodeActivityContext context, double? locateTimeout)
         {
             var delayBefore = ActivityArgumentHelper.GetOrDefault(DelayBefore, context, 300);
 
@@ -111,7 +125,9 @@ namespace F2B.Browser.Chromium.Playwright
                 throw new InvalidOperationException("InputTab must be provided when BaseOn=Element and TargetType=Selector.");
             }
 
-            return tab.FindElement(selector, index: 0, timeout: null, waitState: null, delayBefore: delayBefore);
+            var effectiveTimeout = locateTimeout.HasValue ? Math.Max(0, locateTimeout.Value) : (double?)null;
+            var waitState = effectiveTimeout.HasValue ? "attached" : null;
+            return tab.FindElement(selector, index: 0, timeout: effectiveTimeout, waitState: waitState, delayBefore: delayBefore);
         }
 
         protected override void CacheMetadata(CodeActivityMetadata metadata)

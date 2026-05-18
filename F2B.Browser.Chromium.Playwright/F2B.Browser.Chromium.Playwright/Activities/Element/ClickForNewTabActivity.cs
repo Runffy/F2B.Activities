@@ -1,3 +1,4 @@
+using System;
 using System.Activities;
 using System.ComponentModel;
 using Microsoft.Playwright;
@@ -80,7 +81,16 @@ namespace F2B.Browser.Chromium.Playwright
 
         protected override void Execute(CodeActivityContext context)
         {
-            var tab = ResolveTargetElement(context).ClickForNewTab(
+            var totalTimeout = ActivityArgumentHelper.GetOrDefault(Timeout, context, 15000);
+            var budget = new TimeoutBudget(totalTimeout);
+            var target = ResolveTargetElement(context, budget.RemainingAsNullableDouble());
+            var remaining = budget.RemainingMs;
+            if (remaining <= 0)
+            {
+                throw new TimeoutException("ClickForNewTab timeout before operation: no remaining timeout budget after locating target.");
+            }
+
+            var tab = target.ClickForNewTab(
                 button: Button,
                 count: ActivityArgumentHelper.GetOrDefault(Count, context, 1),
                 interval: ActivityArgumentHelper.GetOrDefault(Interval, context, 500),
@@ -88,7 +98,7 @@ namespace F2B.Browser.Chromium.Playwright
                 force: Force,
                 validate: Validate,
                 validationSelector: ValidationSelector == null ? null : ValidationSelector.Get(context),
-                timeout: ActivityArgumentHelper.GetOrDefault(Timeout, context, 15000));
+                timeout: remaining);
             Tab?.Set(context, tab);
             TabInfo?.Set(context, tab?.GetInfo());
         }
