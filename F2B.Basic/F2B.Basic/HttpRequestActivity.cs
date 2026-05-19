@@ -8,6 +8,8 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Security;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
@@ -16,7 +18,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     /// <summary>
-    /// 发起 HTTP/S 调用，语义接近 Python requests。
+    /// HTTP/S 请求活动；语义对齐 Python requests。画布上<strong>仅配置 URL</strong>，其余在属性表格中填写；返回 <see cref="HttpCallResponse"/>。
     /// </summary>
     [Designer(typeof(HttpRequestDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("HTTP Request")]
@@ -25,76 +27,78 @@ namespace F2B.Basic
         public HttpRequestActivity()
         {
             Method = "GET";
-            Body = new InArgument<string>(string.Empty);
-            ContentType = new InArgument<string>(string.Empty);
+            Data = new InArgument<string>(string.Empty);
             TimeoutSeconds = new InArgument<double>(100d);
             AllowRedirect = new InArgument<bool>(true);
             ThrowOnFailure = new InArgument<bool>(false);
+            Verify = new InArgument<bool>(true);
         }
 
-        /// <summary>HTTP 动词（工具箱中用下拉列表选择）。</summary>
+        /// <summary>
+        /// HTTP 动词（由<strong>右侧属性网格</strong>下拉或手写；画布上仅占位 URL）。
+        /// </summary>
         [RequiredArgument]
         [DisplayName("Method")]
-        [Description("HTTP 方法：GET、POST、PUT…（由设计器下拉选择）。")]
+        [TypeConverter(typeof(HttpVerbChoiceConverter))]
+        [DefaultValue("GET")]
+        [Description("HTTP 方法：GET、POST、PUT 等")]
         public string Method { get; set; }
 
         [RequiredArgument]
         [DisplayName("URL")]
-        [Description("请求基准地址（绝对 URI）。Query 可被 Params 合并追加。")]
+        [Description("基准 URL（画布上配置的唯一下拉项）；Query 可被 Params 合并追加。")]
         public InArgument<string> Url { get; set; }
 
         [DisplayName("Headers")]
         [Description(
-            "请求头字典，键值为 string。等价 requests.headers；多条同名键在字典中不可重复，请以一条合并。")]
+            "string→string 请求头字典，等价 requests.headers。若要对正文指定媒体类型请在字典里写 Content-Type；活动会在发送正文前读出该字段并把它从 Headers 的请求头表中移除以避免重复绑定。")]
         public InArgument<IDictionary<string, string>> Headers { get; set; }
 
         [DisplayName("Cookies")]
         [Description(
-            "Cookie 字典写入 CookieContainer（等价 requests 的 cookies）；与手动写 Cookie 头可同时存在，一般不推荐重复。")]
+            "string→string 字典写入 CookieContainer，等价 requests 的 cookies")]
         public InArgument<IDictionary<string, string>> Cookies { get; set; }
 
         [DisplayName("Params")]
         [Description(
-            "查询参数 Dict[str, object]，追加或合并至 URL Query（等价 requests.params）。")]
+            "object 值的查询参数字典（等价 requests.params），合并至 URL Query。")]
         public InArgument<IDictionary<string, object>> Params { get; set; }
 
         [DisplayName("JSON")]
         [Description(
-            "JSON 正文 Dict[str, object]，序列化为 application/json（等价 requests(json=…)）。若非空则优先生效，忽略「Body」。")]
+            "JSON 正文（等价 requests 的 json= / 传入字典）。字典非空时序列化为正文并忽略 Data；通常需在 Headers 中提供 Content-Type（常见为 application/json）。")]
         public InArgument<IDictionary<string, object>> Json { get; set; }
 
-        [DisplayName("Body")]
+        [DisplayName("Data")]
         [Description(
-            "原始正文字符串（UTF-8）。在未提供非空 Json 时使用；常用于非 JSON / 手写文本正文。")]
-        public InArgument<string> Body { get; set; }
-
-        [DisplayName("Content-Type")]
-        [Description(
-            "有正文时在 Json/Body 上使用的媒体类型；留空则由 Json→application/json，否则或由 Headers 中 Content-Type（若仍存在）推断。")]
-        public InArgument<string> ContentType { get; set; }
+            "原始请求正文 string（UTF-8），对应 Python requests 的 data=str，例如 requests.post(..., data=\"RAW\")。不会自动拼装 application/x-www-form-urlencoded；" +
+            "表单编码请在 Headers 写明 Content-Type 并在本字段放入已编码正文。JSON 非空时本字段忽略。")]
+        public InArgument<string> Data { get; set; }
 
         [DisplayName("Timeout (seconds)")]
-        [Description("整体超时秒数（requests.timeout）。")]
+        [Description("整体超时（秒）；requests.timeout。")]
         public InArgument<double> TimeoutSeconds { get; set; }
 
         [DisplayName("Allow redirect")]
-        [Description("是否跟随重定向（allow_redirects）。")]
+        [Description("是否跟随重定向；allow_redirects。")]
         public InArgument<bool> AllowRedirect { get; set; }
 
         [DisplayName("Raise on HTTP error")]
-        [Description("true 时对 4xx/5xx 抛异常（raise_for_status）。")]
+        [Description("为 true 时 4xx/5xx 在写入 Response 之后再抛异常；等同 raise_for_status。")]
         public InArgument<bool> ThrowOnFailure { get; set; }
 
-        [DisplayName("Response body")]
-        [Description("响应体（UTF-8）。")]
-        public OutArgument<string> ResponseBody { get; set; }
+        [DisplayName("Verify")]
+        [Description(
+            "HTTPS 服务端证书校验。True 等价 requests.verify=True（默认）；False 等价 verify=False，存在安全风险，仅用于可信/开发环境")]
+        public InArgument<bool> Verify { get; set; }
 
-        [DisplayName("Status code")]
-        public OutArgument<int> StatusCode { get; set; }
+        [DisplayName("Response")]
+        [Description(
+            "统一结果：Response.Body.Text（等价 response.text）、Response.Body.Dict（顶层 JSON 对象时等价 response.json()）、StatusCode、ReasonPhrase、Headers。")]
+        public OutArgument<HttpCallResponse> Response { get; set; }
 
-        [DisplayName("Response headers")]
-        [Description("响应头文本，每项一行 \"Name: Value\"。")]
-        public OutArgument<string> ResponseHeaders { get; set; }
+        private static readonly JavaScriptSerializer SharedJsonSerializer =
+            new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
 
         private static readonly string[] AllowedMethods =
         {
@@ -112,11 +116,11 @@ namespace F2B.Basic
             return new HttpRequestActivity
             {
                 Method = "GET",
-                Body = new InArgument<string>(string.Empty),
-                ContentType = new InArgument<string>(string.Empty),
+                Data = new InArgument<string>(string.Empty),
                 TimeoutSeconds = new InArgument<double>(100d),
                 AllowRedirect = new InArgument<bool>(true),
                 ThrowOnFailure = new InArgument<bool>(false),
+                Verify = new InArgument<bool>(true),
             };
         }
 
@@ -141,23 +145,16 @@ namespace F2B.Basic
             Uri uriWithQuery = MergeQueryParameters(baseUri, paramDict);
 
             Dictionary<string, object> jsonDict = NormalizeObjectDictionary(Json != null ? Json.Get(context) : null);
-            string literalBody = Body.Get(context);
+            string literalData = Data.Get(context);
 
             bool useJsonPayload = HasAnyEntry(jsonDict);
-            string serializedJson = null;
-            if (useJsonPayload)
-            {
-                serializedJson = new JavaScriptSerializer().Serialize(jsonDict);
-            }
+            string serializedJson =
+                useJsonPayload ? SharedJsonSerializer.Serialize(jsonDict) : null;
 
             string bodyText =
                 useJsonPayload
                     ? serializedJson
-                    : (literalBody ?? string.Empty);
-
-            string contentTypeExplicit = ContentType.Get(context);
-            contentTypeExplicit =
-                string.IsNullOrWhiteSpace(contentTypeExplicit) ? null : contentTypeExplicit.Trim();
+                    : (literalData ?? string.Empty);
 
             double timeoutSec = TimeoutSeconds.Get(context);
             if (timeoutSec <= 0 || double.IsInfinity(timeoutSec) || double.IsNaN(timeoutSec))
@@ -167,6 +164,7 @@ namespace F2B.Basic
 
             bool allowRedirect = AllowRedirect.Get(context);
             bool throwOnFailure = ThrowOnFailure.Get(context);
+            bool verifyTls = Verify.Get(context);
 
             var cookieKv = CoerceStringKeyDictionary(Cookies != null ? Cookies.Get(context) : null);
 
@@ -178,6 +176,12 @@ namespace F2B.Basic
                 CookieContainer = cookieKv.Count == 0 ? null : new CookieContainer(),
                 UseCookies = true,
             };
+
+            if (!verifyTls && !TryAcceptAllServerCertificates(handler))
+            {
+                throw new NotSupportedException(
+                    "无法将 Verify 设为 False：当前宿主上的 HttpClient 不支持配置证书回调（一般需要 .NET Framework 4.7.1 及以上）。请将 Verify=True 或将目标运行时升级到有 ServerCertificateValidationCallback 的版本。");
+            }
 
             if (handler.CookieContainer != null)
             {
@@ -215,10 +219,7 @@ namespace F2B.Basic
 
                 if (!string.IsNullOrEmpty(bodyText))
                 {
-                    string media = ResolveRequestMediaType(
-                        useJsonPayload,
-                        contentTypeExplicit,
-                        contentTypeFromHeaders);
+                    string media = ResolveRequestMediaType(useJsonPayload, contentTypeFromHeaders);
 
                     request.Content = new StringContent(bodyText, Encoding.UTF8, media);
                 }
@@ -239,16 +240,28 @@ namespace F2B.Basic
 
                 try
                 {
-                    StatusCode?.Set(context, (int)response.StatusCode);
-
-                    ResponseHeaders?.Set(context, SerializeHeaders(response.Headers, response.Content?.Headers));
-
                     string respBody =
                         response.Content == null
                             ? string.Empty
                             : response.Content.ReadAsStringAsync().GetAwaiter().GetResult() ?? string.Empty;
 
-                    ResponseBody?.Set(context, respBody);
+                    Dictionary<string, string> respHeadersFolded =
+                        MergeHttpHeaderCollections(response.Headers, response.Content?.Headers);
+
+                    var output = new HttpCallResponse
+                    {
+                        StatusCode = (int)response.StatusCode,
+                        ReasonPhrase =
+                            response.ReasonPhrase ?? string.Empty,
+                        Headers = respHeadersFolded,
+                        Body = new HttpCallResponseBody
+                        {
+                            Text = respBody,
+                            Dict = TryParseTopLevelJsonObject(respBody),
+                        },
+                    };
+
+                    Response?.Set(context, output);
 
                     if (throwOnFailure && !response.IsSuccessStatusCode)
                     {
@@ -269,23 +282,40 @@ namespace F2B.Basic
             return dict != null && dict.Count > 0;
         }
 
-        private static string ResolveRequestMediaType(
-            bool jsonMode,
-            string contentTypeExplicit,
-            string contentTypeFromHeaders)
+        private static string ResolveRequestMediaType(bool jsonMode, string contentTypeFromHeaders)
         {
-            string media = contentTypeExplicit ?? contentTypeFromHeaders;
-            if (!string.IsNullOrWhiteSpace(media))
+            if (!string.IsNullOrWhiteSpace(contentTypeFromHeaders))
             {
-                return media.Trim();
+                return contentTypeFromHeaders.Trim();
             }
 
-            if (jsonMode)
-            {
-                return "application/json";
-            }
+            return jsonMode ? "application/json" : "application/octet-stream";
+        }
 
-            return "application/octet-stream";
+        /// <remarks>通过反射设置 HttpClientHandler.ServerCertificateValidationCallback，以便在运行于带该 CLR API 的机器上时能跳过校验。</remarks>
+        private static bool TryAcceptAllServerCertificates(HttpClientHandler handler)
+        {
+            try
+            {
+                PropertyInfo prop = typeof(HttpClientHandler).GetProperty(
+                    "ServerCertificateValidationCallback",
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (prop == null || !prop.CanWrite)
+                {
+                    return false;
+                }
+
+                RemoteCertificateValidationCallback bypass =
+                    (sender, certificate, chain, sslPolicyErrors) => true;
+
+                prop.SetValue(handler, bypass, null);
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static void TryAddCookie(CookieContainer container, Uri requestUri, string name, string value)
@@ -325,7 +355,7 @@ namespace F2B.Basic
 
                 string keyEncoded = UrlEncodeRFC3986(item.Key);
                 string valueEncoded =
-                    UrlEncodeRFC3986(FormatQueryScalarOrJson(item.Value, new JavaScriptSerializer()));
+                    UrlEncodeRFC3986(FormatQueryScalarOrJson(item.Value));
                 pairs.Add(new KeyValuePair<string, string>(keyEncoded, valueEncoded));
             }
 
@@ -385,7 +415,7 @@ namespace F2B.Basic
             return list;
         }
 
-        private static string FormatQueryScalarOrJson(object value, JavaScriptSerializer json)
+        private static string FormatQueryScalarOrJson(object value)
         {
             if (value == null || Convert.IsDBNull(value))
             {
@@ -443,7 +473,7 @@ namespace F2B.Basic
             if (IsDictionaryLike(value))
             {
                 Dictionary<string, object> normalized = NormalizeObjectDictionary(value);
-                return json.Serialize(normalized);
+                return SharedJsonSerializer.Serialize(normalized);
             }
 
             return Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
@@ -629,31 +659,105 @@ namespace F2B.Basic
                    seq.Any();
         }
 
-        private static string SerializeHeaders(HttpHeaders responseHeaders, HttpHeaders contentHeaders)
+        private static Dictionary<string, string> MergeHttpHeaderCollections(
+            HttpHeaders main,
+            HttpHeaders contentHdrs)
         {
-            var sb = new StringBuilder();
-            if (responseHeaders != null)
-            {
-                SerializeOneHeaderCollection(sb, responseHeaders);
-            }
-
-            if (contentHeaders != null)
-            {
-                SerializeOneHeaderCollection(sb, contentHeaders);
-            }
-
-            return sb.Length == 0 ? string.Empty : sb.ToString().TrimEnd('\n');
+            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            AppendHeaders(dict, main);
+            AppendHeaders(dict, contentHdrs);
+            return dict;
         }
 
-        private static void SerializeOneHeaderCollection(StringBuilder sb, HttpHeaders headers)
+        private static void AppendHeaders(Dictionary<string, string> folded, HttpHeaders hdrs)
         {
-            foreach (KeyValuePair<string, IEnumerable<string>> pair in headers)
+            if (hdrs == null)
             {
-                foreach (string value in pair.Value)
+                return;
+            }
+
+            foreach (KeyValuePair<string, IEnumerable<string>> pair in hdrs)
+            {
+                foreach (string slice in pair.Value)
                 {
-                    sb.Append(pair.Key).Append(": ").Append(value).Append('\n');
+                    FoldHeader(folded, pair.Key, slice ?? string.Empty);
                 }
             }
+        }
+
+        private static void FoldHeader(Dictionary<string, string> store, string name, string value)
+        {
+            if (store.TryGetValue(name, out string existing))
+            {
+                store[name] = string.IsNullOrEmpty(existing) ? value : $"{existing}, {value}";
+            }
+            else
+            {
+                store[name] = value ?? string.Empty;
+            }
+        }
+
+        private static Dictionary<string, object> TryParseTopLevelJsonObject(string raw)
+        {
+            string t = (raw ?? string.Empty).TrimStart();
+            if (t.Length == 0 || t[0] != '{')
+            {
+                return null;
+            }
+
+            try
+            {
+                object root = SharedJsonSerializer.DeserializeObject(t.Trim());
+                if (!(root is IDictionary))
+                {
+                    return null;
+                }
+
+                return NormalizeObjectDictionaryFromJsonRoot(root);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <remarks>DeserializeObject 可能返回 Hashtable / Dictionary&lt;string,object&gt; 混合结构。</remarks>
+        private static Dictionary<string, object> NormalizeObjectDictionaryFromJsonRoot(object root)
+        {
+            var outgoing = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            if (root == null)
+            {
+                return outgoing;
+            }
+
+            if (root is IDictionary<string, object> direct)
+            {
+                foreach (KeyValuePair<string, object> kv in direct)
+                {
+                    if (!string.IsNullOrWhiteSpace(kv.Key))
+                    {
+                        outgoing[kv.Key.Trim()] = kv.Value;
+                    }
+                }
+
+                return outgoing;
+            }
+
+            if (root is IDictionary opaque)
+            {
+                foreach (DictionaryEntry e in opaque)
+                {
+                    string key = Convert.ToString(e.Key, CultureInfo.InvariantCulture)?.Trim();
+                    if (!string.IsNullOrWhiteSpace(key))
+                    {
+                        outgoing[key] = e.Value;
+                    }
+                }
+
+                return outgoing;
+            }
+
+            return outgoing;
         }
 
         private static string TrimBodyPreview(string body, int maxLen)
@@ -686,7 +790,7 @@ namespace F2B.Basic
             }
 
             throw new ArgumentException(
-                $"不支持的 HTTP Method：{raw.Trim()}（请从下拉列表中选择）",
+                $"不支持的 HTTP Method：{raw.Trim()}（请在属性的 Method 中选 GET/POST 等）。",
                 nameof(Method));
         }
 

@@ -52,6 +52,8 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="HttpCallResponse.cs" />
+    <Compile Include="HttpVerbChoiceConverter.cs" />
     <Compile Include="HttpRequestActivity.cs" />
     <Compile Include="HttpRequestDesigner.cs" />
     <Compile Include="LogMessageActivity.cs" />
