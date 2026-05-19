@@ -56,6 +56,12 @@ namespace F2B.Browser.Chromium.Playwright
         [Category("Output")]
         public OutArgument<PwBrowser> Browser { get; set; }
 
+        [DisplayName("Output Tab")]
+        [Description(
+            "首个浏览器标签页的 PwTab；已等待触发 Load 加载事件并与 Browser 同属一会话（通常等价于原先的 GetLatestTab 结果，省去单独活动）。")]
+        [Category("Output")]
+        public OutArgument<PwTab> Tab { get; set; }
+
         private bool _useSystemDir = true;
 
         protected override void Execute(CodeActivityContext context)
@@ -63,14 +69,16 @@ namespace F2B.Browser.Chromium.Playwright
             var client = new PlaywrightSyncClient();
 
             var browser = client.BrowserOpen(
+                out var initialTab,
                 headless: Headless,
                 browserPath: BrowserPath == null ? null : BrowserPath.Get(context),
                 startMaximized: StartMaximized,
                 remoteDebuggingPort: RemoteDebuggingPort == null ? null : RemoteDebuggingPort.Get(context),
                 useSystemDir: UseSystemDir,
                 userDataDir: UserDataDir == null ? null : UserDataDir.Get(context));
-
             Browser?.Set(context, browser);
+
+            Tab?.Set(context, initialTab);
         }
     }
 }

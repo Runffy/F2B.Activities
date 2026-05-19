@@ -18,6 +18,7 @@
   - 增强 `Browser.NewTab`、`Element.ClickForNewTab`：新增 `TabInfo` 出参
 - 稳定性修复：`Element.SelectGetSelected` 改为“JS 端序列化 + C# 端 JSON 解析”路径，避免 Playwright 泛型反序列化导致的空引用异常。
 - 稳定性修复：`GetLocalStorage/GetSessionStorage` 改为 JSON 解析路径，并统一当前活动 Tab 同步，降低 Browser 级 Storage 读取错上下文概率。
+- 启动流程：`Browser.Open` 移除“新建空白 Tab 再关闭其它 Tab”（实战收益低）；改为保留上下文既有标签页，对**首个** Tab 调用 `WaitForLoadState(Load)` 后通过新增输出 **`Tab`**（`PwTab`）一并返回；通常可省略紧随其后的 **`Browser.GetLatestTab`**。
 - 启动增强：`Browser.Open` 在 `UseSystemDir=True` 首次启动失败时，自动执行一次恢复流程：
   - 结束所有 `msedge` 进程
   - 等待约 2 秒

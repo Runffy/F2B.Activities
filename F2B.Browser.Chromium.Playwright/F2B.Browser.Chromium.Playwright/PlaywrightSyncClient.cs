@@ -44,6 +44,7 @@ namespace F2B.Browser.Chromium.Playwright
         private IPage _currentPage;
 
         public PwBrowser BrowserOpen(
+            out PwTab initialTab,
             bool headless = false,
             string browserPath = null,
             bool startMaximized = true,
@@ -53,6 +54,7 @@ namespace F2B.Browser.Chromium.Playwright
         {
             CloseBrowser();
             EnsurePlaywrightDriverSearchPath();
+            initialTab = null;
 
             if (!string.IsNullOrWhiteSpace(browserPath) && !File.Exists(browserPath))
             {
@@ -93,7 +95,6 @@ namespace F2B.Browser.Chromium.Playwright
             try
             {
                 LaunchBrowserContext(headless, executablePath, startMaximized, args, usePersistentContext, effectiveUserDataDir);
-                CloseAllExistingTabsInContext();
             }
             catch (PlaywrightException ex) when (useSystemDir)
             {
@@ -110,7 +111,6 @@ namespace F2B.Browser.Chromium.Playwright
                 try
                 {
                     LaunchBrowserContext(headless, executablePath, startMaximized, args, usePersistentContext, effectiveUserDataDir);
-                    CloseAllExistingTabsInContext();
                 }
                 catch (PlaywrightException retryEx)
                 {
@@ -122,9 +122,43 @@ namespace F2B.Browser.Chromium.Playwright
                 }
             }
 
-            _tabs.Clear();
-            _currentPage = null;
+            initialTab = PrepareInitialOpenedTab();
             return new PwBrowser(this);
+        }
+
+        /// <summary>
+        /// 启动后选定上下文中<strong>首个</strong>页面为当前 Tab，置顶并等待其触发 <see cref="LoadState.Load"/>。
+        /// 若无任何页面（极少见），则新建空白页再放入列表首位。
+        /// </summary>
+        private PwTab PrepareInitialOpenedTab()
+        {
+            if (_context == null)
+            {
+                throw new InvalidOperationException("浏览器上下文未初始化。");
+            }
+
+            SyncTabsFromContext();
+
+            if (_tabs.Count == 0)
+            {
+                var page = _context.NewPageAsync().GetAwaiter().GetResult();
+                RegisterPage(page, switchToNewPage: true);
+            }
+
+            var firstPage = _tabs[0];
+            _currentPage = firstPage;
+
+            try
+            {
+                firstPage.BringToFrontAsync().GetAwaiter().GetResult();
+            }
+            catch
+            {
+            }
+
+            firstPage.WaitForLoadStateAsync(LoadState.Load).GetAwaiter().GetResult();
+
+            return WrapTab(firstPage);
         }
 
         private void LaunchBrowserContext(
@@ -519,11 +553,17 @@ namespace F2B.Browser.Chromium.Playwright
                 {
                     try
                     {
-                        RewritePreferencesExitTypeToNormal(preferencesPath);
+                        if (!TryRewritePreferencesExitTypeToNormal(preferencesPath))
+                        {
+                            continue;
+                        }
+
+                        string profileFolder = Path.GetDirectoryName(preferencesPath);
+                        TryDeleteAllFilesUnderSessionsFolder(profileFolder);
                     }
                     catch
                     {
-                        // 某些 Profile 可能被占用；忽略单文件失败，避免影响主流程。
+                        // 某些 Profile 可能被占用；忽略单 Profile 失败，避免影响主流程。
                     }
                 }
             }
@@ -572,17 +612,97 @@ namespace F2B.Browser.Chromium.Playwright
             return paths;
         }
 
-        private static void RewritePreferencesExitTypeToNormal(string preferencesPath)
+        /// <summary>
+        /// 与 <paramref name="preferencesContainingDirectory"/> 同级的 Sessions 文件夹下，尽最大努力递归删除<strong>文件</strong>；子目录保留不删。
+        /// </summary>
+        private static void TryDeleteAllFilesUnderSessionsFolder(string preferencesContainingDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(preferencesContainingDirectory) ||
+                !Directory.Exists(preferencesContainingDirectory))
+            {
+                return;
+            }
+
+            string sessionsRoot = Path.Combine(preferencesContainingDirectory, "Sessions");
+            if (!Directory.Exists(sessionsRoot))
+            {
+                return;
+            }
+
+            try
+            {
+                DeleteFilesUnderDirectoryRecursiveBestEffort(sessionsRoot);
+            }
+            catch
+            {
+                // Sessions 可能被其它进程短时占用；不阻断浏览器启动。
+            }
+        }
+
+        private static void DeleteFilesUnderDirectoryRecursiveBestEffort(string directoryPath)
+        {
+            try
+            {
+                foreach (string file in Directory.GetFiles(directoryPath))
+                {
+                    TryDeleteFileBestEffort(file);
+                }
+            }
+            catch
+            {
+            }
+
+            IEnumerable<string> subDirs = Array.Empty<string>();
+            try
+            {
+                subDirs = Directory.GetDirectories(directoryPath);
+            }
+            catch
+            {
+                return;
+            }
+
+            foreach (var subDir in subDirs)
+            {
+                DeleteFilesUnderDirectoryRecursiveBestEffort(subDir);
+            }
+        }
+
+        private static void TryDeleteFileBestEffort(string fullPath)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(fullPath) || !File.Exists(fullPath))
+                {
+                    return;
+                }
+
+                var attrs = File.GetAttributes(fullPath);
+                if ((attrs & FileAttributes.ReadOnly) != 0)
+                {
+                    File.SetAttributes(fullPath, attrs & ~FileAttributes.ReadOnly);
+                }
+
+                File.Delete(fullPath);
+            }
+            catch
+            {
+                // 单次删除失败不影响其它文件。
+            }
+        }
+
+        /// <returns>true 时已向磁盘写回修改后的 Preferences；未修改或跳过则为 false。</returns>
+        private static bool TryRewritePreferencesExitTypeToNormal(string preferencesPath)
         {
             if (string.IsNullOrWhiteSpace(preferencesPath) || !File.Exists(preferencesPath))
             {
-                return;
+                return false;
             }
 
             var content = File.ReadAllText(preferencesPath);
             if (string.IsNullOrWhiteSpace(content))
             {
-                return;
+                return false;
             }
 
             using (var doc = JsonDocument.Parse(content))
@@ -596,10 +716,11 @@ namespace F2B.Browser.Chromium.Playwright
 
                 if (!updated)
                 {
-                    return;
+                    return false;
                 }
 
                 File.WriteAllBytes(preferencesPath, stream.ToArray());
+                return true;
             }
         }
 
@@ -663,61 +784,6 @@ namespace F2B.Browser.Chromium.Playwright
                 default:
                     writer.WriteNullValue();
                     break;
-            }
-        }
-
-        private void CloseAllExistingTabsInContext()
-        {
-            if (_context == null)
-            {
-                return;
-            }
-
-            var pages = _context.Pages?.Where(p => p != null && !p.IsClosed).ToList();
-            if (pages == null || pages.Count == 0)
-            {
-                return;
-            }
-
-            IPage keeper = null;
-            try
-            {
-                keeper = _context.NewPageAsync().GetAwaiter().GetResult();
-            }
-            catch
-            {
-                keeper = pages[0];
-            }
-
-            pages = _context.Pages?.Where(p => p != null && !p.IsClosed).ToList() ?? new List<IPage>();
-            foreach (var page in pages)
-            {
-                if (keeper != null && ReferenceEquals(page, keeper))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    page.CloseAsync().GetAwaiter().GetResult();
-                }
-                catch
-                {
-                }
-            }
-
-            _tabs.Clear();
-            if (keeper != null && !keeper.IsClosed)
-            {
-                _tabs.Add(keeper);
-                _currentPage = keeper;
-                return;
-            }
-
-            _currentPage = _context.Pages.FirstOrDefault(p => p != null && !p.IsClosed);
-            if (_currentPage != null)
-            {
-                _tabs.Add(_currentPage);
             }
         }
 
