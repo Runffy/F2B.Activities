@@ -1,16 +1,20 @@
 using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 namespace F2B.Basic
 {
     /// <summary>
     /// 用于承载 HTTP Response 正文：Text 等价 response.text（UTF-8 解码后的字符串）；
-    /// Dict 等价 response.json() 在返回值为 JSON 顶层对象时的字典视图（否则为 null）。
+    /// Json 为成功解析正文得到的 <see cref="JToken"/>（顶层可为 <see cref="JObject"/>、<see cref="JArray"/> 等），无法解析或非 JSON 时为 null。
     /// </summary>
     public sealed class HttpCallResponseBody
     {
         public string Text { get; set; }
 
-        public Dictionary<string, object> Dict { get; set; }
+        /// <summary>
+        /// 应答正文的 JSON 视图；等价按类型解析后的 <c>response.json()</c>。顶层对象为 <see cref="JObject"/>，数组为 <see cref="JArray"/>，字面量等为 <see cref="JValue"/>。
+        /// </summary>
+        public JToken Json { get; set; }
     }
 
     /// <summary>HTTP Request 活动的统一返回值。</summary>

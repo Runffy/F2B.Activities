@@ -7,13 +7,15 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Net.Http.Headers;
 using System.Net.Security;
-using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
 using System.Windows;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace F2B.Basic
 {
@@ -94,8 +96,11 @@ namespace F2B.Basic
 
         [DisplayName("Response")]
         [Description(
-            "统一结果：Response.Body.Text（等价 response.text）、Response.Body.Dict（顶层 JSON 对象时等价 response.json()）、StatusCode、ReasonPhrase、Headers。")]
+            "统一结果：Response.Body.Text（等价 response.text）、Response.Body.Json（等价按类型解析的 response.json()，可为 JObject/JArray/JValue）、StatusCode、ReasonPhrase、Headers。")]
         public OutArgument<HttpCallResponse> Response { get; set; }
+
+        private static readonly RemoteCertificateValidationCallback InsecureTlsServerCertificateBypass =
+            (sender, certificate, chain, sslPolicyErrors) => true;
 
         private static readonly JavaScriptSerializer SharedJsonSerializer =
             new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
@@ -177,7 +182,7 @@ namespace F2B.Basic
                 UseCookies = true,
             };
 
-            if (!verifyTls && !TryAcceptAllServerCertificates(handler))
+            if (!verifyTls && !TrySetServerCertificateBypass(handler))
             {
                 throw new NotSupportedException(
                     "无法将 Verify 设为 False：当前宿主上的 HttpClient 不支持配置证书回调（一般需要 .NET Framework 4.7.1 及以上）。请将 Verify=True 或将目标运行时升级到有 ServerCertificateValidationCallback 的版本。");
@@ -257,7 +262,7 @@ namespace F2B.Basic
                         Body = new HttpCallResponseBody
                         {
                             Text = respBody,
-                            Dict = TryParseTopLevelJsonObject(respBody),
+                            Json = TryParseResponseBodyJson(respBody),
                         },
                     };
 
@@ -282,18 +287,10 @@ namespace F2B.Basic
             return dict != null && dict.Count > 0;
         }
 
-        private static string ResolveRequestMediaType(bool jsonMode, string contentTypeFromHeaders)
-        {
-            if (!string.IsNullOrWhiteSpace(contentTypeFromHeaders))
-            {
-                return contentTypeFromHeaders.Trim();
-            }
-
-            return jsonMode ? "application/json" : "application/octet-stream";
-        }
-
-        /// <remarks>通过反射设置 HttpClientHandler.ServerCertificateValidationCallback，以便在运行于带该 CLR API 的机器上时能跳过校验。</remarks>
-        private static bool TryAcceptAllServerCertificates(HttpClientHandler handler)
+        /// <summary>
+        /// 通过反射写入 <see cref="HttpClientHandler"/> 证书回调（部分引用程序集中无该成员的编译期绑定，运行时 4.7.1+ 通常可用）。
+        /// </summary>
+        private static bool TrySetServerCertificateBypass(HttpClientHandler handler)
         {
             try
             {
@@ -305,17 +302,23 @@ namespace F2B.Basic
                     return false;
                 }
 
-                RemoteCertificateValidationCallback bypass =
-                    (sender, certificate, chain, sslPolicyErrors) => true;
-
-                prop.SetValue(handler, bypass, null);
-
+                prop.SetValue(handler, InsecureTlsServerCertificateBypass, null);
                 return true;
             }
             catch
             {
                 return false;
             }
+        }
+
+        private static string ResolveRequestMediaType(bool jsonMode, string contentTypeFromHeaders)
+        {
+            if (!string.IsNullOrWhiteSpace(contentTypeFromHeaders))
+            {
+                return contentTypeFromHeaders.Trim();
+            }
+
+            return jsonMode ? "application/json" : "application/octet-stream";
         }
 
         private static void TryAddCookie(CookieContainer container, Uri requestUri, string name, string value)
@@ -697,67 +700,21 @@ namespace F2B.Basic
             }
         }
 
-        private static Dictionary<string, object> TryParseTopLevelJsonObject(string raw)
+        private static JToken TryParseResponseBodyJson(string raw)
         {
-            string t = (raw ?? string.Empty).TrimStart();
-            if (t.Length == 0 || t[0] != '{')
+            if (string.IsNullOrWhiteSpace(raw))
             {
                 return null;
             }
 
             try
             {
-                object root = SharedJsonSerializer.DeserializeObject(t.Trim());
-                if (!(root is IDictionary))
-                {
-                    return null;
-                }
-
-                return NormalizeObjectDictionaryFromJsonRoot(root);
+                return JToken.Parse(raw.Trim());
             }
-            catch
+            catch (JsonException)
             {
                 return null;
             }
-        }
-
-        /// <remarks>DeserializeObject 可能返回 Hashtable / Dictionary&lt;string,object&gt; 混合结构。</remarks>
-        private static Dictionary<string, object> NormalizeObjectDictionaryFromJsonRoot(object root)
-        {
-            var outgoing = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-            if (root == null)
-            {
-                return outgoing;
-            }
-
-            if (root is IDictionary<string, object> direct)
-            {
-                foreach (KeyValuePair<string, object> kv in direct)
-                {
-                    if (!string.IsNullOrWhiteSpace(kv.Key))
-                    {
-                        outgoing[kv.Key.Trim()] = kv.Value;
-                    }
-                }
-
-                return outgoing;
-            }
-
-            if (root is IDictionary opaque)
-            {
-                foreach (DictionaryEntry e in opaque)
-                {
-                    string key = Convert.ToString(e.Key, CultureInfo.InvariantCulture)?.Trim();
-                    if (!string.IsNullOrWhiteSpace(key))
-                    {
-                        outgoing[key] = e.Value;
-                    }
-                }
-
-                return outgoing;
-            }
-
-            return outgoing;
         }
 
         private static string TrimBodyPreview(string body, int maxLen)
