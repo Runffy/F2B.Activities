@@ -29,7 +29,7 @@ namespace F2B.Browser.IExplore
         public InArgument<IEHtmlElement> Element { get; set; }
 
         [DisplayName("Element (Json String)")]
-        [Description("Element locator JSON object, e.g. {'id':'username','value':'hello'}")]
+        [Description("Element locator JSON, e.g. {'id':'username'}. Operation keys use F2B.Browser.IExplore.* prefix (see ElementLocatorKeys).")]
         [Category("Target")]
         public InArgument<string> ElementJson { get; set; }
 

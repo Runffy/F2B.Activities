@@ -452,21 +452,28 @@ namespace F2B.Browser.IExplore
             HtmlElementActions.DoubleClick(this, element, timeout);
         }
 
-        public void Input(IELocator locator, int timeout = OperationDefaults.TimeoutMs)
+        public void Input(IELocator locator, int timeout = OperationDefaults.TimeoutMs) =>
+            Input(locator, null, timeout);
+
+        /// <summary>Locate by <paramref name="locator"/> and type <paramref name="value"/> (overrides <see cref="ElementLocatorKeys.InputText"/> in element JSON when set).</summary>
+        public void Input(IELocator locator, string value, int timeout = OperationDefaults.TimeoutMs)
         {
             if (locator == null)
                 throw new ArgumentNullException(nameof(locator));
 
             if (RemoteDomEnabled)
             {
-                HtmlElementActionsRemote.Run(
-                    this,
-                    HtmlElementActionsRemote.LocatorRequest(this, "input", locator, timeout),
-                    "input");
+                var req = HtmlElementActionsRemote.LocatorRequest(this, "input", locator, timeout);
+                if (value != null)
+                    req.Value = value;
+                HtmlElementActionsRemote.Run(this, req, "input");
                 return;
             }
 
-            HtmlElementActions.Input(this, locator.ParseElement(), locator.ParseFramePath(), timeout);
+            var element = locator.ParseElement();
+            if (value != null)
+                element[ElementLocatorKeys.InputText] = value;
+            HtmlElementActions.Input(this, element, locator.ParseFramePath(), timeout);
         }
 
         public void Input(IEHtmlElement element, string value, int timeout = OperationDefaults.TimeoutMs)
@@ -672,6 +679,51 @@ namespace F2B.Browser.IExplore
             }
 
             return HtmlElementActions.GetAttribute(this, element, attributeName, timeout);
+        }
+
+        public void SetAttribute(
+            IELocator locator,
+            string attributeName,
+            string value,
+            int timeout = OperationDefaults.TimeoutMs)
+        {
+            if (locator == null)
+                throw new ArgumentNullException(nameof(locator));
+
+            if (RemoteDomEnabled)
+            {
+                var req = HtmlElementActionsRemote.LocatorRequest(this, "setattribute", locator, timeout);
+                req.AttributeName = attributeName;
+                req.Value = value;
+                HtmlElementActionsRemote.Run(this, req, "setattribute");
+                return;
+            }
+
+            HtmlElementActions.SetAttribute(
+                this,
+                locator.ParseElement(),
+                attributeName,
+                value,
+                locator.ParseFramePath(),
+                timeout);
+        }
+
+        public void SetAttribute(
+            IEHtmlElement element,
+            string attributeName,
+            string value,
+            int timeout = OperationDefaults.TimeoutMs)
+        {
+            if (RemoteDomEnabled)
+            {
+                var req = HtmlElementActionsRemote.ElementRequest(this, "setattribute", element, timeout);
+                req.AttributeName = attributeName;
+                req.Value = value;
+                HtmlElementActionsRemote.Run(this, req, "setattribute");
+                return;
+            }
+
+            HtmlElementActions.SetAttribute(this, element, attributeName, value, timeout);
         }
 
         /// <summary>

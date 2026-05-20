@@ -4,11 +4,11 @@ using System.ComponentModel;
 namespace F2B.Browser.IExplore
 {
     [DisplayName("Input")]
-    [Description("Type into an element. Use 'value' in locator JSON, or set Value when using an element handle.")]
+    [Description("Type into an element. Set Value, or include F2B.Browser.IExplore.value in element JSON when Target Type = Locator.")]
     public sealed class InputActivity : ElementTargetActivityBase
     {
         [DisplayName("Value")]
-        [Description("Text to type when Target Type = Element.")]
+        [Description("Text to type. Used for both Locator and Element target types.")]
         [Category("Input")]
         public InArgument<string> Value { get; set; }
 
@@ -16,12 +16,16 @@ namespace F2B.Browser.IExplore
         {
             var window = GetWindow(context);
             var timeout = ActivityArgumentHelper.GetOrDefault(Timeout, context, OperationDefaults.TimeoutMs);
+            var text = Value != null && Value.Expression != null ? Value.Get(context) : null;
 
             if (TargetType == IeElementTargetType.Element)
             {
                 var element = ResolveTargetElement(context);
-                var value = Value == null ? null : Value.Get(context);
-                window.Input(element, value ?? string.Empty, timeout);
+                window.Input(element, text ?? string.Empty, timeout);
+            }
+            else if (text != null)
+            {
+                window.Input(ResolveLocator(context), text, timeout);
             }
             else
             {

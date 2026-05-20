@@ -41,12 +41,34 @@ namespace F2B.Browser.IExplore.Com
             ElementLocatorKeys.Name
         };
 
-        private static readonly HashSet<string> SelectOptionKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        private static readonly HashSet<string> OperationMetadataKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            ElementLocatorKeys.OptionText,
-            ElementLocatorKeys.OptionValue,
-            ElementLocatorKeys.OptionIndex
+            ElementLocatorKeys.InputText,
+            ElementLocatorKeys.Idx,
+            ElementLocatorKeys.ClickButton,
+            ElementLocatorKeys.ClickMode,
+            ElementLocatorKeys.ClickInterval,
+            ElementLocatorKeys.SelectOptionText,
+            ElementLocatorKeys.SelectOptionValue,
+            ElementLocatorKeys.SelectOptionIndex
         };
+
+        /// <summary>Removes namespaced operation keys so find/exists only use element filters.</summary>
+        public static void StripOperationMetadata(IDictionary<string, object> locator)
+        {
+            if (locator == null || locator.Count == 0)
+                return;
+
+            var remove = new List<string>();
+            foreach (var key in locator.Keys)
+            {
+                if (OperationMetadataKeys.Contains(key))
+                    remove.Add(key);
+            }
+
+            foreach (var key in remove)
+                locator.Remove(key);
+        }
 
         public static ParsedElementLocator Parse(IDictionary<string, object> locator, LocatorOperation operation)
         {
@@ -79,7 +101,7 @@ namespace F2B.Browser.IExplore.Com
                 }
 
                 if (operation == LocatorOperation.Input
-                    && key.Equals(ElementLocatorKeys.Value, StringComparison.OrdinalIgnoreCase))
+                    && key.Equals(ElementLocatorKeys.InputText, StringComparison.OrdinalIgnoreCase))
                 {
                     parsed.InputValue = ToString(kv.Value);
                     continue;
@@ -93,7 +115,7 @@ namespace F2B.Browser.IExplore.Com
 
                 if (FilterKeys.Contains(key))
                     parsed.Filters[key] = ToString(kv.Value);
-                else if (operation != LocatorOperation.Select || !SelectOptionKeys.Contains(key))
+                else
                     parsed.Filters[key] = ToString(kv.Value);
             }
 
@@ -101,7 +123,12 @@ namespace F2B.Browser.IExplore.Com
                 throw new ArgumentException("Locator must include at least one element filter (id, tag, class, name, or attribute).", nameof(locator));
 
             if (operation == LocatorOperation.Input && string.IsNullOrEmpty(parsed.InputValue))
-                throw new ArgumentException("Input locator must include a \"value\" key.", nameof(locator));
+            {
+                throw new ArgumentException(
+                    "Input locator must include \"" + ElementLocatorKeys.InputText
+                    + "\", or set the Input activity Value property.",
+                    nameof(locator));
+            }
 
             if (operation == LocatorOperation.Select)
                 parsed.SelectCriteria = BuildSelectCriteria(optionText, optionValue, optionIndex);
@@ -118,7 +145,11 @@ namespace F2B.Browser.IExplore.Com
             if (texts.Count == 0 && values.Count == 0 && indices.Count == 0)
             {
                 throw new ArgumentException(
-                    "Select locator must include one of: text, value, index (comma-separated or array for multiple options).",
+                    "Select locator must include one of: "
+                    + ElementLocatorKeys.SelectOptionText + ", "
+                    + ElementLocatorKeys.SelectOptionValue + ", "
+                    + ElementLocatorKeys.SelectOptionIndex
+                    + " (comma-separated or array for multiple options).",
                     "locator");
             }
 
@@ -263,20 +294,19 @@ namespace F2B.Browser.IExplore.Com
             if (operation != LocatorOperation.Click)
                 return false;
 
-            if (key.Equals(ElementLocatorKeys.Button, StringComparison.OrdinalIgnoreCase))
+            if (key.Equals(ElementLocatorKeys.ClickButton, StringComparison.OrdinalIgnoreCase))
             {
                 parsed.Button = ParseButton(value);
                 return true;
             }
 
-            if (key.Equals(ElementLocatorKeys.Mode, StringComparison.OrdinalIgnoreCase)
-                || key.Equals(ElementLocatorKeys.ClickMode, StringComparison.OrdinalIgnoreCase))
+            if (key.Equals(ElementLocatorKeys.ClickMode, StringComparison.OrdinalIgnoreCase))
             {
                 parsed.Mode = ParseClickMode(value);
                 return true;
             }
 
-            if (key.Equals(ElementLocatorKeys.Interval, StringComparison.OrdinalIgnoreCase))
+            if (key.Equals(ElementLocatorKeys.ClickInterval, StringComparison.OrdinalIgnoreCase))
             {
                 parsed.ClickIntervalMs = ParseInt(value, "interval");
                 return true;
@@ -297,19 +327,19 @@ namespace F2B.Browser.IExplore.Com
             if (operation != LocatorOperation.Select)
                 return false;
 
-            if (key.Equals(ElementLocatorKeys.OptionText, StringComparison.OrdinalIgnoreCase))
+            if (key.Equals(ElementLocatorKeys.SelectOptionText, StringComparison.OrdinalIgnoreCase))
             {
                 optionText = value;
                 return true;
             }
 
-            if (key.Equals(ElementLocatorKeys.OptionValue, StringComparison.OrdinalIgnoreCase))
+            if (key.Equals(ElementLocatorKeys.SelectOptionValue, StringComparison.OrdinalIgnoreCase))
             {
                 optionValue = value;
                 return true;
             }
 
-            if (key.Equals(ElementLocatorKeys.OptionIndex, StringComparison.OrdinalIgnoreCase))
+            if (key.Equals(ElementLocatorKeys.SelectOptionIndex, StringComparison.OrdinalIgnoreCase))
             {
                 optionIndex = value;
                 return true;

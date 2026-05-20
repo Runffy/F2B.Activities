@@ -190,6 +190,40 @@ namespace F2B.Browser.IExplore.Com
             }
         }
 
+        public static void SetAttribute(object element, string attributeName, string value)
+        {
+            if (string.IsNullOrWhiteSpace(attributeName))
+                throw new ArgumentException("Attribute name is required.", nameof(attributeName));
+
+            if (!ComElementHelper.IsValidElement(element))
+                throw new InvalidOperationException("Element was not found (MSHTML returned null/DBNull).");
+
+            try
+            {
+                dynamic el = element;
+                if (string.IsNullOrEmpty(value))
+                {
+                    el.removeAttribute(attributeName);
+                    if (attributeName.Equals("id", StringComparison.OrdinalIgnoreCase))
+                    {
+                        try { el.id = ""; } catch { /* ignore */ }
+                    }
+                }
+                else
+                {
+                    el.setAttribute(attributeName, value);
+                    if (attributeName.Equals("id", StringComparison.OrdinalIgnoreCase))
+                    {
+                        try { el.id = value; } catch { /* ignore */ }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("SetAttribute failed: " + ex.Message, ex);
+            }
+        }
+
         private static void EnsureCheckable(object element)
         {
             if (!ComElementHelper.IsValidElement(element))

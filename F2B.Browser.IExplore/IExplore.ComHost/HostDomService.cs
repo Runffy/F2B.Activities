@@ -160,10 +160,10 @@ namespace IExplore.ComHost
                 {
                     var elementDict = IEJsonParse.ParseDictionary(request.ElementJson);
                     if (request.Value != null)
-                        elementDict[ElementLocatorKeys.Value] = request.Value;
+                        elementDict[ElementLocatorKeys.InputText] = request.Value;
                     if (HostDomRequestResolver.HasScope(request))
                     {
-                        var target = HostDomRequestResolver.FindElement(window, request, timeout, stripInputTextValue: true);
+                        var target = HostDomRequestResolver.FindElement(window, request, timeout);
                         var text = request.Value
                             ?? ElementLocatorOptions.Parse(elementDict, forInput: true).Value;
                         HtmlElementActions.Input(window, target, text, timeout);
@@ -272,6 +272,15 @@ namespace IExplore.ComHost
                         HostDomRequestResolver.FindElement(window, request, timeout),
                         request.AttributeName,
                         timeout));
+
+                case "setattribute":
+                    HtmlElementActions.SetAttribute(
+                        window,
+                        HostDomRequestResolver.FindElement(window, request, timeout),
+                        request.AttributeName,
+                        request.Value ?? string.Empty,
+                        timeout);
+                    return Ok();
 
                 case "refresh":
                     window.Refresh(timeout);

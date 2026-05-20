@@ -26,22 +26,13 @@ namespace F2B.Browser.IExplore.Com
                 timeout);
         }
 
-        public static IEHtmlElement FindElement(ITridentDomHost window, IeComHostDomRequest request, int timeout) =>
-            FindElement(window, request, timeout, stripInputTextValue: false);
-
-        public static IEHtmlElement FindElement(
-            ITridentDomHost window,
-            IeComHostDomRequest request,
-            int timeout,
-            bool stripInputTextValue)
+        public static IEHtmlElement FindElement(ITridentDomHost window, IeComHostDomRequest request, int timeout)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
 
             var scope = ResolveScope(window, request, timeout);
             var element = IEJsonParse.ParseDictionary(request.ElementJson);
-            if (stripInputTextValue)
-                IEJsonParse.RemoveKeyIgnoreCase(element, ElementLocatorKeys.Value);
 
             return HtmlElementActions.FindElement(
                 window,

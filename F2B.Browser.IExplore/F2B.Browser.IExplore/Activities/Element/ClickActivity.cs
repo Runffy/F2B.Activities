@@ -4,7 +4,7 @@ using System.ComponentModel;
 namespace F2B.Browser.IExplore
 {
     [DisplayName("Click")]
-    [Description("Click an element (synthetic or physical per locator JSON: mode, button).")]
+    [Description("Click an element. Optional F2B.Browser.IExplore.click.mode / click.button in locator JSON.")]
     public sealed class ClickActivity : ElementTargetActivityBase
     {
         protected override void Execute(CodeActivityContext context)

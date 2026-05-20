@@ -1,41 +1,42 @@
 namespace F2B.Browser.IExplore
 {
-    /// <summary>Reserved keys in element locator dictionaries (not HTML attributes).</summary>
+    /// <summary>Locator dictionary keys. HTML filters use short names; operation metadata uses <see cref="Prefix"/>.</summary>
     public static class ElementLocatorKeys
     {
+        public const string Prefix = "F2B.Browser.IExplore.";
+
+        /// <summary>HTML / element filters (also match DOM id, tagName, className, name).</summary>
         public const string Id = "id";
         public const string Tag = "tag";
         public const string Class = "class";
         public const string Name = "name";
 
-        /// <summary>Zero-based index when multiple elements match (<see cref="EmbeddedIEWindow.FindElement"/> only; ignored by <see cref="EmbeddedIEWindow.FindElements"/>).</summary>
-        public const string Idx = "idx";
-
-        /// <summary>Text to type (<see cref="EmbeddedIEWindow.Input"/>).</summary>
+        /// <summary>HTML <c>value</c> attribute filter (radio, input, etc.). Not Select option or Input text.</summary>
         public const string Value = "value";
 
-        /// <summary>Mouse button: left (default), middle, right (Click / DoubleClick).</summary>
-        public const string Button = "button";
+        /// <summary>Text to type (<see cref="EmbeddedIEWindow.Input"/>).</summary>
+        public const string InputText = Prefix + "value";
 
-        /// <summary>Click mode: synthetic (default) or physical (Click / DoubleClick).</summary>
-        public const string Mode = "mode";
+        /// <summary>Zero-based index when multiple elements match (<see cref="EmbeddedIEWindow.FindElement"/> / Click).</summary>
+        public const string Idx = Prefix + "idx";
 
-        /// <summary>Milliseconds between physical clicks for DoubleClick (default 100).</summary>
-        public const string Interval = "interval";
+        /// <summary>Mouse button for Click / DoubleClick: left, middle, right.</summary>
+        public const string ClickButton = Prefix + "click.button";
 
-        public const string ClickMode = "clickmode";
+        /// <summary>Click mode: synthetic (default) or physical.</summary>
+        public const string ClickMode = Prefix + "click.mode";
 
-        /// <summary>Option label (<see cref="EmbeddedIEWindow.Select"/> only).</summary>
-        public const string OptionText = "text";
+        /// <summary>Milliseconds between physical clicks (DoubleClick).</summary>
+        public const string ClickInterval = Prefix + "click.interval";
 
-        /// <summary>Option value attribute (<see cref="EmbeddedIEWindow.Select"/> only).</summary>
-        public const string OptionValue = "value";
+        /// <summary>Select option label(s); comma-separated or array for multi-select.</summary>
+        public const string SelectOptionText = Prefix + "select.text";
 
-        /// <summary>
-        /// Option zero-based index (<see cref="EmbeddedIEWindow.Select"/> only).
-        /// For element index use <see cref="Idx"/>.
-        /// </summary>
-        public const string OptionIndex = "index";
+        /// <summary>Select option <c>value</c> attribute(s).</summary>
+        public const string SelectOptionValue = Prefix + "select.value";
+
+        /// <summary>Select option zero-based index(es).</summary>
+        public const string SelectOptionIndex = Prefix + "select.index";
     }
 
     public enum MouseButton

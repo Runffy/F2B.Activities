@@ -4,7 +4,7 @@ using System.ComponentModel;
 namespace F2B.Browser.IExplore
 {
     [DisplayName("Double Click")]
-    [Description("Double-click an element (mode/button/interval in locator JSON).")]
+    [Description("Double-click. Optional F2B.Browser.IExplore.click.mode / click.button / click.interval in locator JSON.")]
     public sealed class DoubleClickActivity : ElementTargetActivityBase
     {
         protected override void Execute(CodeActivityContext context)

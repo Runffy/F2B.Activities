@@ -17,7 +17,9 @@ namespace F2B.Browser.IExplore.Com
             IEHtmlElement scope,
             int timeout)
         {
-            var parsed = ElementLocatorParse.Parse(element, LocatorOperation.Element);
+            var findDict = CloneLocatorDictionary(element);
+            ElementLocatorParse.StripOperationMetadata(findDict);
+            var parsed = ElementLocatorParse.Parse(findDict, LocatorOperation.Element);
             var raw = FindRawElement(window, parsed, framePath, scope, timeout);
             return IEHtmlElement.From(raw);
         }
@@ -29,7 +31,9 @@ namespace F2B.Browser.IExplore.Com
             IEHtmlElement scope,
             int timeout)
         {
-            var parsed = ElementLocatorParse.Parse(element, LocatorOperation.Element);
+            var findDict = CloneLocatorDictionary(element);
+            ElementLocatorParse.StripOperationMetadata(findDict);
+            var parsed = ElementLocatorParse.Parse(findDict, LocatorOperation.Element);
             var raws = FindRawElements(window, parsed.Filters, framePath, scope, timeout);
             var result = new IEHtmlElement[raws.Length];
             for (int i = 0; i < raws.Length; i++)
@@ -47,7 +51,9 @@ namespace F2B.Browser.IExplore.Com
             if (window == null)
                 throw new ArgumentNullException(nameof(window));
 
-            var parsed = ElementLocatorParse.Parse(element, LocatorOperation.Element);
+            var findDict = CloneLocatorDictionary(element);
+            ElementLocatorParse.StripOperationMetadata(findDict);
+            var parsed = ElementLocatorParse.Parse(findDict, LocatorOperation.Element);
             object raw;
 
             if (scope != null)
@@ -96,7 +102,9 @@ namespace F2B.Browser.IExplore.Com
             var framePaths = new IList<IDictionary<string, object>>[locators.Length];
             for (int i = 0; i < locators.Length; i++)
             {
-                parsedLocators[i] = ElementLocatorParse.Parse(locators[i].ParseElement(), LocatorOperation.Element);
+                var dict = CloneLocatorDictionary(locators[i].ParseElement());
+                ElementLocatorParse.StripOperationMetadata(dict);
+                parsedLocators[i] = ElementLocatorParse.Parse(dict, LocatorOperation.Element);
                 framePaths[i] = locators[i].ParseFramePath();
             }
 
@@ -315,6 +323,26 @@ namespace F2B.Browser.IExplore.Com
 
         public static string GetAttribute(ITridentDomHost window, IEHtmlElement element, string attributeName, int timeout) =>
             HtmlElementDomHelper.GetAttribute(IEHtmlElement.Unwrap(element), attributeName);
+
+        public static void SetAttribute(
+            ITridentDomHost window,
+            IDictionary<string, object> element,
+            string attributeName,
+            string value,
+            IList<IDictionary<string, object>> framePath,
+            int timeout) =>
+            HtmlElementDomHelper.SetAttribute(
+                FindRawElement(window, ElementLocatorParse.Parse(element, LocatorOperation.Element), framePath, null, timeout),
+                attributeName,
+                value);
+
+        public static void SetAttribute(
+            ITridentDomHost window,
+            IEHtmlElement element,
+            string attributeName,
+            string value,
+            int timeout) =>
+            HtmlElementDomHelper.SetAttribute(IEHtmlElement.Unwrap(element), attributeName, value);
 
         public static IHTMLDocument2 ResolveDocument(
             ITridentDomHost window,
@@ -538,6 +566,17 @@ namespace F2B.Browser.IExplore.Com
             {
                 return false;
             }
+        }
+
+        private static Dictionary<string, object> CloneLocatorDictionary(IDictionary<string, object> source)
+        {
+            if (source == null)
+                return new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+            var copy = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in source)
+                copy[kv.Key] = kv.Value;
+            return copy;
         }
 
         private static void SetValue(object element, string value)

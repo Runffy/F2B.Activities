@@ -50,6 +50,7 @@
     <Compile Include="IEHtmlElement.cs" />
     <Compile Include="IELocator.cs" />
     <Compile Include="ElementLocatorKeys.cs" />
+    <Compile Include="MarkedElementIds.cs" />
     <Compile Include="FrameLocatorKeys.cs" />
     <Compile Include="ParallelFindElementResult.cs" />
     <Compile Include="IeScriptResult.cs" />
@@ -100,6 +101,7 @@
     <Compile Include="Activities\Element\GetTextActivity.cs" />
     <Compile Include="Activities\Element\GetValueActivity.cs" />
     <Compile Include="Activities\Element\GetAttributeActivity.cs" />
+    <Compile Include="Activities\Element\SetAttributeActivity.cs" />
     <Compile Include="Activities\Common\FindElementActivity.cs" />
     <Compile Include="Activities\Common\ElementExistsActivity.cs" />
     <Compile Include="Activities\Common\FindElementsActivity.cs" />

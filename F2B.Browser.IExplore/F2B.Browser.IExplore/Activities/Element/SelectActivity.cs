@@ -4,7 +4,7 @@ using System.ComponentModel;
 namespace F2B.Browser.IExplore
 {
     [DisplayName("Select")]
-    [Description("Select option(s). Use text/value/index keys in locator JSON.")]
+    [Description("Select option(s). Use F2B.Browser.IExplore.select.text / select.value / select.index in locator JSON.")]
     public sealed class SelectActivity : ElementTargetActivityBase
     {
         protected override void Execute(CodeActivityContext context)
