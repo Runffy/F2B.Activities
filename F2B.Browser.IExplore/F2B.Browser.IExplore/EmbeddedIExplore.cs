@@ -137,7 +137,7 @@ namespace F2B.Browser.IExplore
             var matches = new List<EmbeddedIEWindow>();
             var seen = new HashSet<long>();
 
-            void TryAdd(IntPtr hwnd)
+            void TryAdd(IntPtr hwnd, bool requireVisible = true)
             {
                 try
                 {
@@ -145,36 +145,40 @@ namespace F2B.Browser.IExplore
                         return;
                     if (!Win32Native.IsWindow(hwnd))
                         return;
-
-                    var frame = IeHostWindow.ResolveBrowserFrameHwnd(hwnd);
-                    if (frame != IntPtr.Zero)
-                        hwnd = frame;
-                    else if (string.IsNullOrEmpty(rules.ClassName))
-                        return;
-
-                    if (!seen.Add(hwnd.ToInt64()))
-                        return;
-
-                    if (string.IsNullOrEmpty(rules.ClassName) && !IeHostWindow.IsInternetExplorerBrowser(hwnd))
+                    if (requireVisible && !Win32Native.IsWindowVisible(hwnd))
                         return;
 
                     var topClass = Win32Native.GetClassNameString(hwnd);
                     if (!MatchClassName(rules, topClass))
                         return;
 
-                    var ieServer = HtmlDocumentHelper.FindInternetExplorerServer(hwnd);
+                    var connectHwnd = hwnd;
+                    var frame = IeHostWindow.ResolveBrowserFrameHwnd(hwnd);
+                    if (frame != IntPtr.Zero)
+                        connectHwnd = frame;
+
+                    if (!seen.Add(connectHwnd.ToInt64()))
+                        return;
+
+                    var ieServer = HtmlDocumentHelper.FindInternetExplorerServer(connectHwnd);
                     if (ieServer == IntPtr.Zero)
                         return;
 
-                    var winTitle = Win32Native.GetWindowTextString(hwnd);
-                    var shell = ShDocVwHelper.FindByHwnd((int)hwnd.ToInt64());
+                    var isStandaloneBrowser = IeHostWindow.IsInternetExplorerBrowser(connectHwnd);
+                    if (!isStandaloneBrowser && string.IsNullOrEmpty(rules.ClassName)
+                        && string.IsNullOrEmpty(rules.Title) && rules.TitleRegex == null
+                        && string.IsNullOrEmpty(rules.Url) && rules.UrlRegex == null)
+                        return;
+
+                    var winTitle = Win32Native.GetWindowTextString(connectHwnd);
+                    var shell = ShDocVwHelper.FindByHwnd((int)connectHwnd.ToInt64());
                     var docUrl = shell?.LocationUrl ?? string.Empty;
                     var docTitle = shell?.Name ?? string.Empty;
 
-                    if (NeedsMsHtmlProbe(rules, docUrl, docTitle))
+                    if (NeedsMsHtmlProbe(rules, docUrl, docTitle) || !isStandaloneBrowser)
                     {
                         IHTMLDocument2 doc;
-                        if (HtmlDocumentHelper.TryGetDocument(hwnd, out _, out doc)
+                        if (HtmlDocumentHelper.TryGetDocument(connectHwnd, out _, out doc)
                             && HtmlDocumentHelper.IsDocumentReadable(doc))
                         {
                             if (string.IsNullOrEmpty(docUrl))
@@ -189,7 +193,8 @@ namespace F2B.Browser.IExplore
                     if (!MatchUrl(rules, docUrl))
                         return;
 
-                    matches.Add(new EmbeddedIEWindow(hwnd, ieServer, topClass));
+                    var hostClass = Win32Native.GetClassNameString(connectHwnd);
+                    matches.Add(new EmbeddedIEWindow(connectHwnd, ieServer, hostClass));
                 }
                 catch (AccessViolationException) { /* skip */ }
             }
@@ -202,12 +207,7 @@ namespace F2B.Browser.IExplore
 
             Win32Native.EnumWindows((hwnd, _) =>
             {
-                try
-                {
-                    if (Win32Native.GetClassNameString(hwnd)
-                        .Equals(IeHostWindow.IeFrameClass, StringComparison.OrdinalIgnoreCase))
-                        TryAdd(hwnd);
-                }
+                try { TryAdd(hwnd); }
                 catch { /* skip */ }
                 return true;
             }, IntPtr.Zero);
@@ -346,7 +346,7 @@ namespace F2B.Browser.IExplore
                     otherHosts++;
             }
             if (otherHosts > 0)
-                sb.AppendLine("Other Trident/MSHTML hosts (OCX, etc.) omitted from matching: " + otherHosts);
+                sb.AppendLine("Embedded/other Trident hosts (use Class Name or Url/Title on Find Window): " + otherHosts);
 
             return sb.ToString();
         }

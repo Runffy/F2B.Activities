@@ -15,7 +15,8 @@ namespace IExplore.ComHost
 
         private static object _applicationRoot;
 
-        public static void Start(string url, out string methodUsed)
+        /// <summary>Start Trident IE via COM. Navigates only when <paramref name="url"/> is non-empty.</summary>
+        public static void Start(out string methodUsed, string url = null)
         {
             methodUsed = null;
             if (Type.GetTypeFromProgID("InternetExplorer.Application") == null)
@@ -24,17 +25,23 @@ namespace IExplore.ComHost
                     "InternetExplorer.Application is not registered.\n" + GetEnableIeInstructions());
             }
 
-            url = NormalizeLaunchUrl(url);
+            var navigate = !string.IsNullOrWhiteSpace(url);
             try
             {
-                StartViaCom(url);
+                if (navigate)
+                    StartViaCom(NormalizeLaunchUrl(url));
+                else
+                    StartViaComVisibleOnly();
                 methodUsed = "InternetExplorer.Application";
                 return;
             }
             catch (COMException ex) when (IsRpcUnavailable(ex))
             {
                 WarmStartViaCom();
-                StartViaCom(url);
+                if (navigate)
+                    StartViaCom(NormalizeLaunchUrl(url));
+                else
+                    StartViaComVisibleOnly();
                 methodUsed = "InternetExplorer.Application (after warm-start)";
             }
         }
@@ -84,14 +91,26 @@ namespace IExplore.ComHost
 
         private static void StartViaCom(string url)
         {
+            var ie = CreateInternetExplorer();
+            _applicationRoot = ie;
+            ie.Visible = true;
+            ie.Navigate2(url);
+        }
+
+        private static void StartViaComVisibleOnly()
+        {
+            var ie = CreateInternetExplorer();
+            _applicationRoot = ie;
+            ie.Visible = true;
+        }
+
+        private static dynamic CreateInternetExplorer()
+        {
             var progId = Type.GetTypeFromProgID("InternetExplorer.Application");
             dynamic ie = Activator.CreateInstance(progId);
             if (ie == null)
                 throw new InvalidOperationException("Failed to create InternetExplorer.Application.");
-
-            _applicationRoot = ie;
-            ie.Visible = true;
-            ie.Navigate2(url);
+            return ie;
         }
 
         private static void WarmStartViaCom()

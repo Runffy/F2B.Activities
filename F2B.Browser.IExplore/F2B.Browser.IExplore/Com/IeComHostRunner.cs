@@ -8,28 +8,17 @@ namespace F2B.Browser.IExplore.Com
     /// <summary>Runs the x86 <see cref="IeComHostLocator.ComHostFileName"/> process from the x64 OpenRPA plugin.</summary>
     public static class IeComHostRunner
     {
-        public const string DefaultTitlePart = "IExplore Test Host";
-
         /// <summary>
-        /// Launch Trident IE via ComHost. Blocks until ComHost exits.
+        /// Start Trident IE via ComHost (COM). Does not wait for a window; use <see cref="EmbeddedIExplore.Connect"/> / Find Window.
+        /// When <paramref name="url"/> is null or empty, only makes IE visible without navigation.
         /// </summary>
-        public static void Launch(
-            string url,
-            out string methodUsed,
-            out int hwnd,
-            int timeoutMs = 45000,
-            string titlePart = DefaultTitlePart,
-            string urlContains = null)
+        public static void Launch(string url, out string methodUsed)
         {
             methodUsed = null;
-            hwnd = 0;
-
-            if (string.IsNullOrWhiteSpace(url))
-                throw new ArgumentException("Url is required.", nameof(url));
 
             var hostExe = IeComHostLocator.ResolveComHostPath();
             var workDir = IeComHostLocator.ResolveComHostWorkingDirectory();
-            var args = BuildArguments(url, timeoutMs, titlePart, urlContains);
+            var args = BuildArguments(url);
 
             var psi = new ProcessStartInfo
             {
@@ -58,36 +47,25 @@ namespace F2B.Browser.IExplore.Com
                         "IExplore.ComHost exited with code " + process.ExitCode + ".\n" + detail.Trim());
                 }
 
-                ParseSuccessLine(stdout, out methodUsed, out hwnd);
+                ParseSuccessLine(stdout, out methodUsed);
             }
         }
 
-        private static string BuildArguments(string url, int timeoutMs, string titlePart, string urlContains)
+        private static string BuildArguments(string url)
         {
             var sb = new StringBuilder();
-            sb.Append("launch ");
-            sb.Append(Quote(url));
-            sb.Append(" --timeout ").Append(timeoutMs.ToString(CultureInfo.InvariantCulture));
-            if (!string.IsNullOrWhiteSpace(titlePart))
-            {
-                sb.Append(" --title ").Append(Quote(titlePart));
-            }
-
-            if (!string.IsNullOrWhiteSpace(urlContains))
-            {
-                sb.Append(" --url-contains ").Append(Quote(urlContains));
-            }
-
+            sb.Append("launch");
+            if (!string.IsNullOrWhiteSpace(url))
+                sb.Append(' ').Append(Quote(url.Trim()));
             return sb.ToString();
         }
 
         private static string Quote(string value) =>
             "\"" + (value ?? string.Empty).Replace("\"", "\\\"") + "\"";
 
-        private static void ParseSuccessLine(string stdout, out string methodUsed, out int hwnd)
+        private static void ParseSuccessLine(string stdout, out string methodUsed)
         {
             methodUsed = null;
-            hwnd = 0;
 
             if (string.IsNullOrWhiteSpace(stdout))
                 throw new InvalidOperationException("IExplore.ComHost returned no output.");
@@ -102,15 +80,13 @@ namespace F2B.Browser.IExplore.Com
                 {
                     if (part.StartsWith("method=", StringComparison.OrdinalIgnoreCase))
                         methodUsed = part.Substring("method=".Length);
-                    else if (part.StartsWith("hwnd=", StringComparison.OrdinalIgnoreCase))
-                        int.TryParse(part.Substring("hwnd=".Length), NumberStyles.Integer, CultureInfo.InvariantCulture, out hwnd);
                 }
 
-                if (hwnd != 0)
+                if (!string.IsNullOrEmpty(methodUsed))
                     return;
             }
 
-            throw new InvalidOperationException("IExplore.ComHost did not return OK line with hwnd. Output:\n" + stdout);
+            throw new InvalidOperationException("IExplore.ComHost did not return OK line with method. Output:\n" + stdout);
         }
     }
 }

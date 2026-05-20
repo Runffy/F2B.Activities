@@ -7,9 +7,6 @@ namespace IExplore.ComHost
     /// <summary>32-bit STA helper: starts Trident IE via COM for the x64 OpenRPA plugin.</summary>
     internal static class Program
     {
-        private const int DefaultTimeoutMs = 45000;
-        private const string DefaultTitlePart = "IExplore Test Host";
-
         [STAThread]
         private static int Main(string[] args)
         {
@@ -41,31 +38,13 @@ namespace IExplore.ComHost
 
         private static int RunLaunch(string[] args)
         {
-            var url = GetRequiredArg(args, 1, "url");
-            var timeoutMs = GetOptionalInt(args, "--timeout", DefaultTimeoutMs);
-            var titlePart = GetOptionalString(args, "--title", DefaultTitlePart);
-            var urlContains = GetOptionalString(args, "--url-contains", null);
+            string url = null;
+            if (args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]))
+                url = args[1];
 
             IeSecurityConfigurator.ApplyAutomationPolicy();
-            HostIeLauncher.Start(url, out var method);
-
-            var waitUrl = url;
-            if (!string.IsNullOrWhiteSpace(urlContains)
-                && (url ?? "").IndexOf(urlContains, StringComparison.OrdinalIgnoreCase) < 0)
-            {
-                waitUrl = "http://127.0.0.1/" + urlContains.TrimStart('/');
-            }
-
-            var hwnd = HostIeLauncher.WaitForIeBrowserWindow(waitUrl, titlePart, timeoutMs);
-
-            if (hwnd == 0)
-            {
-                Console.Error.WriteLine(
-                    "IE window not found within " + timeoutMs + " ms (title contains \"" + titlePart + "\").");
-                return 1;
-            }
-
-            Console.WriteLine("OK method=" + method + " hwnd=" + hwnd.ToString(CultureInfo.InvariantCulture));
+            HostIeLauncher.Start(out var method, url);
+            Console.WriteLine("OK method=" + method);
             return 0;
         }
 
@@ -82,7 +61,8 @@ namespace IExplore.ComHost
 
         private static void PrintUsage()
         {
-            Console.Error.WriteLine("IExplore.ComHost.exe launch <url> [--timeout ms] [--title text] [--url-contains text]");
+            Console.Error.WriteLine("IExplore.ComHost.exe launch [url]");
+            Console.Error.WriteLine("  url omitted: start visible IE only (use Find Window to attach).");
             Console.Error.WriteLine("IExplore.ComHost.exe dom <hwnd> <request.json> <response.json>");
         }
 

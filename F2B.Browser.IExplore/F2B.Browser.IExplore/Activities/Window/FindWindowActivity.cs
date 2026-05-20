@@ -7,7 +7,7 @@ using F2B.Browser.IExplore.Com;
 namespace F2B.Browser.IExplore
 {
     [DisplayName("Find Window")]
-    [Description("Connect to an existing IE window by title/url/class filters.")]
+    [Description("Connect to a standalone IE (IEFrame) or an embedded Trident host (Internet Explorer_Server inside another app) by title/url/class.")]
     public sealed class FindWindowActivity : CodeActivity
     {
         [DisplayName("Title Contains")]
@@ -19,6 +19,7 @@ namespace F2B.Browser.IExplore
         public InArgument<string> UrlContains { get; set; }
 
         [DisplayName("Class Name")]
+        [Description("Top-level host window class (e.g. WindowsForms10..., #32770). Helps target embedded IE inside business apps.")]
         [Category("Input")]
         public InArgument<string> ClassName { get; set; }
 
