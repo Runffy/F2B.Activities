@@ -6,7 +6,7 @@ using System.Globalization;
 namespace F2B.Basic
 {
     /// <summary>
-    /// 在属性网格中为 Method 提供固定动词下拉（画布上不再展示 Method）。
+    /// Supplies a fixed HTTP verb dropdown list in the property grid (Method is not shown on the activity canvas).
     /// </summary>
     public sealed class HttpVerbChoiceConverter : TypeConverter
     {

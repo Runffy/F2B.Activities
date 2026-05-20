@@ -25,7 +25,7 @@ namespace F2B.Basic
 
         [Category("Identity")]
         [DisplayName("Log entry ID")]
-        [Description("此活动实例的唯一标识（只读）。从工具箱拖入时自动生成。")]
+        [Description("Unique ID for this activity instance (read-only); auto-generated when dragged from the toolbox.")]
         [ReadOnly(true)]
         [Browsable(true)]
         public string LogEntryId { get; set; }

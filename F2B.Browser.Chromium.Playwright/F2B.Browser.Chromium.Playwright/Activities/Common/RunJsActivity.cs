@@ -49,7 +49,7 @@ namespace F2B.Browser.Chromium.Playwright
         [DefaultValue(300)]
         public InArgument<int> DelayBefore { get; set; } = 300;
 
-        [DisplayName("Timeout")]
+        [DisplayName("Timeout (ms)")]
         [Description("Total timeout in milliseconds for locate + script evaluation when BaseOn=Element.")]
         [Category("Time")]
         [DefaultValue(15000)]

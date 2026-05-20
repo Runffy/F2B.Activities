@@ -61,7 +61,7 @@ namespace F2B.Browser.Chromium.Playwright
             }
         }
 
-        [DisplayName("Timeout")]
+        [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for waiting for a new tab.")]
         [Category("Input")]
         [DefaultValue(15000)]

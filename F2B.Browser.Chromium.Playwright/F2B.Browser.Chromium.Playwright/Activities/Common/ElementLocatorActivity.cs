@@ -21,7 +21,7 @@ namespace F2B.Browser.Chromium.Playwright
         [Category("Input")]
         public InArgument<string> Selector { get; set; }
 
-        [DisplayName("Timeout")]
+        [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds. Used to wait for locator attached state.")]
         [Category("Input")]
         [DefaultValue(15000)]

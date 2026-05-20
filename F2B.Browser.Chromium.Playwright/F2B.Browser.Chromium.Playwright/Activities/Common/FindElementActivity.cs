@@ -43,7 +43,7 @@ namespace F2B.Browser.Chromium.Playwright
         [DefaultValue(0)]
         public InArgument<int> Index { get; set; } = 0;
 
-        [DisplayName("Timeout")]
+        [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for element search.")]
         [Category("Input")]
         [DefaultValue(15000)]

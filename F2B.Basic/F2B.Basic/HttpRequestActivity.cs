@@ -20,7 +20,7 @@ using Newtonsoft.Json.Linq;
 namespace F2B.Basic
 {
     /// <summary>
-    /// HTTP/S 请求活动；语义对齐 Python requests。画布上<strong>仅配置 URL</strong>，其余在属性表格中填写；返回 <see cref="HttpCallResponse"/>。
+    /// HTTP/S request activity (semantics aligned with Python <c>requests</c>). Only <strong>URL</strong> is configured on the canvas; other inputs are set in the property grid. Returns <see cref="HttpCallResponse"/>.
     /// </summary>
     [Designer(typeof(HttpRequestDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("HTTP Request")]
@@ -30,73 +30,72 @@ namespace F2B.Basic
         {
             Method = "GET";
             Data = new InArgument<string>(string.Empty);
-            TimeoutSeconds = new InArgument<double>(100d);
+            Timeout = new InArgument<int>(100_000);
             AllowRedirect = new InArgument<bool>(true);
             ThrowOnFailure = new InArgument<bool>(false);
             Verify = new InArgument<bool>(true);
         }
 
         /// <summary>
-        /// HTTP 动词（由<strong>右侧属性网格</strong>下拉或手写；画布上仅占位 URL）。
+        /// HTTP verb (drop-down or free text in the property grid on the right; canvas only shows URL).
         /// </summary>
         [RequiredArgument]
         [DisplayName("Method")]
         [TypeConverter(typeof(HttpVerbChoiceConverter))]
         [DefaultValue("GET")]
-        [Description("HTTP 方法：GET、POST、PUT 等")]
+        [Description("HTTP verb, e.g. GET, POST, PUT.")]
         public string Method { get; set; }
 
         [RequiredArgument]
         [DisplayName("URL")]
-        [Description("基准 URL（画布上配置的唯一下拉项）；Query 可被 Params 合并追加。")]
+        [Description("Base URL set on the canvas; query string is merged with Params.")]
         public InArgument<string> Url { get; set; }
 
         [DisplayName("Headers")]
         [Description(
-            "string→string 请求头字典，等价 requests.headers。若要对正文指定媒体类型请在字典里写 Content-Type；活动会在发送正文前读出该字段并把它从 Headers 的请求头表中移除以避免重复绑定。")]
+            "String-to-string map of request headers (like requests.headers). Put Content-Type here to set the entity media type; it is read before send and removed from the headers map to avoid duplicating the content header.")]
         public InArgument<IDictionary<string, string>> Headers { get; set; }
 
         [DisplayName("Cookies")]
         [Description(
-            "string→string 字典写入 CookieContainer，等价 requests 的 cookies")]
+            "String-to-string map written to CookieContainer (like requests cookies).")]
         public InArgument<IDictionary<string, string>> Cookies { get; set; }
 
         [DisplayName("Params")]
         [Description(
-            "object 值的查询参数字典（等价 requests.params），合并至 URL Query。")]
+            "Query parameters with object values (like requests.params); merged into the URL query string.")]
         public InArgument<IDictionary<string, object>> Params { get; set; }
 
         [DisplayName("JSON")]
         [Description(
-            "JSON 正文（等价 requests 的 json= / 传入字典）。字典非空时序列化为正文并忽略 Data；通常需在 Headers 中提供 Content-Type（常见为 application/json）。")]
+            "JSON body (like requests json= / dict). When non-empty, serialized as the body and Data is ignored; set Content-Type in Headers (often application/json).")]
         public InArgument<IDictionary<string, object>> Json { get; set; }
 
         [DisplayName("Data")]
         [Description(
-            "原始请求正文 string（UTF-8），对应 Python requests 的 data=str，例如 requests.post(..., data=\"RAW\")。不会自动拼装 application/x-www-form-urlencoded；" +
-            "表单编码请在 Headers 写明 Content-Type 并在本字段放入已编码正文。JSON 非空时本字段忽略。")]
+            "Raw body as string (UTF-8), like Python requests data=str, e.g. requests.post(..., data=\"RAW\"). Does not build application/x-www-form-urlencoded; encode the form body yourself, set Content-Type in Headers, and put the encoded string here. Ignored when Json is non-empty.")]
         public InArgument<string> Data { get; set; }
 
-        [DisplayName("Timeout (seconds)")]
-        [Description("整体超时（秒）；requests.timeout。")]
-        public InArgument<double> TimeoutSeconds { get; set; }
+        [DisplayName("Timeout (ms)")]
+        [Description("Overall request deadline in milliseconds (cancellation token; aligns with Python requests.timeout when expressed in ms). Default 100000 ms = 100 s.")]
+        public InArgument<int> Timeout { get; set; }
 
         [DisplayName("Allow redirect")]
-        [Description("是否跟随重定向；allow_redirects。")]
+        [Description("Whether to follow redirects (allow_redirects).")]
         public InArgument<bool> AllowRedirect { get; set; }
 
         [DisplayName("Raise on HTTP error")]
-        [Description("为 true 时 4xx/5xx 在写入 Response 之后再抛异常；等同 raise_for_status。")]
+        [Description("When true, 4xx/5xx responses still populate Response then throw (raise_for_status).")]
         public InArgument<bool> ThrowOnFailure { get; set; }
 
         [DisplayName("Verify")]
         [Description(
-            "HTTPS 服务端证书校验。True 等价 requests.verify=True（默认）；False 等价 verify=False，存在安全风险，仅用于可信/开发环境")]
+            "HTTPS server certificate verification. True matches requests.verify=True (default); False matches verify=False — insecure, use only in trusted/dev environments.")]
         public InArgument<bool> Verify { get; set; }
 
         [DisplayName("Response")]
         [Description(
-            "统一结果：Response.Body.Text（等价 response.text）、Response.Body.Json（等价按类型解析的 response.json()，可为 JObject/JArray/JValue）、StatusCode、ReasonPhrase、Headers。")]
+            "Result: Response.Body.Text (like response.text), Response.Body.Json (typed response.json() as JObject/JArray/JValue), StatusCode, ReasonPhrase, Headers.")]
         public OutArgument<HttpCallResponse> Response { get; set; }
 
         private static readonly RemoteCertificateValidationCallback InsecureTlsServerCertificateBypass =
@@ -122,14 +121,14 @@ namespace F2B.Basic
             {
                 Method = "GET",
                 Data = new InArgument<string>(string.Empty),
-                TimeoutSeconds = new InArgument<double>(100d),
+                Timeout = new InArgument<int>(100_000),
                 AllowRedirect = new InArgument<bool>(true),
                 ThrowOnFailure = new InArgument<bool>(false),
                 Verify = new InArgument<bool>(true),
             };
         }
 
-        /// <remarks>用于设计器等调用方枚举合法动词。</remarks>
+        /// <remarks>Exposes allowed verbs for designers and converters.</remarks>
         public static IReadOnlyList<string> GetAllowedHttpMethods() => AllowedMethods;
 
         protected override void Execute(CodeActivityContext context)
@@ -137,7 +136,7 @@ namespace F2B.Basic
             string rawUrl = (Url.Get(context) ?? string.Empty).Trim();
             if (!Uri.TryCreate(rawUrl, UriKind.Absolute, out Uri baseUri))
             {
-                throw new ArgumentException("Url 必须为有效的绝对 URI。", nameof(Url));
+                throw new ArgumentException("Url must be a valid absolute URI.", nameof(Url));
             }
 
             string methodName = NormalizeMethod(Method);
@@ -161,10 +160,10 @@ namespace F2B.Basic
                     ? serializedJson
                     : (literalData ?? string.Empty);
 
-            double timeoutSec = TimeoutSeconds.Get(context);
-            if (timeoutSec <= 0 || double.IsInfinity(timeoutSec) || double.IsNaN(timeoutSec))
+            int timeoutMs = Timeout.Get(context);
+            if (timeoutMs <= 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(TimeoutSeconds), "超时时间必须为正数秒。");
+                throw new ArgumentOutOfRangeException(nameof(Timeout), "Timeout must be a positive number of milliseconds.");
             }
 
             bool allowRedirect = AllowRedirect.Get(context);
@@ -185,7 +184,7 @@ namespace F2B.Basic
             if (!verifyTls && !TrySetServerCertificateBypass(handler))
             {
                 throw new NotSupportedException(
-                    "无法将 Verify 设为 False：当前宿主上的 HttpClient 不支持配置证书回调（一般需要 .NET Framework 4.7.1 及以上）。请将 Verify=True 或将目标运行时升级到有 ServerCertificateValidationCallback 的版本。");
+                    "Verify cannot be False: this host's HttpClient does not support configuring a certificate callback (typically requires .NET Framework 4.7.1 or later). Set Verify to True or upgrade the runtime to one that exposes ServerCertificateValidationCallback.");
             }
 
             if (handler.CookieContainer != null)
@@ -206,7 +205,7 @@ namespace F2B.Basic
             using (var cts = new CancellationTokenSource())
             using (var request = new HttpRequestMessage(httpMethod, uriWithQuery))
             {
-                client.Timeout = Timeout.InfiniteTimeSpan;
+                client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
 
                 ApplyHeaderDictionary(headerKv, request);
 
@@ -229,7 +228,7 @@ namespace F2B.Basic
                     request.Content = new StringContent(bodyText, Encoding.UTF8, media);
                 }
 
-                cts.CancelAfter(TimeSpan.FromSeconds(timeoutSec));
+                cts.CancelAfter(TimeSpan.FromMilliseconds(timeoutMs));
 
                 HttpResponseMessage response;
                 try
@@ -239,7 +238,7 @@ namespace F2B.Basic
                 catch (OperationCanceledException ex) when (cts.IsCancellationRequested)
                 {
                     throw new TimeoutException(
-                        $"请求在 {timeoutSec.ToString(CultureInfo.InvariantCulture)} 秒内未完成。",
+                        $"The request did not complete within {timeoutMs.ToString(CultureInfo.InvariantCulture)} ms.",
                         ex);
                 }
 
@@ -272,7 +271,7 @@ namespace F2B.Basic
                     {
                         string preview = TrimBodyPreview(respBody, 2048);
                         throw new InvalidOperationException(
-                            $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}。正文摘要：{preview}");
+                            $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}. Body preview: {preview}");
                     }
                 }
                 finally
@@ -288,7 +287,7 @@ namespace F2B.Basic
         }
 
         /// <summary>
-        /// 通过反射写入 <see cref="HttpClientHandler"/> 证书回调（部分引用程序集中无该成员的编译期绑定，运行时 4.7.1+ 通常可用）。
+        /// Writes <see cref="HttpClientHandler.ServerCertificateValidationCallback"/> via reflection (some reference assemblies omit the API at compile time; runtime 4.7.1+ usually supports it).
         /// </summary>
         private static bool TrySetServerCertificateBypass(HttpClientHandler handler)
         {
@@ -335,7 +334,7 @@ namespace F2B.Basic
             }
             catch (CookieException ex)
             {
-                throw new InvalidOperationException($"无法添加 Cookie：{name}", ex);
+                throw new InvalidOperationException($"Failed to add cookie: {name}", ex);
             }
         }
 
@@ -530,7 +529,7 @@ namespace F2B.Basic
 
                 if (!request.Headers.TryAddWithoutValidation(name, pair.Value ?? string.Empty))
                 {
-                    throw new InvalidOperationException("无法添加请求头：" + name);
+                    throw new InvalidOperationException("Failed to add header: " + name);
                 }
             }
         }
@@ -556,7 +555,7 @@ namespace F2B.Basic
             return string.IsNullOrWhiteSpace(ct) ? null : ct.Trim();
         }
 
-        /// <remarks>运行时可能为 Hashtable 等非泛型 IDictionary。</remarks>
+        /// <remarks>Runtime value may be a non-generic Hashtable or other IDictionary.</remarks>
         private static Dictionary<string, string> CoerceStringKeyDictionary(object raw)
         {
             if (raw == null)
@@ -583,7 +582,7 @@ namespace F2B.Basic
             if (dyn == null)
             {
                 throw new ArgumentException(
-                    "Headers / Cookies 应为 Dictionary[String,String]（或等价非泛型 IDictionary）实例。",
+                    "Headers / Cookies must be a Dictionary[String,String] (or compatible non-generic IDictionary).",
                     nameof(raw));
             }
 
@@ -604,7 +603,7 @@ namespace F2B.Basic
             return dst2;
         }
 
-        /// <remarks>运行时可能为非泛型 Hashtable 等。</remarks>
+        /// <remarks>Runtime value may include non-generic Hashtable-based maps.</remarks>
         private static Dictionary<string, object> NormalizeObjectDictionary(object rawRoot)
         {
             var merged = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
@@ -644,7 +643,7 @@ namespace F2B.Basic
             }
 
             throw new ArgumentException(
-                "Params / Json 需为兼容 IDictionary[string,object] 的字典实例。",
+                "Params / Json must be a dictionary compatible with IDictionary[string,object].",
                 nameof(rawRoot));
         }
 
@@ -747,7 +746,7 @@ namespace F2B.Basic
             }
 
             throw new ArgumentException(
-                $"不支持的 HTTP Method：{raw.Trim()}（请在属性的 Method 中选 GET/POST 等）。",
+                $"Unsupported HTTP method: {raw.Trim()} (choose GET/POST/... in the Method property).",
                 nameof(Method));
         }
 
@@ -770,7 +769,7 @@ namespace F2B.Basic
                 case "OPTIONS":
                     return HttpMethod.Options;
                 default:
-                    throw new ArgumentException("内部错误：未知的 Method。", nameof(Method));
+                    throw new ArgumentException("Internal error: unknown Method.", nameof(Method));
             }
         }
     }

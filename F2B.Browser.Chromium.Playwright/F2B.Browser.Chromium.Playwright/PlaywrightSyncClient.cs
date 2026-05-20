@@ -58,7 +58,7 @@ namespace F2B.Browser.Chromium.Playwright
 
             if (!string.IsNullOrWhiteSpace(browserPath) && !File.Exists(browserPath))
             {
-                throw new FileNotFoundException("browserPath 指定的浏览器可执行文件不存在。", browserPath);
+                throw new FileNotFoundException("The browser executable specified by browserPath does not exist.", browserPath);
             }
 
             var args = new List<string>();
@@ -100,7 +100,7 @@ namespace F2B.Browser.Chromium.Playwright
             {
                 CloseBrowser();
 
-                // UseSystemDir=True 时，首次失败后尝试清理残留 Edge 进程并重试一次。
+                // When UseSystemDir=true, after the first failure kill leftover msedge processes and retry launch once.
                 var killedCount = KillAllEdgeProcesses();
                 Thread.Sleep(2000);
                 if (killedCount > 0)
@@ -116,8 +116,8 @@ namespace F2B.Browser.Chromium.Playwright
                 {
                     CloseBrowser();
                     var message = BuildUseSystemDirFailureMessage(retryEx, effectiveUserDataDir)
-                        + "\n- 已执行自动恢复: 结束 msedge 进程 " + killedCount + " 个，等待 2000ms 后重试 1 次。"
-                        + "\n- 首次失败错误: " + (string.IsNullOrWhiteSpace(ex.Message) ? "<empty>" : ex.Message.Trim());
+                        + "\n- Auto recovery: terminated " + killedCount + " msedge process(es), waited 2000ms, retried launch once."
+                        + "\n- First failure error: " + (string.IsNullOrWhiteSpace(ex.Message) ? "<empty>" : ex.Message.Trim());
                     throw new InvalidOperationException(message, retryEx);
                 }
             }
@@ -127,14 +127,14 @@ namespace F2B.Browser.Chromium.Playwright
         }
 
         /// <summary>
-        /// 启动后选定上下文中<strong>首个</strong>页面为当前 Tab，置顶并等待其触发 <see cref="LoadState.Load"/>。
-        /// 若无任何页面（极少见），则新建空白页再放入列表首位。
+        /// After launch, select the <strong>first</strong> page in the context as the current tab, bring it to front,
+        /// and wait until it reaches <see cref="LoadState.Load"/>. If there is no page yet (rare), create a blank page first.
         /// </summary>
         private PwTab PrepareInitialOpenedTab()
         {
             if (_context == null)
             {
-                throw new InvalidOperationException("浏览器上下文未初始化。");
+                throw new InvalidOperationException("Browser context is not initialized.");
             }
 
             SyncTabsFromContext();
@@ -180,7 +180,9 @@ namespace F2B.Browser.Chromium.Playwright
                     ExecutablePath = executablePath,
                     Args = args.Count == 0 ? null : args,
                     IgnoreDefaultArgs = new[] { "--enable-automation" },
-                    ViewportSize = startMaximized ? ViewportSize.NoViewport : null
+                    ViewportSize = startMaximized ? ViewportSize.NoViewport : null,
+                    // ChromiumSandbox defaults false in the driver (adds --no-sandbox); true often suppresses that banner on desktop Edge.
+                    ChromiumSandbox = true,
                 };
                 _context = _playwright.Chromium
                     .LaunchPersistentContextAsync(effectiveUserDataDir, persistentOptions)
@@ -195,7 +197,8 @@ namespace F2B.Browser.Chromium.Playwright
                 Headless = headless,
                 ExecutablePath = executablePath,
                 Args = args.Count == 0 ? null : args,
-                IgnoreDefaultArgs = new[] { "--enable-automation" }
+                IgnoreDefaultArgs = new[] { "--enable-automation" },
+                ChromiumSandbox = true,
             };
 
             _browser = _playwright.Chromium.LaunchAsync(launchOptions).GetAwaiter().GetResult();
@@ -266,7 +269,7 @@ namespace F2B.Browser.Chromium.Playwright
             SyncTabsFromContext();
             if (_tabs.Count == 0)
             {
-                throw new InvalidOperationException("当前没有可切换的标签页。");
+                throw new InvalidOperationException("There is no tab to switch to.");
             }
 
             IPage target = null;
@@ -275,13 +278,13 @@ namespace F2B.Browser.Chromium.Playwright
                 var sourcePage = tab.Page;
                 if (sourcePage == null || sourcePage.IsClosed)
                 {
-                    throw new InvalidOperationException("输入的 Tab 无效或已关闭。");
+                    throw new InvalidOperationException("The supplied tab is invalid or already closed.");
                 }
 
                 target = _tabs.FirstOrDefault(p => p == sourcePage);
                 if (target == null)
                 {
-                    throw new InvalidOperationException("输入的 Tab 不属于当前 Browser 上下文。");
+                    throw new InvalidOperationException("The supplied tab does not belong to this browser context.");
                 }
             }
             else if (index.HasValue)
@@ -335,7 +338,7 @@ namespace F2B.Browser.Chromium.Playwright
 
             if (target == null)
             {
-                throw new InvalidOperationException("未找到满足条件的标签页。");
+                throw new InvalidOperationException("No tab matched the specified criteria.");
             }
 
             _currentPage = target;
@@ -474,11 +477,11 @@ namespace F2B.Browser.Chromium.Playwright
         {
             if (page == null || page.IsClosed)
             {
-                throw new InvalidOperationException("Tab 已关闭或无效。");
+                throw new InvalidOperationException("The tab is closed or invalid.");
             }
 
-            // 将“正在被调用的 tab”同步为当前 tab，避免 Browser 级 API（如 GetSessionStorage）
-            // 仍读取到历史 _currentPage 导致上下文不一致。
+            // Keep the tab being invoked in sync as the current tab so browser-level APIs (e.g. GetSessionStorage)
+            // do not read stale _currentPage.
             SyncTabsFromContext();
             if (!_tabs.Contains(page))
             {
@@ -491,19 +494,19 @@ namespace F2B.Browser.Chromium.Playwright
         private static string BuildUseSystemDirFailureMessage(PlaywrightException ex, string userDataDir)
         {
             var edgePids = GetRunningEdgePids();
-            var pidText = edgePids.Count == 0 ? "无" : string.Join(", ", edgePids);
+            var pidText = edgePids.Count == 0 ? "(none)" : string.Join(", ", edgePids);
             var raw = (ex?.Message ?? string.Empty).Trim();
             var lockHint = IsUserDataDirInUseError(raw)
-                ? "检测到目录占用特征（user data dir in use / singleton lock）。"
-                : "未检测到明确的目录占用特征，可能是权限、企业策略或浏览器参数冲突。";
+                ? "Directory-in-use pattern detected (user data dir in use / singleton lock)."
+                : "No clear directory lock pattern; may be permissions, enterprise policy, or conflicting browser flags.";
 
             return
-                "使用 UseSystemDir=True 启动失败。" +
+                "Failed to launch with UseSystemDir=true." +
                 "\n- UserDataDir: " + (string.IsNullOrWhiteSpace(userDataDir) ? "<empty>" : userDataDir) +
-                "\n- 当前 msedge 进程 PID: " + pidText +
-                "\n- 诊断: " + lockHint +
-                "\n- Playwright 原始错误: " + (string.IsNullOrWhiteSpace(raw) ? "<empty>" : raw) +
-                "\n建议：若要稳定自动化，优先使用 UseSystemDir=False（隔离环境）；如必须用系统目录，请先彻底结束所有 msedge 进程后重试。";
+                "\n- Running msedge PIDs: " + pidText +
+                "\n- Diagnosis: " + lockHint +
+                "\n- Playwright error: " + (string.IsNullOrWhiteSpace(raw) ? "<empty>" : raw) +
+                "\nSuggestion: for stable automation prefer UseSystemDir=false (isolated profile); if you must use the system profile, exit all msedge instances first, then retry.";
         }
 
         private static List<int> GetRunningEdgePids()
@@ -563,13 +566,13 @@ namespace F2B.Browser.Chromium.Playwright
                     }
                     catch
                     {
-                        // 某些 Profile 可能被占用；忽略单 Profile 失败，避免影响主流程。
+                        // Profile may be busy; skip this profile without failing the workflow.
                     }
                 }
             }
             catch
             {
-                // 仅做最佳努力修复，失败不阻断 OpenBrowser 主流程。
+                // Best-effort repair only; failures must not block browser open.
             }
         }
 
@@ -613,7 +616,8 @@ namespace F2B.Browser.Chromium.Playwright
         }
 
         /// <summary>
-        /// 与 <paramref name="preferencesContainingDirectory"/> 同级的 Sessions 文件夹下，尽最大努力递归删除<strong>文件</strong>；子目录保留不删。
+        /// Under the Sessions folder sibling to <paramref name="preferencesContainingDirectory"/>,
+        /// best-effort delete <strong>files</strong> recursively; directories are left intact.
         /// </summary>
         private static void TryDeleteAllFilesUnderSessionsFolder(string preferencesContainingDirectory)
         {
@@ -635,7 +639,7 @@ namespace F2B.Browser.Chromium.Playwright
             }
             catch
             {
-                // Sessions 可能被其它进程短时占用；不阻断浏览器启动。
+                // Sessions may be briefly locked; ignore to avoid blocking launch.
             }
         }
 
@@ -687,11 +691,11 @@ namespace F2B.Browser.Chromium.Playwright
             }
             catch
             {
-                // 单次删除失败不影响其它文件。
+                // One failed deletion should not abort the rest.
             }
         }
 
-        /// <returns>true 时已向磁盘写回修改后的 Preferences；未修改或跳过则为 false。</returns>
+        /// <returns>true when Preferences were written after updating exit_type; false if unchanged or skipped.</returns>
         private static bool TryRewritePreferencesExitTypeToNormal(string preferencesPath)
         {
             if (string.IsNullOrWhiteSpace(preferencesPath) || !File.Exists(preferencesPath))
@@ -845,7 +849,7 @@ namespace F2B.Browser.Chromium.Playwright
 
             TryCleanupRuntimeUserDataDir();
 
-            // 关闭阶段尽最大努力清理资源；即便某一步失败，也不阻断后续流程。
+            // Close best-effort: do not block further cleanup if a step fails.
         }
 
         private string ResolveUserDataDir(bool useSystemDir, string userDataDir, out bool cleanupAfterClose)
@@ -863,7 +867,7 @@ namespace F2B.Browser.Chromium.Playwright
                 return CreateIsolatedTempUserDataDir();
             }
 
-            // 使用系统 Edge 用户目录（持久化 Profile）。
+            // System Edge user-data directory (persistent profile).
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             if (!string.IsNullOrWhiteSpace(localAppData))
             {
@@ -898,7 +902,7 @@ namespace F2B.Browser.Chromium.Playwright
             }
             catch
             {
-                // 某些 Edge 子进程退出会有短延迟；清理失败时忽略，不影响主流程。
+                // Edge child processes may exit slowly; ignore delete failures here.
             }
         }
 
@@ -928,7 +932,7 @@ namespace F2B.Browser.Chromium.Playwright
                 case "detached":
                     return WaitForSelectorState.Detached;
                 default:
-                    throw new ArgumentException("不支持的 waitState: " + waitState);
+                    throw new ArgumentException("Unsupported waitState: " + waitState);
             }
         }
 
@@ -963,7 +967,7 @@ namespace F2B.Browser.Chromium.Playwright
                         result.Add(KeyboardModifier.Shift);
                         break;
                     default:
-                        throw new ArgumentException("不支持的 modifier: " + item);
+                        throw new ArgumentException("Unsupported modifier: " + item);
                 }
             }
 
@@ -1201,7 +1205,7 @@ namespace F2B.Browser.Chromium.Playwright
             var locatorSet = _page.Locator(selector);
             if (index < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(index), "index 不能小于 0。");
+                throw new ArgumentOutOfRangeException(nameof(index), "index must not be less than 0.");
             }
 
             var target = locatorSet.Nth(index);
@@ -1218,7 +1222,7 @@ namespace F2B.Browser.Chromium.Playwright
             var count = locatorSet.CountAsync().GetAwaiter().GetResult();
             if (count <= index)
             {
-                throw new InvalidOperationException($"FindElement 未找到匹配元素，selector={selector}, index={index}。");
+                throw new InvalidOperationException($"FindElement found no matching element,selector={selector}, index={index}。");
             }
 
             return new PwElement(_client, _page, target);
@@ -1229,7 +1233,7 @@ namespace F2B.Browser.Chromium.Playwright
             _client.EnsureTabAlive(_page);
             if (string.IsNullOrWhiteSpace(selector))
             {
-                throw new ArgumentException("selector 不能为空。", nameof(selector));
+                throw new ArgumentException("selector cannot be empty or whitespace.", nameof(selector));
             }
 
             PlaywrightSyncClient.ApplyDelay(delayBefore);
@@ -1289,7 +1293,7 @@ namespace F2B.Browser.Chromium.Playwright
             _client.EnsureTabAlive(_page);
             if (string.IsNullOrWhiteSpace(keys))
             {
-                throw new ArgumentException("keys 不能为空。", nameof(keys));
+                throw new ArgumentException("keys cannot be empty or whitespace.", nameof(keys));
             }
 
             _page.Keyboard.PressAsync(keys, new KeyboardPressOptions
@@ -1361,7 +1365,7 @@ namespace F2B.Browser.Chromium.Playwright
             EnsureAlive();
             if (string.IsNullOrWhiteSpace(selector))
             {
-                throw new ArgumentException("selector 不能为空。", nameof(selector));
+                throw new ArgumentException("selector cannot be empty or whitespace.", nameof(selector));
             }
 
             PlaywrightSyncClient.ApplyDelay(delayBefore);
@@ -1414,22 +1418,22 @@ namespace F2B.Browser.Chromium.Playwright
             _locator = locator;
         }
 
-        /// <summary>元素标签名 (<c>tagName</c>)，每次访问即时读取。</summary>
+        /// <summary>Element tag name (<c>tagName</c>); evaluated on each read.</summary>
         public string Tag =>
             ReadStringWhenTabAlive(() =>
                 _locator.EvaluateAsync<string>("el => el.tagName").GetAwaiter().GetResult());
 
-        /// <summary>元素外层 HTML (<c>outerHTML</c>)，每次访问即时读取。</summary>
+        /// <summary>Outer HTML (<c>outerHTML</c>); evaluated on each read.</summary>
         public string Html =>
             ReadStringWhenTabAlive(() =>
                 _locator.EvaluateAsync<string>("el => el.outerHTML").GetAwaiter().GetResult());
 
-        /// <summary>元素内部 HTML (<c>innerHTML</c>)，每次访问即时读取。</summary>
+        /// <summary>Inner HTML (<c>innerHTML</c>); evaluated on each read.</summary>
         public string InnerHtml =>
             ReadStringWhenTabAlive(() => _locator.InnerHTMLAsync().GetAwaiter().GetResult());
 
         /// <summary>
-        /// 仅当前元素「直接子级」文本节点拼接（不含子元素内部的文字），每次访问即时读取。
+        /// Concatenation of direct-child text nodes only (excludes text inside descendant elements); evaluated on each read.
         /// </summary>
         public string Text =>
             ReadStringWhenTabAlive(() =>
@@ -1438,7 +1442,7 @@ namespace F2B.Browser.Chromium.Playwright
                     .GetAwaiter().GetResult());
 
         /// <summary>
-        /// 当前元素及其所有后代在页面上的渲染文本（DOM <c>innerText</c>，含子标签内文字），每次访问即时读取。
+        /// Rendered text for this element and all descendants (DOM <c>innerText</c>); evaluated on each read.
         /// </summary>
         public string InnerText =>
             ReadStringWhenTabAlive(() => _locator.InnerTextAsync().GetAwaiter().GetResult());
@@ -1496,7 +1500,7 @@ namespace F2B.Browser.Chromium.Playwright
         {
             if (count <= 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(count), "count 必须大于 0。");
+                throw new ArgumentOutOfRangeException(nameof(count), "count must be greater than zero.");
             }
 
             ExecuteClickWithValidation(
@@ -1624,7 +1628,7 @@ namespace F2B.Browser.Chromium.Playwright
 
                 if (interval < 0)
                 {
-                    throw new ArgumentOutOfRangeException(nameof(interval), "interval 不能小于 0。");
+                    throw new ArgumentOutOfRangeException(nameof(interval), "interval must not be less than 0.");
                 }
 
                 var startedAt = Stopwatch.StartNew();
@@ -1699,7 +1703,7 @@ namespace F2B.Browser.Chromium.Playwright
 
             if (options.Count == 0)
             {
-                throw new ArgumentException("Select 至少需要 values / texts / indices 之一。");
+                throw new ArgumentException("Select requires at least one of values, texts, or indices.");
             }
 
             if (!validateContentAfterSelected)
@@ -1710,7 +1714,7 @@ namespace F2B.Browser.Chromium.Playwright
 
             if (interval < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(interval), "interval 不能小于 0。");
+                throw new ArgumentOutOfRangeException(nameof(interval), "interval must not be less than 0.");
             }
 
             var startedAt = Stopwatch.StartNew();
@@ -1797,7 +1801,7 @@ namespace F2B.Browser.Chromium.Playwright
             var locatorSet = _locator.Locator(selector);
             if (index < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(index), "index 不能小于 0。");
+                throw new ArgumentOutOfRangeException(nameof(index), "index must not be less than 0.");
             }
 
             var target = locatorSet.Nth(index);
@@ -1814,7 +1818,7 @@ namespace F2B.Browser.Chromium.Playwright
             var count = locatorSet.CountAsync().GetAwaiter().GetResult();
             if (count <= index)
             {
-                throw new InvalidOperationException($"FindElement 未找到匹配元素，selector={selector}, index={index}。");
+                throw new InvalidOperationException($"FindElement found no matching element,selector={selector}, index={index}。");
             }
 
             return new PwElement(_client, _page, target);
@@ -1825,7 +1829,7 @@ namespace F2B.Browser.Chromium.Playwright
             _client.EnsureTabAlive(_page);
             if (string.IsNullOrWhiteSpace(selector))
             {
-                throw new ArgumentException("selector 不能为空。", nameof(selector));
+                throw new ArgumentException("selector cannot be empty or whitespace.", nameof(selector));
             }
 
             PlaywrightSyncClient.ApplyDelay(delayBefore);
@@ -1846,7 +1850,7 @@ namespace F2B.Browser.Chromium.Playwright
         {
             if (level <= 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(level), "level 必须大于 0。");
+                throw new ArgumentOutOfRangeException(nameof(level), "level must be greater than 0.");
             }
 
             ILocator current = _locator;
@@ -1935,7 +1939,7 @@ namespace F2B.Browser.Chromium.Playwright
         {
             if (string.IsNullOrWhiteSpace(keys))
             {
-                throw new ArgumentException("keys 不能为空。", nameof(keys));
+                throw new ArgumentException("keys cannot be empty or whitespace.", nameof(keys));
             }
 
             _locator.PressAsync(keys, new LocatorPressOptions
@@ -1999,7 +2003,7 @@ namespace F2B.Browser.Chromium.Playwright
                 case ClickValidateMode.ElementAppear:
                     return _page.Locator(validationSelector).CountAsync().GetAwaiter().GetResult() > 0;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(validate), validate, "不支持的点击后校验模式。");
+                    throw new ArgumentOutOfRangeException(nameof(validate), validate, "Unsupported post-click validation mode.");
             }
         }
 
@@ -2017,7 +2021,7 @@ namespace F2B.Browser.Chromium.Playwright
             var latestResult = default(T);
             while (true)
             {
-                // 如果上一轮点击已成功，先判断是否已经满足校验，避免不必要的二次点击。
+                // If the last click succeeded, prefer checking validation before clicking again (avoid redundant clicks).
                 if (hasSuccessfulClick && IsClickValidationSatisfied(validate, validationSelector))
                 {
                     return latestResult;
@@ -2030,7 +2034,7 @@ namespace F2B.Browser.Chromium.Playwright
                 }
                 catch
                 {
-                    // 点击可能在“目标已变化”的边界时刻抛错；如果此时校验已满足，则视为成功。
+                    // Clicks may throw when the DOM is mid-transition; if validation already passes, treat as success.
                     if (hasSuccessfulClick && IsClickValidationSatisfied(validate, validationSelector))
                     {
                         return latestResult;
@@ -2057,17 +2061,17 @@ namespace F2B.Browser.Chromium.Playwright
         {
             if (interval < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(interval), "interval 不能小于 0。");
+                throw new ArgumentOutOfRangeException(nameof(interval), "interval must not be less than 0.");
             }
 
             if (timeout <= 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(timeout), "timeout 必须大于 0。");
+                throw new ArgumentOutOfRangeException(nameof(timeout), "timeout must be greater than 0.");
             }
 
             if (validate != ClickValidateMode.None && string.IsNullOrWhiteSpace(validationSelector))
             {
-                throw new ArgumentException("validate=ElementDisappear/ElementAppear 时，validationSelector 不能为空。", nameof(validationSelector));
+                throw new ArgumentException("validationSelector is required when validate is ElementDisappear or ElementAppear.", nameof(validationSelector));
             }
         }
 

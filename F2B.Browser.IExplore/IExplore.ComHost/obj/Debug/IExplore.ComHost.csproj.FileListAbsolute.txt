@@ -1,0 +1,6 @@
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.IExplore\IExplore.ComHost\obj\Debug\IExplore.ComHost.csproj.AssemblyReference.cache
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.IExplore\IExplore.ComHost\obj\Debug\IExplore.ComHost.csproj.CoreCompileInputs.cache
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.IExplore\F2B.Browser.IExplore\bin\Debug\x86\IExplore.ComHost.exe
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.IExplore\F2B.Browser.IExplore\bin\Debug\x86\IExplore.ComHost.pdb
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.IExplore\IExplore.ComHost\obj\Debug\IExplore.ComHost.exe
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.IExplore\IExplore.ComHost\obj\Debug\IExplore.ComHost.pdb

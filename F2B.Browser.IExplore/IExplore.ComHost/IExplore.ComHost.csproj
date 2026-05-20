@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{A8F3C2E1-9B4D-4F6A-8C1E-2D7B5E9A0F3C}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>IExplore.ComHost</RootNamespace>
+    <AssemblyName>IExplore.ComHost</AssemblyName>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\F2B.Browser.IExplore\bin\Debug\x86\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\F2B.Browser.IExplore\bin\Release\x86\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="HostDomContext.cs" />
+    <Compile Include="HostDomService.cs" />
+    <Compile Include="HostIeLauncher.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\F2B.Browser.IExplore\Com\ITridentDomHost.cs"><Link>Linked\Com\ITridentDomHost.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\IEHtmlElement.cs"><Link>Linked\IEHtmlElement.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\IELocator.cs"><Link>Linked\IELocator.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\ElementLocatorKeys.cs"><Link>Linked\ElementLocatorKeys.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\FrameLocatorKeys.cs"><Link>Linked\FrameLocatorKeys.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\OperationDefaults.cs"><Link>Linked\OperationDefaults.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\ParallelFindElementResult.cs"><Link>Linked\ParallelFindElementResult.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\IeScriptResult.cs"><Link>Linked\IeScriptResult.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\ComElementHelper.cs"><Link>Linked\Com\ComElementHelper.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\ComSafe.cs"><Link>Linked\Com\ComSafe.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\ElementLocatorOptions.cs"><Link>Linked\Com\ElementLocatorOptions.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\ElementLocatorParse.cs"><Link>Linked\Com\ElementLocatorParse.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\FramePathParse.cs"><Link>Linked\Com\FramePathParse.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\HtmlDocumentHelper.cs"><Link>Linked\Com\HtmlDocumentHelper.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\HtmlElementActions.cs"><Link>Linked\Com\HtmlElementActions.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\HostDomRequestResolver.cs"><Link>Linked\Com\HostDomRequestResolver.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\RemoteElementRefJson.cs"><Link>Linked\Com\RemoteElementRefJson.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\HtmlElementDomHelper.cs"><Link>Linked\Com\HtmlElementDomHelper.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\HtmlElementFinder.cs"><Link>Linked\Com\HtmlElementFinder.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\HtmlFrameHelper.cs"><Link>Linked\Com\HtmlFrameHelper.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\IEJsonParse.cs"><Link>Linked\Com\IEJsonParse.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\IeComHostDomProtocol.cs"><Link>Linked\Com\IeComHostDomProtocol.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\IeHostWindow.cs"><Link>Linked\Com\IeHostWindow.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\IeScriptExecute.cs"><Link>Linked\Com\IeScriptExecute.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\IeScriptHelper.cs"><Link>Linked\Com\IeScriptHelper.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\IeSecurityConfigurator.cs"><Link>Linked\Com\IeSecurityConfigurator.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\MsHtmlInterop.cs"><Link>Linked\Com\MsHtmlInterop.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\OperationTimeout.cs"><Link>Linked\Com\OperationTimeout.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Com\ShDocVwHelper.cs"><Link>Linked\Com\ShDocVwHelper.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Native\MouseInputHelper.cs"><Link>Linked\Native\MouseInputHelper.cs</Link></Compile>
+    <Compile Include="..\F2B.Browser.IExplore\Native\Win32Native.cs"><Link>Linked\Native\Win32Native.cs</Link></Compile>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

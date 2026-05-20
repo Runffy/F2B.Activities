@@ -32,7 +32,7 @@ namespace F2B.Browser.Chromium.Playwright
         [DefaultValue(FindElementWaitState.None)]
         public FindElementWaitState WaitState { get; set; } = FindElementWaitState.None;
 
-        [DisplayName("Timeout")]
+        [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds.")]
         [Category("Input")]
         [DefaultValue(15000)]

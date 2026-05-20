@@ -20,7 +20,7 @@ namespace F2B.Browser.Chromium.Playwright
         [Category("Input")]
         public InArgument<string> Url { get; set; }
 
-        [DisplayName("Timeout")]
+        [DisplayName("Timeout (ms)")]
         [Description("Navigation timeout in milliseconds.")]
         [Category("Input")]
         [DefaultValue(15000)]

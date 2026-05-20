@@ -13,7 +13,7 @@ using System.Windows.Threading;
 namespace F2B.Basic
 {
     /// <summary>
-    /// 画布上<strong>仅</strong>显示 URL；Method、Headers、Params、输出 Response 等在属性网格中编辑。
+    /// Shows <strong>only</strong> URL on the activity canvas; Method, Headers, Params, Response output, etc. are edited in the property grid.
     /// </summary>
     public sealed class HttpRequestDesigner : ActivityDesigner
     {

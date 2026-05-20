@@ -712,7 +712,7 @@ namespace F2B.Browser.Chromium.Playwright
                 MaxLines = 1
             };
 
-            // 对齐 LogMessageDesigner：使用双向绑定把画布输入直接同步到 ModelItem 属性。
+            // Align with LogMessageDesigner: two-way binding syncs canvas input to ModelItem properties.
             BindingOperations.SetBinding(editor, ExpressionTextBox.OwnerActivityProperty, new Binding("ModelItem"));
             BindingOperations.SetBinding(editor, ExpressionTextBox.ExpressionProperty, new Binding("ModelItem." + pathToArgument)
             {
@@ -1387,7 +1387,7 @@ namespace F2B.Browser.Chromium.Playwright
                 return HasEditorInput(editor);
             }
 
-            // WF 设计器里，IsSet 是判断“用户是否已赋值”最稳定的标志。
+            // In the WF designer, IsSet is the most reliable flag that the user explicitly assigned a value.
             if (property.IsSet)
             {
                 return true;

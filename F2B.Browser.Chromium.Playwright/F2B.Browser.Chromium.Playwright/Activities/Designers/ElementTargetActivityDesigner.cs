@@ -466,7 +466,7 @@ namespace F2B.Browser.Chromium.Playwright
                 return HasEditorInput(editor);
             }
 
-            // WF 设计器里，IsSet 是判断“用户是否已赋值”最稳定的标志。
+            // In the WF designer, IsSet is the most reliable flag that the user explicitly assigned a value.
             if (property.IsSet)
             {
                 return true;

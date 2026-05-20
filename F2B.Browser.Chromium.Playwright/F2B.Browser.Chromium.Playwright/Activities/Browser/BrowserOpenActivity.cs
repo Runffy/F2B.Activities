@@ -27,7 +27,9 @@ namespace F2B.Browser.Chromium.Playwright
         public bool StartMaximized { get; set; } = true;
 
         [DisplayName("Remote Debugging Port")]
-        [Description("Browser remote debugging port.")]
+        [Description(
+            "Optional. Only when set, the browser gets --remote-debugging-port=<value>. When empty, no explicit port argument is added; Playwright still connects DevTools internally (typically --remote-debugging-pipe), which automation requires and cannot be fully disabled." +
+            "Some sites (e.g. IE mode) may still warn about remote debugging.")]
         [Category("Input")]
         public InArgument<int?> RemoteDebuggingPort { get; set; }
 
@@ -58,7 +60,7 @@ namespace F2B.Browser.Chromium.Playwright
 
         [DisplayName("Output Tab")]
         [Description(
-            "首个浏览器标签页的 PwTab；已等待触发 Load 加载事件并与 Browser 同属一会话（通常等价于原先的 GetLatestTab 结果，省去单独活动）。")]
+            "PwTab for the first browser page after WaitForLoadState(Load); shares the browser session—often avoids a separate Browser.GetLatestTab step.")]
         [Category("Output")]
         public OutArgument<PwTab> Tab { get; set; }
 

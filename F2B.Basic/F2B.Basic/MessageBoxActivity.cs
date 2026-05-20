@@ -26,6 +26,7 @@ namespace F2B.Basic
         public InArgument<string> Title { get; set; }
 
         [DisplayName("Timeout (ms)")]
+        [Description("Automatically closes the dialog after this many milliseconds. Use 0 for no auto-close.")]
         public InArgument<int> Timeout { get; set; }
 
         public Activity Create(DependencyObject target)
