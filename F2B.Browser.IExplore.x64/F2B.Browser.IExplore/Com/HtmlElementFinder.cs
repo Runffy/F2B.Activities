@@ -1,251 +1,304 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 using F2B.Browser.IExplore;
 
 namespace F2B.Browser.IExplore.Com
 {
+    /// <summary>MSHTML element location aligned with Python <c>_locate_elements</c> / <c>_matches_locator</c>.</summary>
     internal static class HtmlElementFinder
     {
+        internal const int PollIntervalMs = 200;
+
         public static object Find(
             IHTMLDocument2 document,
-            IDictionary<string, string> filters,
-            int idx,
+            ParsedElementLocator parsed,
             int timeoutMs = OperationDefaults.TimeoutMs)
         {
             if (document == null)
                 throw new ArgumentNullException(nameof(document));
-            ValidateFilters(filters, idx);
+            if (parsed == null)
+                throw new ArgumentNullException(nameof(parsed));
 
             OperationTimeout.Validate(timeoutMs, nameof(timeoutMs));
-            var filterDesc = DescribeFilters(filters);
+            var filterDesc = DescribeLocator(parsed);
 
             return OperationTimeout.WaitUntil(
                 timeoutMs,
-                () => TryFind(document, filters, idx),
+                PollIntervalMs,
+                () => TryFind(document, parsed),
                 () => new TimeoutException(
-                    $"Timed out after {timeoutMs} ms waiting for element: {filterDesc}"));
+                    "Timed out after " + timeoutMs + " ms waiting for element: " + filterDesc));
         }
 
-        /// <summary>
-        /// Find all elements matching <paramref name="filters"/> (ignores index).
-        /// Waits until at least one match exists, then returns every current match.
-        /// </summary>
         public static object[] FindAll(
             IHTMLDocument2 document,
-            IDictionary<string, string> filters,
+            ParsedElementLocator parsed,
             int timeoutMs = OperationDefaults.TimeoutMs)
         {
             if (document == null)
                 throw new ArgumentNullException(nameof(document));
-            ValidateFilters(filters, idx: 0, requireIdx: false);
+            if (parsed == null)
+                throw new ArgumentNullException(nameof(parsed));
 
             OperationTimeout.Validate(timeoutMs, nameof(timeoutMs));
-            var filterDesc = DescribeFilters(filters);
+            var filterDesc = DescribeLocator(parsed);
 
             return OperationTimeout.WaitUntil(
                 timeoutMs,
-                () => TryFindAll(document, filters),
+                PollIntervalMs,
+                () => TryFindAll(document, parsed),
                 () => new TimeoutException(
-                    $"Timed out after {timeoutMs} ms waiting for elements: {filterDesc}"));
+                    "Timed out after " + timeoutMs + " ms waiting for elements: " + filterDesc));
         }
 
-        /// <summary>Find all matching descendants inside <paramref name="scopeElement"/>.</summary>
         public static object[] FindAllInScope(
             object scopeElement,
-            IDictionary<string, string> filters,
+            ParsedElementLocator parsed,
             int timeoutMs = OperationDefaults.TimeoutMs)
         {
             if (!ComElementHelper.IsValidElement(scopeElement))
                 throw new ArgumentNullException(nameof(scopeElement));
-            ValidateFilters(filters, idx: 0, requireIdx: false);
+            if (parsed == null)
+                throw new ArgumentNullException(nameof(parsed));
 
             OperationTimeout.Validate(timeoutMs, nameof(timeoutMs));
-            var filterDesc = DescribeFilters(filters);
+            var filterDesc = DescribeLocator(parsed);
 
             return OperationTimeout.WaitUntil(
                 timeoutMs,
-                () => TryFindAllInScope(scopeElement, filters),
+                PollIntervalMs,
+                () => TryFindAllInScope(scopeElement, parsed),
                 () => new TimeoutException(
-                    $"Timed out after {timeoutMs} ms waiting for elements in scope: {filterDesc}"));
+                    "Timed out after " + timeoutMs + " ms waiting for elements in scope: " + filterDesc));
         }
 
-        /// <summary>Find a descendant inside <paramref name="scopeElement"/> (not the whole document).</summary>
         public static object FindInScope(
             object scopeElement,
-            IDictionary<string, string> filters,
-            int idx,
+            ParsedElementLocator parsed,
             int timeoutMs = OperationDefaults.TimeoutMs)
         {
             if (!ComElementHelper.IsValidElement(scopeElement))
                 throw new ArgumentNullException(nameof(scopeElement));
-            ValidateFilters(filters, idx);
+            if (parsed == null)
+                throw new ArgumentNullException(nameof(parsed));
 
             OperationTimeout.Validate(timeoutMs, nameof(timeoutMs));
-            var filterDesc = DescribeFilters(filters);
+            var filterDesc = DescribeLocator(parsed);
 
             return OperationTimeout.WaitUntil(
                 timeoutMs,
-                () => TryFindInScope(scopeElement, filters, idx),
+                PollIntervalMs,
+                () => TryFindInScope(scopeElement, parsed),
                 () => new TimeoutException(
-                    $"Timed out after {timeoutMs} ms waiting for element in scope: {filterDesc}"));
+                    "Timed out after " + timeoutMs + " ms waiting for element in scope: " + filterDesc));
         }
 
-        private static void ValidateFilters(IDictionary<string, string> filters, int idx, bool requireIdx = true)
-        {
-            if (filters == null || filters.Count == 0)
-                throw new ArgumentException("No element filters provided.", nameof(filters));
-            if (requireIdx && idx < 0)
-                throw new ArgumentOutOfRangeException(nameof(idx));
-        }
-
-        /// <summary>Returns null if not found (no throw).</summary>
         internal static object TryFindOnce(
             IHTMLDocument2 document,
-            IDictionary<string, string> filters,
-            int idx)
+            ParsedElementLocator parsed)
         {
-            if (document == null)
+            if (document == null || parsed == null)
                 return null;
 
-            object fast;
-            if (TryFindByIdOnly(document, filters, idx, out fast))
-                return fast;
-
-            return PickMatch(EnumerateElements(document, filters), idx);
+            return PickMatch(LocateElements(document, parsed), parsed.ElementIdx);
         }
 
-        /// <summary>Returns null if not found under <paramref name="scopeElement"/> (no throw).</summary>
+        internal static object[] TryFindAll(IHTMLDocument2 document, ParsedElementLocator parsed)
+        {
+            if (document == null || parsed == null)
+                return null;
+
+            return ToArrayOrNull(LocateElements(document, parsed));
+        }
+
         internal static object TryFindOnceInScope(
             object scopeElement,
-            IDictionary<string, string> filters,
-            int idx)
+            ParsedElementLocator parsed)
         {
-            if (!ComElementHelper.IsValidElement(scopeElement))
+            if (!ComElementHelper.IsValidElement(scopeElement) || parsed == null)
                 return null;
 
-            return TryFindInScope(scopeElement, filters, idx);
+            return PickMatch(LocateElementsInScope(scopeElement, parsed), parsed.ElementIdx);
         }
 
-        /// <summary>Returns null if not found yet (no throw).</summary>
-        private static object TryFind(IHTMLDocument2 document, IDictionary<string, string> filters, int idx) =>
-            TryFindOnce(document, filters, idx);
+        private static object TryFind(IHTMLDocument2 document, ParsedElementLocator parsed) =>
+            PickMatch(LocateElements(document, parsed), parsed.ElementIdx);
 
-        private static object TryFindInScope(object scopeElement, IDictionary<string, string> filters, int idx)
+        private static object TryFindInScope(object scopeElement, ParsedElementLocator parsed) =>
+            PickMatch(LocateElementsInScope(scopeElement, parsed), parsed.ElementIdx);
+
+        private static object[] TryFindAllInScope(object scopeElement, ParsedElementLocator parsed) =>
+            ToArrayOrNull(LocateElementsInScope(scopeElement, parsed));
+
+        /// <summary>Python <c>_locate_elements</c>.</summary>
+        private static List<object> LocateElements(IHTMLDocument2 document, ParsedElementLocator parsed)
         {
-            return PickMatch(EnumerateElementsInScope(scopeElement, filters), idx);
-        }
-
-        private static object[] TryFindAll(IHTMLDocument2 document, IDictionary<string, string> filters)
-        {
-            object[] byId;
-            if (TryFindAllByIdOnly(document, filters, out byId))
-                return byId;
-
-            return ToArrayOrNull(EnumerateElements(document, filters));
-        }
-
-        private static object[] TryFindAllInScope(object scopeElement, IDictionary<string, string> filters)
-        {
-            return ToArrayOrNull(EnumerateElementsInScope(scopeElement, filters));
-        }
-
-        private static object[] ToArrayOrNull(IEnumerable<object> matches)
-        {
-            var list = new List<object>();
-            foreach (var el in matches)
-                list.Add(el);
-
-            return list.Count == 0 ? null : list.ToArray();
-        }
-
-        private static bool TryFindAllByIdOnly(
-            IHTMLDocument2 document,
-            IDictionary<string, string> filters,
-            out object[] elements)
-        {
-            elements = null;
-            if (filters.Count != 1)
-                return false;
-
             string id;
-            if (!filters.TryGetValue(ElementLocatorKeys.Id, out id) || string.IsNullOrEmpty(id))
-                return false;
-
-            try
+            if (parsed.Filters.TryGetValue(ElementLocatorKeys.Id, out id) && !string.IsNullOrEmpty(id))
             {
-                dynamic doc = document;
-                var element = doc.getElementById(id);
-                if (!ComElementHelper.IsValidElement(element))
-                    return true;
+                try
+                {
+                    dynamic doc = document;
+                    var candidate = doc.getElementById(id);
+                    if (ComElementHelper.IsValidElement(candidate) && MatchesLocator(candidate, parsed))
+                        return new List<object> { candidate };
+                }
+                catch
+                {
+                    // fall through
+                }
 
-                elements = new[] { element };
-                return true;
+                return new List<object>();
             }
-            catch
+
+            if (!string.IsNullOrWhiteSpace(parsed.CssSelector))
             {
-                return false;
+                return FilterMatches(QueryCss(document, parsed.CssSelector), parsed);
             }
+
+            if (!string.IsNullOrWhiteSpace(parsed.XPath))
+            {
+                return FilterMatches(QueryXPath(document, parsed.XPath), parsed);
+            }
+
+            return FilterMatches(IterateDocumentElements(document, GetTagFilter(parsed)), parsed);
         }
 
-        private static object PickMatch(IEnumerable<object> matches, int idx)
+        private static List<object> LocateElementsInScope(object scopeElement, ParsedElementLocator parsed)
         {
-            var list = new List<object>();
-            foreach (var el in matches)
-                list.Add(el);
-
-            if (list.Count <= idx)
-                return null;
-
-            return list[idx];
+            return FilterMatches(IterateCollection(scopeElement, GetTagFilter(parsed)), parsed);
         }
 
-        private static bool TryFindByIdOnly(IHTMLDocument2 document, IDictionary<string, string> filters, int idx, out object element)
+        private static List<object> FilterMatches(IEnumerable<object> candidates, ParsedElementLocator parsed)
         {
-            element = null;
-            if (idx != 0 || filters.Count != 1)
-                return false;
+            var matches = new List<object>();
+            if (candidates == null)
+                return matches;
 
-            string id;
-            if (!filters.TryGetValue(ElementLocatorKeys.Id, out id) || string.IsNullOrEmpty(id))
-                return false;
+            foreach (var el in candidates)
+            {
+                if (ComElementHelper.IsValidElement(el) && MatchesLocator(el, parsed))
+                    matches.Add(el);
+            }
 
-            try
-            {
-                dynamic doc = document;
-                element = doc.getElementById(id);
-                return ComElementHelper.IsValidElement(element);
-            }
-            catch
-            {
-                return false;
-            }
+            return matches;
         }
 
-        private static IEnumerable<object> EnumerateElements(IHTMLDocument2 document, IDictionary<string, string> filters)
+        private static string GetTagFilter(ParsedElementLocator parsed)
         {
+            string tag;
+            if (parsed.Filters.TryGetValue(ElementLocatorKeys.Tag, out tag) && !string.IsNullOrWhiteSpace(tag))
+                return tag.Trim();
+            return "*";
+        }
+
+        private static IEnumerable<object> QueryCss(IHTMLDocument2 document, string selector)
+        {
+            if (string.IsNullOrWhiteSpace(selector))
+                yield break;
+
             dynamic doc = document;
-            return EnumerateCollection(doc, filters);
-        }
-
-        private static IEnumerable<object> EnumerateElementsInScope(object scopeElement, IDictionary<string, string> filters)
-        {
-            dynamic root = scopeElement;
-            return EnumerateCollection(root, filters);
-        }
-
-        private static IEnumerable<object> EnumerateCollection(dynamic root, IDictionary<string, string> filters)
-        {
-            string tagFilter;
-            filters.TryGetValue(ElementLocatorKeys.Tag, out tagFilter);
-
-            dynamic collection;
-            if (!string.IsNullOrEmpty(tagFilter))
+            dynamic query;
+            try
             {
-                try { collection = root.getElementsByTagName(tagFilter); }
-                catch { yield break; }
+                query = doc.querySelectorAll;
             }
-            else
+            catch
+            {
+                yield break;
+            }
+
+            if (query == null)
+                yield break;
+
+            dynamic results;
+            try
+            {
+                results = query(selector);
+            }
+            catch
+            {
+                yield break;
+            }
+
+            if (results == null)
+                yield break;
+
+            int length;
+            try { length = (int)results.length; }
+            catch { yield break; }
+
+            for (int i = 0; i < length; i++)
+            {
+                object el;
+                try { el = results.item(i); }
+                catch { continue; }
+
+                if (ComElementHelper.IsValidElement(el))
+                    yield return el;
+            }
+        }
+
+        private static IEnumerable<object> QueryXPath(IHTMLDocument2 document, string xpath)
+        {
+            if (string.IsNullOrWhiteSpace(xpath))
+                yield break;
+
+            dynamic doc = document;
+            object docElement = null;
+            try { docElement = doc.documentElement; }
+            catch { /* ignore */ }
+
+            object found = null;
+            foreach (var owner in new[] { doc, docElement })
+            {
+                if (owner == null)
+                    continue;
+
+                try
+                {
+                    dynamic dyn = owner;
+                    var node = dyn.selectSingleNode(xpath);
+                    if (ComElementHelper.IsValidElement(node))
+                    {
+                        found = node;
+                        break;
+                    }
+                }
+                catch
+                {
+                    // try next owner
+                }
+            }
+
+            if (found != null)
+                yield return found;
+        }
+
+        private static IEnumerable<object> IterateDocumentElements(IHTMLDocument2 document, string tag) =>
+            IterateCollection(document, tag);
+
+        /// <summary>Python <c>_iter_document_elements</c>: tag via getElementsByTagName, fallback to <c>all</c>.</summary>
+        private static IEnumerable<object> IterateCollection(dynamic root, string tag)
+        {
+            if (root == null)
+                yield break;
+
+            tag = string.IsNullOrWhiteSpace(tag) ? "*" : tag.Trim();
+            dynamic collection = null;
+
+            try
+            {
+                collection = root.getElementsByTagName(tag);
+            }
+            catch
+            {
+                collection = null;
+            }
+
+            if (collection == null)
             {
                 try { collection = root.all; }
                 catch { yield break; }
@@ -264,38 +317,58 @@ namespace F2B.Browser.IExplore.Com
                 try { el = collection.item(i); }
                 catch { continue; }
 
-                if (!ComElementHelper.IsValidElement(el))
-                    continue;
-
-                if (ElementMatches(el, filters))
+                if (ComElementHelper.IsValidElement(el))
                     yield return el;
             }
         }
 
-        private static bool ElementMatches(object element, IDictionary<string, string> filters)
+        /// <summary>Python <c>_matches_locator</c>.</summary>
+        private static bool MatchesLocator(object element, ParsedElementLocator parsed)
         {
-            foreach (var kv in filters)
+            string tag;
+            if (parsed.Filters.TryGetValue(ElementLocatorKeys.Tag, out tag) && !string.IsNullOrEmpty(tag))
             {
-                if (kv.Key.Equals(ElementLocatorKeys.Id, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (!StringEquals(GetStringProp(element, "id"), kv.Value))
-                        return false;
-                    continue;
-                }
+                if (!StringEquals(GetStringProp(element, "tagName"), tag))
+                    return false;
+            }
 
-                if (kv.Key.Equals(ElementLocatorKeys.Tag, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (!StringEquals(GetStringProp(element, "tagName"), kv.Value))
-                        return false;
-                    continue;
-                }
+            string name;
+            if (parsed.Filters.TryGetValue(ElementLocatorKeys.Name, out name))
+            {
+                if (!StringEquals(GetStringProp(element, "name"), name))
+                    return false;
+            }
 
-                if (kv.Key.Equals(ElementLocatorKeys.Name, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (!StringEquals(GetStringProp(element, "name"), kv.Value))
-                        return false;
+            if (parsed.Filters.ContainsKey(ElementLocatorKeys.Id))
+            {
+                string id;
+                parsed.Filters.TryGetValue(ElementLocatorKeys.Id, out id);
+                if (!StringEquals(GetStringProp(element, "id"), id))
+                    return false;
+            }
+
+            if (parsed.Text != null)
+            {
+                if (ElementText(element).Trim() != parsed.Text.Trim())
+                    return false;
+            }
+
+            if (parsed.TextContains != null)
+            {
+                if (ElementText(element).IndexOf(parsed.TextContains, StringComparison.Ordinal) < 0)
+                    return false;
+            }
+
+            if (!string.IsNullOrEmpty(parsed.TextRe))
+            {
+                if (!Regex.IsMatch(ElementText(element), parsed.TextRe))
+                    return false;
+            }
+
+            foreach (var kv in parsed.Filters)
+            {
+                if (IsReservedFilterKey(kv.Key))
                     continue;
-                }
 
                 if (kv.Key.Equals(ElementLocatorKeys.Class, StringComparison.OrdinalIgnoreCase))
                 {
@@ -309,7 +382,64 @@ namespace F2B.Browser.IExplore.Com
                     return false;
             }
 
+            if (parsed.Attrs != null)
+            {
+                foreach (var kv in parsed.Attrs)
+                {
+                    var actual = GetAttribute(element, kv.Key);
+                    if (!StringEquals(actual, kv.Value))
+                        return false;
+                }
+            }
+
             return true;
+        }
+
+        private static bool IsReservedFilterKey(string key) =>
+            key.Equals(ElementLocatorKeys.Id, StringComparison.OrdinalIgnoreCase)
+            || key.Equals(ElementLocatorKeys.Tag, StringComparison.OrdinalIgnoreCase)
+            || key.Equals(ElementLocatorKeys.Name, StringComparison.OrdinalIgnoreCase)
+            || key.Equals(ElementLocatorKeys.Class, StringComparison.OrdinalIgnoreCase);
+
+        private static string ElementText(object element)
+        {
+            foreach (var prop in new[] { "value", "innerText", "textContent", "outerText", "innerHTML" })
+            {
+                try
+                {
+                    dynamic el = element;
+                    switch (prop)
+                    {
+                        case "value":
+                            return (string)el.value ?? string.Empty;
+                        case "innerText":
+                            return (string)el.innerText ?? string.Empty;
+                        case "textContent":
+                            return (string)el.textContent ?? string.Empty;
+                        case "outerText":
+                            return (string)el.outerText ?? string.Empty;
+                        case "innerHTML":
+                            return (string)el.innerHTML ?? string.Empty;
+                    }
+                }
+                catch
+                {
+                    // try next
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private static object[] ToArrayOrNull(List<object> matches) =>
+            matches == null || matches.Count == 0 ? null : matches.ToArray();
+
+        private static object PickMatch(List<object> matches, int idx)
+        {
+            if (matches == null || matches.Count <= idx)
+                return null;
+
+            return matches[idx];
         }
 
         private static bool ClassMatches(string className, string expected)
@@ -365,14 +495,26 @@ namespace F2B.Browser.IExplore.Com
         private static bool StringEquals(string a, string b) =>
             string.Equals(a ?? string.Empty, b ?? string.Empty, StringComparison.OrdinalIgnoreCase);
 
-        private static string DescribeFilters(IDictionary<string, string> filters)
+        private static string DescribeLocator(ParsedElementLocator parsed)
         {
             var sb = new StringBuilder();
-            foreach (var kv in filters)
+            foreach (var kv in parsed.Filters)
             {
                 if (sb.Length > 0) sb.Append(", ");
                 sb.Append(kv.Key).Append('=').Append(kv.Value);
             }
+
+            if (!string.IsNullOrEmpty(parsed.CssSelector))
+                sb.Append(", css_selector=").Append(parsed.CssSelector);
+            if (!string.IsNullOrEmpty(parsed.XPath))
+                sb.Append(", xpath=").Append(parsed.XPath);
+            if (parsed.Text != null)
+                sb.Append(", text=").Append(parsed.Text);
+            if (parsed.TextContains != null)
+                sb.Append(", text_contains=").Append(parsed.TextContains);
+            if (!string.IsNullOrEmpty(parsed.TextRe))
+                sb.Append(", text_re=").Append(parsed.TextRe);
+
             return sb.ToString();
         }
     }

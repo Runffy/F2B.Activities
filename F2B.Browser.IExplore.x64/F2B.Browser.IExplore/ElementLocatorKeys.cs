@@ -11,6 +11,24 @@ namespace F2B.Browser.IExplore
         public const string Class = "class";
         public const string Name = "name";
 
+        /// <summary>CSS selector (<c>querySelectorAll</c>), aligned with Python <c>css_selector</c>.</summary>
+        public const string CssSelector = "css_selector";
+
+        /// <summary>XPath (<c>selectSingleNode</c>), aligned with Python <c>xpath</c>.</summary>
+        public const string XPath = "xpath";
+
+        /// <summary>Exact element text match (innerText/value/etc.).</summary>
+        public const string Text = "text";
+
+        /// <summary>Element text substring match.</summary>
+        public const string TextContains = "text_contains";
+
+        /// <summary>Element text regex match.</summary>
+        public const string TextRe = "text_re";
+
+        /// <summary>Nested attribute expectations: <c>{ "attrs": { "data-x": "1" } }</c>.</summary>
+        public const string Attrs = "attrs";
+
         /// <summary>HTML <c>value</c> attribute filter (radio, input, etc.). Not Select option or Input text.</summary>
         public const string Value = "value";
 

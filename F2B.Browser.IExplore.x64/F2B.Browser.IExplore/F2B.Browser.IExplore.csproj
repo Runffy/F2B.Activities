@@ -62,6 +62,7 @@
     <Compile Include="Com\ComElementHelper.cs" />
     <Compile Include="Com\IeHostWindow.cs" />
     <Compile Include="Com\StaInvoker.cs" />
+    <Compile Include="Com\IeLocateRetry.cs" />
     <Compile Include="Com\IeLauncher.cs" />
     <Compile Include="Com\IeSecurityConfigurator.cs" />
     <Compile Include="Com\HtmlDocumentHelper.cs" />

@@ -13,9 +13,16 @@ namespace F2B.Browser.IExplore.Com
         }
 
         public static T WaitUntil<T>(int timeoutMs, Func<T> tryGet, Func<TimeoutException> onTimeout)
+            where T : class =>
+            WaitUntil(timeoutMs, 150, tryGet, onTimeout);
+
+        public static T WaitUntil<T>(int timeoutMs, int intervalMs, Func<T> tryGet, Func<TimeoutException> onTimeout)
             where T : class
         {
             Validate(timeoutMs, "timeout");
+            if (intervalMs < 0)
+                throw new ArgumentOutOfRangeException(nameof(intervalMs));
+
             var sw = Stopwatch.StartNew();
             while (true)
             {
@@ -26,7 +33,8 @@ namespace F2B.Browser.IExplore.Com
                 if (sw.ElapsedMilliseconds >= timeoutMs)
                     throw onTimeout();
 
-                Thread.Sleep(150);
+                if (intervalMs > 0)
+                    Thread.Sleep(intervalMs);
             }
         }
     }

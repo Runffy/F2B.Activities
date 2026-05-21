@@ -29,6 +29,12 @@ namespace F2B.Browser.IExplore.Com
         public ClickMode Mode { get; set; }
         public int ClickIntervalMs { get; set; } = 100;
         public IList<SelectCriterion> SelectCriteria { get; set; }
+        public string CssSelector { get; set; }
+        public string XPath { get; set; }
+        public string Text { get; set; }
+        public string TextContains { get; set; }
+        public string TextRe { get; set; }
+        public Dictionary<string, string> Attrs { get; set; }
     }
 
     internal static class ElementLocatorParse
@@ -51,6 +57,16 @@ namespace F2B.Browser.IExplore.Com
             ElementLocatorKeys.SelectOptionText,
             ElementLocatorKeys.SelectOptionValue,
             ElementLocatorKeys.SelectOptionIndex
+        };
+
+        private static readonly HashSet<string> DedicatedLocatorKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ElementLocatorKeys.CssSelector,
+            ElementLocatorKeys.XPath,
+            ElementLocatorKeys.Text,
+            ElementLocatorKeys.TextContains,
+            ElementLocatorKeys.TextRe,
+            ElementLocatorKeys.Attrs
         };
 
         /// <summary>Removes namespaced operation keys so find/exists only use element filters.</summary>
@@ -78,6 +94,7 @@ namespace F2B.Browser.IExplore.Com
             var parsed = new ParsedElementLocator
             {
                 Filters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                Attrs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
                 Button = MouseButton.Left,
                 Mode = ClickMode.Synthetic,
                 SelectCriteria = new List<SelectCriterion>()
@@ -113,14 +130,24 @@ namespace F2B.Browser.IExplore.Com
                 if (TryParseSelectKey(key, kv.Value, operation, ref optionText, ref optionValue, ref optionIndex))
                     continue;
 
+                if (TryParseDedicatedLocatorKey(key, kv.Value, parsed))
+                    continue;
+
                 if (FilterKeys.Contains(key))
                     parsed.Filters[key] = ToString(kv.Value);
                 else
                     parsed.Filters[key] = ToString(kv.Value);
             }
 
-            if (parsed.Filters.Count == 0)
-                throw new ArgumentException("Locator must include at least one element filter (id, tag, class, name, or attribute).", nameof(locator));
+            if (parsed.Filters.Count == 0
+                && string.IsNullOrEmpty(parsed.CssSelector)
+                && string.IsNullOrEmpty(parsed.XPath)
+                && parsed.Attrs.Count == 0)
+            {
+                throw new ArgumentException(
+                    "Locator must include at least one element filter (id, tag, class, name, css_selector, xpath, attrs, or attribute).",
+                    nameof(locator));
+            }
 
             if (operation == LocatorOperation.Input && string.IsNullOrEmpty(parsed.InputValue))
             {
@@ -283,6 +310,73 @@ namespace F2B.Browser.IExplore.Com
         }
 
         private static string ToString(object raw) => raw == null ? string.Empty : raw.ToString();
+
+        private static bool TryParseDedicatedLocatorKey(string key, object value, ParsedElementLocator parsed)
+        {
+            if (!DedicatedLocatorKeys.Contains(key))
+                return false;
+
+            if (key.Equals(ElementLocatorKeys.CssSelector, StringComparison.OrdinalIgnoreCase))
+            {
+                parsed.CssSelector = ToString(value);
+                return true;
+            }
+
+            if (key.Equals(ElementLocatorKeys.XPath, StringComparison.OrdinalIgnoreCase))
+            {
+                parsed.XPath = ToString(value);
+                return true;
+            }
+
+            if (key.Equals(ElementLocatorKeys.Text, StringComparison.OrdinalIgnoreCase))
+            {
+                parsed.Text = ToString(value);
+                return true;
+            }
+
+            if (key.Equals(ElementLocatorKeys.TextContains, StringComparison.OrdinalIgnoreCase))
+            {
+                parsed.TextContains = ToString(value);
+                return true;
+            }
+
+            if (key.Equals(ElementLocatorKeys.TextRe, StringComparison.OrdinalIgnoreCase))
+            {
+                parsed.TextRe = ToString(value);
+                return true;
+            }
+
+            if (key.Equals(ElementLocatorKeys.Attrs, StringComparison.OrdinalIgnoreCase))
+            {
+                ParseAttrs(value, parsed.Attrs);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void ParseAttrs(object raw, IDictionary<string, string> target)
+        {
+            if (raw == null)
+                return;
+
+            if (raw is IDictionary<string, object> dictObj)
+            {
+                foreach (var kv in dictObj)
+                    target[kv.Key] = ToString(kv.Value);
+                return;
+            }
+
+            if (raw is IDictionary dict)
+            {
+                foreach (DictionaryEntry kv in dict)
+                {
+                    if (kv.Key == null)
+                        continue;
+                    target[kv.Key.ToString()] = ToString(kv.Value);
+                }
+            }
+        }
 
         /// <summary>Click meta keys apply only to <see cref="LocatorOperation.Click"/>.</summary>
         private static bool TryParseClickKey(
