@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{C55E2F28-1B31-41BD-81BF-67C37F152951}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>F2B.Browser.IExplore</RootNamespace>
+    <AssemblyName>F2B.Browser.IExplore.x64</AssemblyName>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Activities" />
+    <Reference Include="System.Activities.Presentation" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="IeBaseOn.cs" />
+    <Compile Include="IeAutomation.cs" />
+    <Compile Include="EmbeddedIExplore.cs" />
+    <Compile Include="EmbeddedIEWindow.cs" />
+    <Compile Include="IEHtmlElement.cs" />
+    <Compile Include="IELocator.cs" />
+    <Compile Include="ElementLocatorKeys.cs" />
+    <Compile Include="MarkedElementIds.cs" />
+    <Compile Include="FrameLocatorKeys.cs" />
+    <Compile Include="ParallelFindElementResult.cs" />
+    <Compile Include="IeScriptResult.cs" />
+    <Compile Include="OperationDefaults.cs" />
+    <Compile Include="IEConnectCriteria.cs" />
+    <Compile Include="TridentWindowInfo.cs" />
+    <Compile Include="Com\ITridentDomHost.cs" />
+    <Compile Include="Com\ComSafe.cs" />
+    <Compile Include="Com\ComElementHelper.cs" />
+    <Compile Include="Com\IeHostWindow.cs" />
+    <Compile Include="Com\StaInvoker.cs" />
+    <Compile Include="Com\IeLauncher.cs" />
+    <Compile Include="Com\IeSecurityConfigurator.cs" />
+    <Compile Include="Com\HtmlDocumentHelper.cs" />
+    <Compile Include="Com\MsHtmlInterop.cs" />
+    <Compile Include="Com\ShDocVwHelper.cs" />
+    <Compile Include="Com\ElementLocatorParse.cs" />
+    <Compile Include="Com\FramePathParse.cs" />
+    <Compile Include="Com\ElementLocatorOptions.cs" />
+    <Compile Include="Com\HtmlElementDomHelper.cs" />
+    <Compile Include="Com\HtmlFrameHelper.cs" />
+    <Compile Include="Com\HtmlElementFinder.cs" />
+    <Compile Include="Com\HtmlElementActions.cs" />
+    <Compile Include="Com\IeScriptHelper.cs" />
+    <Compile Include="Com\IeScriptExecute.cs" />
+    <Compile Include="Com\OperationTimeout.cs" />
+    <Compile Include="Com\IEJsonParse.cs" />
+    <Compile Include="Native\MouseInputHelper.cs" />
+    <Compile Include="Native\Win32Native.cs" />
+    <Compile Include="Activities\ActivityArgumentHelper.cs" />
+    <Compile Include="Activities\TimeoutBudget.cs" />
+    <Compile Include="Activities\IeLocatorHelper.cs" />
+    <Compile Include="Activities\Element\ElementTargetActivityBase.cs" />
+    <Compile Include="Activities\Element\ClickActivity.cs" />
+    <Compile Include="Activities\Element\DoubleClickActivity.cs" />
+    <Compile Include="Activities\Element\InputActivity.cs" />
+    <Compile Include="Activities\Element\CheckActivity.cs" />
+    <Compile Include="Activities\Element\UncheckActivity.cs" />
+    <Compile Include="Activities\Element\IsCheckedActivity.cs" />
+    <Compile Include="Activities\Element\SelectActivity.cs" />
+    <Compile Include="Activities\Element\GetTextActivity.cs" />
+    <Compile Include="Activities\Element\GetValueActivity.cs" />
+    <Compile Include="Activities\Element\GetAttributeActivity.cs" />
+    <Compile Include="Activities\Element\SetAttributeActivity.cs" />
+    <Compile Include="Activities\Common\FindElementActivity.cs" />
+    <Compile Include="Activities\Common\ElementExistsActivity.cs" />
+    <Compile Include="Activities\Common\FindElementsActivity.cs" />
+    <Compile Include="Activities\Common\ParallelFindElementActivity.cs" />
+    <Compile Include="Activities\Common\RunJsActivity.cs" />
+    <Compile Include="Activities\Designers\IeFindElementActivityDesigner.cs" />
+    <Compile Include="Activities\Designers\IeRunJsActivityDesigner.cs" />
+    <Compile Include="Activities\Window\FindWindowActivity.cs" />
+    <Compile Include="Activities\Window\OpenIExploreActivity.cs" />
+    <Compile Include="Activities\Window\NavigateUrlActivity.cs" />
+    <Compile Include="Activities\Window\RefreshActivity.cs" />
+    <Compile Include="Activities\Window\WaitForFrameActivity.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
