@@ -5,7 +5,7 @@ using System.ComponentModel;
 namespace F2B.Browser.IExplore
 {
     [DisplayName("Find Elements")]
-    [Description("Find all elements matching locator filters (idx ignored).")]
+    [Description("Instantly find all elements matching locator filters (idx ignored). No timeout — use Find Element to wait.")]
     public sealed class FindElementsActivity : CodeActivity
     {
         [DisplayName("IE Window")]
@@ -26,11 +26,6 @@ namespace F2B.Browser.IExplore
         [Category("Input")]
         public InArgument<string> FramePath { get; set; }
 
-        [DisplayName("Timeout (ms)")]
-        [Category("Input")]
-        [DefaultValue(15000)]
-        public InArgument<int> Timeout { get; set; } = 15000;
-
         [DisplayName("Elements Result")]
         [Category("Output")]
         public OutArgument<IEHtmlElement[]> ElementsResult { get; set; }
@@ -45,12 +40,11 @@ namespace F2B.Browser.IExplore
                 IeLocatorHelper.GetSelector(context, Selector),
                 IeLocatorHelper.GetFramePath(context, FramePath));
 
-            var timeout = ActivityArgumentHelper.GetOrDefault(Timeout, context, OperationDefaults.TimeoutMs);
             var parent = ParentObject == null ? null : ParentObject.Get(context);
 
             IEHtmlElement[] found = parent == null
-                ? window.FindElements(locator, timeout)
-                : window.FindElements(locator, parent, timeout);
+                ? window.FindElements(locator)
+                : window.FindElements(locator, parent);
 
             ElementsResult?.Set(context, found);
         }

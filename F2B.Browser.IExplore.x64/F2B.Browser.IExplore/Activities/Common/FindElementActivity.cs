@@ -5,7 +5,7 @@ using System.ComponentModel;
 namespace F2B.Browser.IExplore
 {
     [DisplayName("Find Element")]
-    [Description("Find a single element by JSON locator.")]
+    [Description("Find a single element by JSON locator. Returns as soon as a match exists (timeout is a maximum wait).")]
     [Designer(typeof(IeFindElementActivityDesigner))]
     public sealed class FindElementActivity : CodeActivity
     {

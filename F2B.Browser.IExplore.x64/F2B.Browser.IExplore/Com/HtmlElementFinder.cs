@@ -32,47 +32,13 @@ namespace F2B.Browser.IExplore.Com
                     "Timed out after " + timeoutMs + " ms waiting for element: " + filterDesc));
         }
 
-        public static object[] FindAll(
-            IHTMLDocument2 document,
-            ParsedElementLocator parsed,
-            int timeoutMs = OperationDefaults.TimeoutMs)
-        {
-            if (document == null)
-                throw new ArgumentNullException(nameof(document));
-            if (parsed == null)
-                throw new ArgumentNullException(nameof(parsed));
+        /// <summary>Instant snapshot of all current matches (no wait). Empty array if none.</summary>
+        public static object[] FindAll(IHTMLDocument2 document, ParsedElementLocator parsed) =>
+            TryFindAll(document, parsed);
 
-            OperationTimeout.Validate(timeoutMs, nameof(timeoutMs));
-            var filterDesc = DescribeLocator(parsed);
-
-            return OperationTimeout.WaitUntil(
-                timeoutMs,
-                PollIntervalMs,
-                () => TryFindAll(document, parsed),
-                () => new TimeoutException(
-                    "Timed out after " + timeoutMs + " ms waiting for elements: " + filterDesc));
-        }
-
-        public static object[] FindAllInScope(
-            object scopeElement,
-            ParsedElementLocator parsed,
-            int timeoutMs = OperationDefaults.TimeoutMs)
-        {
-            if (!ComElementHelper.IsValidElement(scopeElement))
-                throw new ArgumentNullException(nameof(scopeElement));
-            if (parsed == null)
-                throw new ArgumentNullException(nameof(parsed));
-
-            OperationTimeout.Validate(timeoutMs, nameof(timeoutMs));
-            var filterDesc = DescribeLocator(parsed);
-
-            return OperationTimeout.WaitUntil(
-                timeoutMs,
-                PollIntervalMs,
-                () => TryFindAllInScope(scopeElement, parsed),
-                () => new TimeoutException(
-                    "Timed out after " + timeoutMs + " ms waiting for elements in scope: " + filterDesc));
-        }
+        /// <summary>Instant snapshot under <paramref name="scopeElement"/> (no wait). Empty array if none.</summary>
+        public static object[] FindAllInScope(object scopeElement, ParsedElementLocator parsed) =>
+            TryFindAllInScope(scopeElement, parsed);
 
         public static object FindInScope(
             object scopeElement,
@@ -108,9 +74,10 @@ namespace F2B.Browser.IExplore.Com
         internal static object[] TryFindAll(IHTMLDocument2 document, ParsedElementLocator parsed)
         {
             if (document == null || parsed == null)
-                return null;
+                return new object[0];
 
-            return ToArrayOrNull(LocateElements(document, parsed));
+            var matches = LocateElements(document, parsed);
+            return matches == null || matches.Count == 0 ? new object[0] : matches.ToArray();
         }
 
         internal static object TryFindOnceInScope(
@@ -129,8 +96,14 @@ namespace F2B.Browser.IExplore.Com
         private static object TryFindInScope(object scopeElement, ParsedElementLocator parsed) =>
             PickMatch(LocateElementsInScope(scopeElement, parsed), parsed.ElementIdx);
 
-        private static object[] TryFindAllInScope(object scopeElement, ParsedElementLocator parsed) =>
-            ToArrayOrNull(LocateElementsInScope(scopeElement, parsed));
+        internal static object[] TryFindAllInScope(object scopeElement, ParsedElementLocator parsed)
+        {
+            if (!ComElementHelper.IsValidElement(scopeElement) || parsed == null)
+                return new object[0];
+
+            var matches = LocateElementsInScope(scopeElement, parsed);
+            return matches == null || matches.Count == 0 ? new object[0] : matches.ToArray();
+        }
 
         /// <summary>Python <c>_locate_elements</c>.</summary>
         private static List<object> LocateElements(IHTMLDocument2 document, ParsedElementLocator parsed)
@@ -142,8 +115,13 @@ namespace F2B.Browser.IExplore.Com
                 {
                     dynamic doc = document;
                     var candidate = doc.getElementById(id);
-                    if (ComElementHelper.IsValidElement(candidate) && MatchesLocator(candidate, parsed))
-                        return new List<object> { candidate };
+                    if (ComElementHelper.IsValidElement(candidate))
+                    {
+                        if (MatchesLocator(candidate, parsed))
+                            return new List<object> { candidate };
+
+                        Console.WriteLine("C#getElementById('" + id + "') 命中但过滤条件不符");
+                    }
                 }
                 catch
                 {

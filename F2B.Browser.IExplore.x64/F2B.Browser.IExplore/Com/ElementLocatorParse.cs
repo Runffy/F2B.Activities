@@ -118,7 +118,8 @@ namespace F2B.Browser.IExplore.Com
                 }
 
                 if (operation == LocatorOperation.Input
-                    && key.Equals(ElementLocatorKeys.InputText, StringComparison.OrdinalIgnoreCase))
+                    && (key.Equals(ElementLocatorKeys.InputText, StringComparison.OrdinalIgnoreCase)
+                        || key.Equals(ElementLocatorKeys.Value, StringComparison.OrdinalIgnoreCase)))
                 {
                     parsed.InputValue = ToString(kv.Value);
                     continue;

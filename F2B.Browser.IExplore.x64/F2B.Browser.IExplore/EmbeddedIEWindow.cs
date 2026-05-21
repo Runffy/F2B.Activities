@@ -106,13 +106,12 @@ namespace F2B.Browser.IExplore
                 null,
                 timeout);
 
-        internal IEHtmlElement[] FindElementsLocal(IELocator locator, int timeout = OperationDefaults.TimeoutMs) =>
+        internal IEHtmlElement[] FindElementsLocal(IELocator locator) =>
             HtmlElementActions.FindElements(
                 this,
                 locator.ParseElement(),
                 locator.ParseFramePath(),
-                null,
-                timeout);
+                null);
 
         public IEHtmlElement FindElement(
             IELocator locator,
@@ -149,7 +148,7 @@ namespace F2B.Browser.IExplore
         internal bool ElementExistsLocal(IELocator locator) =>
             HtmlElementActions.ElementExists(this, locator.ParseElement(), locator.ParseFramePath(), null);
 
-        public IEHtmlElement[] FindElements(IELocator locator, int timeout = OperationDefaults.TimeoutMs) =>
+        public IEHtmlElement[] FindElements(IELocator locator) =>
             Dom(() =>
             {
                 if (locator == null)
@@ -159,14 +158,10 @@ namespace F2B.Browser.IExplore
                     this,
                     locator.ParseElement(),
                     locator.ParseFramePath(),
-                    null,
-                    timeout);
+                    null);
             });
 
-        public IEHtmlElement[] FindElements(
-            IELocator locator,
-            IEHtmlElement scope,
-            int timeout = OperationDefaults.TimeoutMs) =>
+        public IEHtmlElement[] FindElements(IELocator locator, IEHtmlElement scope) =>
             Dom(() =>
             {
                 if (locator == null)
@@ -176,8 +171,7 @@ namespace F2B.Browser.IExplore
                     this,
                     locator.ParseElement(),
                     null,
-                    scope,
-                    timeout);
+                    scope);
             });
 
         public ParallelFindElementResult ParallelFindElement(

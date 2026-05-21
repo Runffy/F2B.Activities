@@ -24,17 +24,17 @@ namespace F2B.Browser.IExplore.Com
             return IEHtmlElement.From(raw);
         }
 
+        /// <summary>Instant snapshot of all matches (no timeout / no poll). Returns empty array if none.</summary>
         public static IEHtmlElement[] FindElements(
             ITridentDomHost window,
             IDictionary<string, object> element,
             IList<IDictionary<string, object>> framePath,
-            IEHtmlElement scope,
-            int timeout)
+            IEHtmlElement scope)
         {
             var findDict = CloneLocatorDictionary(element);
             ElementLocatorParse.StripOperationMetadata(findDict);
             var parsed = ElementLocatorParse.Parse(findDict, LocatorOperation.Element);
-            var raws = FindRawElements(window, parsed, framePath, scope, timeout);
+            var raws = FindRawElements(window, parsed, framePath, scope);
             var result = new IEHtmlElement[raws.Length];
             for (int i = 0; i < raws.Length; i++)
                 result[i] = IEHtmlElement.From(raws[i]);
@@ -231,7 +231,11 @@ namespace F2B.Browser.IExplore.Com
             int timeout)
         {
             Console.WriteLine("C#开始查找元素");
-            var options = ElementLocatorOptions.Parse(element, forInput: true);
+            var findDict = CloneLocatorDictionary(element);
+            ElementLocatorParse.StripOperationMetadata(findDict);
+            var options = ElementLocatorOptions.Parse(findDict, forInput: true);
+            Console.WriteLine("C#定位策略: " + DescribeLocateStrategy(options.Parsed)
+                + (framePath != null && framePath.Count > 0 ? ", framePath=" + framePath.Count + "段" : ", framePath=根文档"));
             var raw = FindRawElement(window, options, framePath, null, timeout);
             Console.WriteLine("C#查找元素完成，开始input");
             SetValue(raw, options.Value);
@@ -386,6 +390,7 @@ namespace F2B.Browser.IExplore.Com
             }
 
             Exception lastError = null;
+            IHTMLDocument2 cachedDoc = null;
             return OperationTimeout.WaitUntil(
                 timeout,
                 HtmlElementFinder.PollIntervalMs,
@@ -393,13 +398,16 @@ namespace F2B.Browser.IExplore.Com
                 {
                     try
                     {
-                        var doc = TryResolveFrameDocument(window, framePath);
-                        var raw = HtmlElementFinder.TryFindOnce(doc, parsed);
+                        if (cachedDoc == null)
+                            cachedDoc = TryResolveFrameDocument(window, framePath);
+
+                        var raw = HtmlElementFinder.TryFindOnce(cachedDoc, parsed);
                         return ComElementHelper.IsValidElement(raw) ? raw : null;
                     }
                     catch (Exception ex) when (IeLocateRetry.IsRetryable(ex))
                     {
                         lastError = ex;
+                        cachedDoc = null;
                         IeLocateRetry.RefreshDom(window);
                         return null;
                     }
@@ -409,43 +417,42 @@ namespace F2B.Browser.IExplore.Com
                     + (lastError?.Message ?? "no match")));
         }
 
+        private static string DescribeLocateStrategy(ParsedElementLocator parsed)
+        {
+            if (parsed == null)
+                return "unknown";
+
+            string id;
+            if (parsed.Filters.TryGetValue(ElementLocatorKeys.Id, out id) && !string.IsNullOrEmpty(id))
+                return "getElementById('" + id + "')+校验";
+
+            if (!string.IsNullOrWhiteSpace(parsed.CssSelector))
+                return "css_selector=" + parsed.CssSelector;
+
+            if (!string.IsNullOrWhiteSpace(parsed.XPath))
+                return "xpath";
+
+            string tag;
+            parsed.Filters.TryGetValue(ElementLocatorKeys.Tag, out tag);
+            return "扫描 getElementsByTagName('" + (string.IsNullOrWhiteSpace(tag) ? "*" : tag) + "')（慢）";
+        }
+
         private static object[] FindRawElements(
             ITridentDomHost window,
             ParsedElementLocator parsed,
             IList<IDictionary<string, object>> framePath,
-            IEHtmlElement scope,
-            int timeout)
+            IEHtmlElement scope)
         {
             if (scope != null)
             {
                 if (framePath != null && framePath.Count > 0)
                     throw new ArgumentException("framePath cannot be used with a scope element.", nameof(framePath));
 
-                return HtmlElementFinder.FindAllInScope(IEHtmlElement.Unwrap(scope), parsed, timeout);
+                return HtmlElementFinder.FindAllInScope(IEHtmlElement.Unwrap(scope), parsed);
             }
 
-            Exception lastError = null;
-            return OperationTimeout.WaitUntil(
-                timeout,
-                HtmlElementFinder.PollIntervalMs,
-                () =>
-                {
-                    try
-                    {
-                        var doc = TryResolveFrameDocument(window, framePath);
-                        var raws = HtmlElementFinder.TryFindAll(doc, parsed);
-                        return raws;
-                    }
-                    catch (Exception ex) when (IeLocateRetry.IsRetryable(ex))
-                    {
-                        lastError = ex;
-                        IeLocateRetry.RefreshDom(window);
-                        return null;
-                    }
-                },
-                () => new TimeoutException(
-                    "Timed out after " + timeout + " ms waiting for elements: "
-                    + (lastError?.Message ?? "no match")));
+            var doc = TryResolveFrameDocument(window, framePath);
+            return HtmlElementFinder.TryFindAll(doc, parsed);
         }
 
         private static IHTMLDocument2 TryResolveFrameDocument(
