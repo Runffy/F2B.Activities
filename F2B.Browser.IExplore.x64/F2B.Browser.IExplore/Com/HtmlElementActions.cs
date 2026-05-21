@@ -232,7 +232,7 @@ namespace F2B.Browser.IExplore.Com
         {
             Console.WriteLine("C#开始查找元素");
             var findDict = CloneLocatorDictionary(element);
-            ElementLocatorParse.StripOperationMetadata(findDict);
+            // Parse before stripping: activity Value is merged as F2B.Browser.IExplore.value and must stay for InputValue.
             var options = ElementLocatorOptions.Parse(findDict, forInput: true);
             Console.WriteLine("C#定位策略: " + DescribeLocateStrategy(options.Parsed)
                 + (framePath != null && framePath.Count > 0 ? ", framePath=" + framePath.Count + "段" : ", framePath=根文档"));

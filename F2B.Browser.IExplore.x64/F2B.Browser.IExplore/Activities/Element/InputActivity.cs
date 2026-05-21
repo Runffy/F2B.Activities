@@ -16,14 +16,15 @@ namespace F2B.Browser.IExplore
         {
             var window = GetWindow(context);
             var timeout = ActivityArgumentHelper.GetOrDefault(Timeout, context, OperationDefaults.TimeoutMs);
-            var text = Value != null && Value.Expression != null ? Value.Get(context) : null;
+            var hasValue = Value != null && Value.Expression != null;
+            var text = hasValue ? (Value.Get(context) ?? string.Empty) : null;
 
             if (TargetType == IeElementTargetType.Element)
             {
                 var element = ResolveTargetElement(context);
                 window.Input(element, text ?? string.Empty, timeout);
             }
-            else if (text != null)
+            else if (hasValue)
             {
                 window.Input(ResolveLocator(context), text, timeout);
             }
