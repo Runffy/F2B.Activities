@@ -7,6 +7,23 @@ namespace F2B.Browser.IExplore.Com
     /// <summary>Fast MSHTML queries (typed COM + IE fallbacks).</summary>
     internal static class HtmlDomQuery
     {
+        /// <summary>Document Mode 5 / Edge IE Mode: typed <see cref="IHTMLDocument2.getElementById"/> may return null; dynamic matches IEChooser.</summary>
+        public static object TryGetElementById(IHTMLDocument2 document, string id)
+        {
+            if (document == null || string.IsNullOrEmpty(id))
+                return null;
+
+            try
+            {
+                dynamic d = document;
+                return d.getElementById(id);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public static List<object> CollectByName(IHTMLDocument2 document, string name)
         {
             var hits = new List<object>();

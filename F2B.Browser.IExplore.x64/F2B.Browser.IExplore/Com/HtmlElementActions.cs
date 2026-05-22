@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using F2B.Browser.IExplore;
@@ -235,7 +236,8 @@ namespace F2B.Browser.IExplore.Com
             // Parse before stripping: activity Value is merged as F2B.Browser.IExplore.value and must stay for InputValue.
             var options = ElementLocatorOptions.Parse(findDict, forInput: true);
             Console.WriteLine("C#Input查找开始: " + DescribeLocateStrategy(options.Parsed)
-                + DescribeFramePathHint(framePath));
+                + DescribeFramePathHint(framePath)
+                + ", filters=" + DescribeLocatorFilters(options.Parsed));
             var raw = FindRawElement(window, options, framePath, null, timeout);
             Console.WriteLine("C#Input查找结束，开始input");
             SetValue(raw, options.Value);
@@ -500,6 +502,22 @@ namespace F2B.Browser.IExplore.Com
             framePath == null || framePath.Count == 0
                 ? ", frame=根文档"
                 : ", frame=" + framePath.Count + "段";
+
+        private static string DescribeLocatorFilters(ParsedElementLocator parsed)
+        {
+            if (parsed?.Filters == null || parsed.Filters.Count == 0)
+                return "(无)";
+
+            var sb = new StringBuilder();
+            foreach (var kv in parsed.Filters)
+            {
+                if (sb.Length > 0)
+                    sb.Append(';');
+                sb.Append(kv.Key).Append('=').Append(kv.Value);
+            }
+
+            return sb.ToString();
+        }
 
         /// <summary>Resolve document for locate; returns null when frame is not ready yet (poll again).</summary>
         private static IHTMLDocument2 TryGetDocumentForLocate(

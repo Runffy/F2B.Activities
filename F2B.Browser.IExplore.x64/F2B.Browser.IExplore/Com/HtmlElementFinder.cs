@@ -111,20 +111,18 @@ namespace F2B.Browser.IExplore.Com
             string id;
             if (parsed.Filters.TryGetValue(ElementLocatorKeys.Id, out id) && !string.IsNullOrEmpty(id))
             {
-                try
+                var candidate = HtmlDomQuery.TryGetElementById(document, id);
+                if (ComElementHelper.IsValidElement(candidate))
                 {
-                    var candidate = document.getElementById(id);
-                    if (ComElementHelper.IsValidElement(candidate))
-                    {
-                        if (MatchesLocator(candidate, parsed))
-                            return new List<object> { candidate };
+                    if (MatchesLocator(candidate, parsed))
+                        return new List<object> { candidate };
 
-                        Console.WriteLine("C#getElementById('" + id + "') 命中但过滤条件不符");
-                    }
+                    Console.WriteLine("C#getElementById('" + id + "') 命中但过滤条件不符: "
+                        + DescribeLocator(parsed));
                 }
-                catch
+                else
                 {
-                    // fall through
+                    Console.WriteLine("C#getElementById('" + id + "') 返回空");
                 }
 
                 return new List<object>();
