@@ -39,25 +39,31 @@ namespace F2B.Browser.IExplore.Com
             return found;
         }
 
-        /// <summary>Collect every <c>Internet Explorer_Server</c> under <paramref name="root"/> (depth-first).</summary>
+        /// <summary>Collect distinct <c>Internet Explorer_Server</c> HWNDs under <paramref name="root"/> (depth-first).</summary>
         public static IList<IntPtr> CollectInternetExplorerServers(IntPtr root)
         {
             var list = new List<IntPtr>();
-            CollectInternetExplorerServersCore(root, list);
+            var seen = new HashSet<long>();
+            CollectInternetExplorerServersCore(root, list, seen);
             return list;
         }
 
-        private static void CollectInternetExplorerServersCore(IntPtr hwnd, IList<IntPtr> list)
+        private static void CollectInternetExplorerServersCore(IntPtr hwnd, IList<IntPtr> list, HashSet<long> seen)
         {
             if (hwnd == IntPtr.Zero || !Win32Native.IsWindow(hwnd))
                 return;
 
             if (Win32Native.GetClassNameString(hwnd) == IeServerClassName)
-                list.Add(hwnd);
+            {
+                if (seen.Add(hwnd.ToInt64()))
+                    list.Add(hwnd);
+                // Trident document lives on IE_Server; do not walk its internal child HWNDs (Edge repeats same handle).
+                return;
+            }
 
             Win32Native.EnumChildWindows(hwnd, (child, _) =>
             {
-                CollectInternetExplorerServersCore(child, list);
+                CollectInternetExplorerServersCore(child, list, seen);
                 return true;
             }, IntPtr.Zero);
         }

@@ -49,7 +49,8 @@ namespace F2B.Browser.IExplore
                 Console.WriteLine(LogPrefix + "Find Window 当前 IeServer=0x" + currentIeServer.ToInt64().ToString("X"));
 
             var servers = HtmlDocumentHelper.CollectInternetExplorerServers(topLevelHwnd);
-            Console.WriteLine(LogPrefix + "Internet Explorer_Server 数量=" + servers.Count);
+            Console.WriteLine(LogPrefix + "Internet Explorer_Server 数量=" + servers.Count
+                + " (去重后，每个 hwnd 只列一次)");
 
             if (servers.Count == 0)
             {
