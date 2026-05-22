@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using F2B.Browser.IExplore.Native;
 
@@ -36,6 +37,29 @@ namespace F2B.Browser.IExplore.Com
                 return true;
             }, IntPtr.Zero);
             return found;
+        }
+
+        /// <summary>Collect every <c>Internet Explorer_Server</c> under <paramref name="root"/> (depth-first).</summary>
+        public static IList<IntPtr> CollectInternetExplorerServers(IntPtr root)
+        {
+            var list = new List<IntPtr>();
+            CollectInternetExplorerServersCore(root, list);
+            return list;
+        }
+
+        private static void CollectInternetExplorerServersCore(IntPtr hwnd, IList<IntPtr> list)
+        {
+            if (hwnd == IntPtr.Zero || !Win32Native.IsWindow(hwnd))
+                return;
+
+            if (Win32Native.GetClassNameString(hwnd) == IeServerClassName)
+                list.Add(hwnd);
+
+            Win32Native.EnumChildWindows(hwnd, (child, _) =>
+            {
+                CollectInternetExplorerServersCore(child, list);
+                return true;
+            }, IntPtr.Zero);
         }
 
         public static IHTMLDocument2 GetDocumentFromIeServer(IntPtr ieServerHwnd)

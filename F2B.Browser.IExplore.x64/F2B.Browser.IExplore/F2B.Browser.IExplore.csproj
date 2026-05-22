@@ -57,6 +57,7 @@
     <Compile Include="OperationDefaults.cs" />
     <Compile Include="IEConnectCriteria.cs" />
     <Compile Include="TridentWindowInfo.cs" />
+    <Compile Include="TridentHostDiagnostics.cs" />
     <Compile Include="Com\ITridentDomHost.cs" />
     <Compile Include="Com\ComSafe.cs" />
     <Compile Include="Com\ComElementHelper.cs" />
@@ -109,6 +110,7 @@
     <Compile Include="Activities\Window\NavigateUrlActivity.cs" />
     <Compile Include="Activities\Window\RefreshActivity.cs" />
     <Compile Include="Activities\Window\WaitForFrameActivity.cs" />
+    <Compile Include="Activities\Window\DiagnoseTridentHostActivity.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
