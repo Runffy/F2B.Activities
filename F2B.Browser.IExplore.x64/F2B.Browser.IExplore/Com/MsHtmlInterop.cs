@@ -10,8 +10,12 @@ namespace F2B.Browser.IExplore.Com
     {
         // Do not add url / readyState here — typed DISP getters can AV on half-ready docs.
         // Use HtmlDocumentHelper.ReadDocumentUrl / ReadDocumentTitle (dynamic + ComSafe).
+        [DispId(1003)] object all { get; }
         [DispId(1005)] object body { get; }
         [DispId(1067)] IHTMLWindow2 parentWindow { get; }
+        [DispId(1079)] object getElementsByTagName(string tagName);
+        [DispId(1080)] object getElementById(string elementId);
+        [DispId(1081)] object getElementsByName(string elementName);
     }
 
     [ComImport]

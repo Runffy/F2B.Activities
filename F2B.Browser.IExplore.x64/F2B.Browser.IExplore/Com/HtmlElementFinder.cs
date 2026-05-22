@@ -113,8 +113,7 @@ namespace F2B.Browser.IExplore.Com
             {
                 try
                 {
-                    dynamic doc = document;
-                    var candidate = doc.getElementById(id);
+                    var candidate = document.getElementById(id);
                     if (ComElementHelper.IsValidElement(candidate))
                     {
                         if (MatchesLocator(candidate, parsed))
@@ -141,12 +140,74 @@ namespace F2B.Browser.IExplore.Com
                 return FilterMatches(QueryXPath(document, parsed.XPath), parsed);
             }
 
+            string name;
+            if (parsed.Filters.TryGetValue(ElementLocatorKeys.Name, out name) && !string.IsNullOrWhiteSpace(name))
+                return LocateByName(document, parsed, name.Trim());
+
+            return FilterMatches(IterateDocumentElements(document, GetTagFilter(parsed)), parsed);
+        }
+
+        /// <summary>Fast <c>name</c> locate: getElementsByName → IE document.all → querySelectorAll([name=...]) → tag scan.</summary>
+        private static List<object> LocateByName(IHTMLDocument2 document, ParsedElementLocator parsed, string name)
+        {
+            var candidates = HtmlDomQuery.CollectByName(document, name);
+            if (candidates.Count > 0)
+                return FilterMatches(candidates, parsed);
+
+            var cssSelector = HtmlDomQuery.NameAttributeSelector(name);
+            var cssHits = FilterMatches(QueryCss(document, cssSelector), parsed);
+            if (cssHits.Count > 0)
+            {
+                Console.WriteLine("C#getElementsByName('" + name + "') 无结果，已用 querySelectorAll" + cssSelector);
+                return cssHits;
+            }
+
+            string tag;
+            if (parsed.Filters.TryGetValue(ElementLocatorKeys.Tag, out tag) && !string.IsNullOrWhiteSpace(tag) && !tag.Trim().Equals("*", StringComparison.Ordinal))
+            {
+                var tagHits = FilterMatches(IterateDocumentElements(document, tag.Trim()), parsed);
+                if (tagHits.Count > 0)
+                    return tagHits;
+            }
+
+            Console.WriteLine("C#name='" + name + "' 快路径未命中，回退 getElementsByTagName('" + GetTagFilter(parsed) + "')（慢）");
             return FilterMatches(IterateDocumentElements(document, GetTagFilter(parsed)), parsed);
         }
 
         private static List<object> LocateElementsInScope(object scopeElement, ParsedElementLocator parsed)
         {
+            string name;
+            if (parsed.Filters.TryGetValue(ElementLocatorKeys.Name, out name) && !string.IsNullOrWhiteSpace(name))
+            {
+                var cssHits = FilterMatches(
+                    QueryCssOnElement(scopeElement, HtmlDomQuery.NameAttributeSelector(name.Trim())),
+                    parsed);
+                if (cssHits.Count > 0)
+                    return cssHits;
+            }
+
             return FilterMatches(IterateCollection(scopeElement, GetTagFilter(parsed)), parsed);
+        }
+
+        private static IEnumerable<object> QueryCssOnElement(object root, string selector)
+        {
+            if (root == null || string.IsNullOrWhiteSpace(selector))
+                yield break;
+
+            dynamic el = root;
+            dynamic query;
+            try { query = el.querySelectorAll; }
+            catch { yield break; }
+
+            if (query == null)
+                yield break;
+
+            dynamic results;
+            try { results = query(selector); }
+            catch { yield break; }
+
+            foreach (var item in HtmlDomQuery.MaterializeCollection(results))
+                yield return item;
         }
 
         private static List<object> FilterMatches(IEnumerable<object> candidates, ParsedElementLocator parsed)
@@ -258,7 +319,7 @@ namespace F2B.Browser.IExplore.Com
         private static IEnumerable<object> IterateDocumentElements(IHTMLDocument2 document, string tag) =>
             IterateCollection(document, tag);
 
-        /// <summary>Python <c>_iter_document_elements</c>: tag via getElementsByTagName, fallback to <c>all</c>.</summary>
+        /// <summary>Python <c>_iter_document_elements</c>: getElementsByTagName, fallback to <c>all</c>, materialize to list.</summary>
         private static IEnumerable<object> IterateCollection(dynamic root, string tag)
         {
             if (root == null)
@@ -313,7 +374,7 @@ namespace F2B.Browser.IExplore.Com
             string name;
             if (parsed.Filters.TryGetValue(ElementLocatorKeys.Name, out name))
             {
-                if (!StringEquals(GetStringProp(element, "name"), name))
+                if (!NameMatches(element, name))
                     return false;
             }
 
@@ -436,6 +497,14 @@ namespace F2B.Browser.IExplore.Com
             }
 
             return className.IndexOf(expected, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool NameMatches(object element, string expected)
+        {
+            if (StringEquals(GetStringProp(element, "name"), expected))
+                return true;
+
+            return StringEquals(GetAttribute(element, "name"), expected);
         }
 
         private static string GetStringProp(object element, string prop)

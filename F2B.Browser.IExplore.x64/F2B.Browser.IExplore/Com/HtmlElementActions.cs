@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using F2B.Browser.IExplore;
@@ -20,6 +19,8 @@ namespace F2B.Browser.IExplore.Com
             var findDict = CloneLocatorDictionary(element);
             ElementLocatorParse.StripOperationMetadata(findDict);
             var parsed = ElementLocatorParse.Parse(findDict, LocatorOperation.Element);
+            Console.WriteLine("C#查找开始: " + DescribeLocateStrategy(parsed)
+                + DescribeFramePathHint(framePath));
             var raw = FindRawElement(window, parsed, framePath, scope, timeout);
             return IEHtmlElement.From(raw);
         }
@@ -230,14 +231,13 @@ namespace F2B.Browser.IExplore.Com
             IList<IDictionary<string, object>> framePath,
             int timeout)
         {
-            Console.WriteLine("C#开始查找元素");
             var findDict = CloneLocatorDictionary(element);
             // Parse before stripping: activity Value is merged as F2B.Browser.IExplore.value and must stay for InputValue.
             var options = ElementLocatorOptions.Parse(findDict, forInput: true);
-            Console.WriteLine("C#定位策略: " + DescribeLocateStrategy(options.Parsed)
-                + (framePath != null && framePath.Count > 0 ? ", framePath=" + framePath.Count + "段" : ", framePath=根文档"));
+            Console.WriteLine("C#Input查找开始: " + DescribeLocateStrategy(options.Parsed)
+                + DescribeFramePathHint(framePath));
             var raw = FindRawElement(window, options, framePath, null, timeout);
-            Console.WriteLine("C#查找元素完成，开始input");
+            Console.WriteLine("C#Input查找结束，开始input");
             SetValue(raw, options.Value);
             Console.WriteLine("C# input完成");
         }
@@ -390,31 +390,86 @@ namespace F2B.Browser.IExplore.Com
             }
 
             Exception lastError = null;
+            var poll = 0;
+            var frameSegments = framePath == null ? 0 : framePath.Count;
+            // Cache COM document for the whole poll loop (Python keeps Window.Document alive per find_elements call).
             IHTMLDocument2 cachedDoc = null;
-            return OperationTimeout.WaitUntil(
+            var result = OperationTimeout.WaitUntil(
                 timeout,
                 HtmlElementFinder.PollIntervalMs,
                 () =>
                 {
+                    poll++;
+                    var prefix = "C#查找[" + poll + "]: ";
                     try
                     {
                         if (cachedDoc == null)
-                            cachedDoc = TryResolveFrameDocument(window, framePath);
+                        {
+                            Console.WriteLine(prefix + "取根文档");
+                            IHTMLDocument2 root;
+                            try
+                            {
+                                root = window.GetMsHtmlDocument();
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine(prefix + "根文档获取失败: " + ex.Message);
+                                return null;
+                            }
 
+                            Console.WriteLine(prefix + "根文档已获取");
+
+                            if (framePath == null || framePath.Count == 0)
+                            {
+                                cachedDoc = root;
+                            }
+                            else
+                            {
+                                frameSegments = framePath.Count;
+                                Console.WriteLine(prefix + "解析frame(" + frameSegments + "段)");
+                                cachedDoc = HtmlFrameHelper.TryGetFrameDocument(root, FramePathParse.Parse(framePath));
+                                if (cachedDoc == null)
+                                {
+                                    Console.WriteLine(prefix + "frame未就绪");
+                                    return null;
+                                }
+
+                                Console.WriteLine(prefix + "frame已就绪");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine(prefix + "复用已缓存文档");
+                        }
+
+                        Console.WriteLine(prefix + "定位元素");
                         var raw = HtmlElementFinder.TryFindOnce(cachedDoc, parsed);
-                        return ComElementHelper.IsValidElement(raw) ? raw : null;
+
+                        if (ComElementHelper.IsValidElement(raw))
+                        {
+                            Console.WriteLine(prefix + "元素命中");
+                            return raw;
+                        }
+
+                        Console.WriteLine(prefix + "未命中");
+                        return null;
                     }
                     catch (Exception ex) when (IeLocateRetry.IsRetryable(ex))
                     {
                         lastError = ex;
                         cachedDoc = null;
                         IeLocateRetry.RefreshDom(window);
+                        Console.WriteLine(prefix + "DOM/frame可重试错误，刷新后重试: " + ex.Message);
                         return null;
                     }
                 },
                 () => new TimeoutException(
-                    "Timed out after " + timeout + " ms waiting for element: "
+                    "Timed out after " + timeout + " ms waiting for element ("
+                    + poll + " polls): "
                     + (lastError?.Message ?? "no match")));
+
+            Console.WriteLine("C#查找完成, 共" + poll + "轮");
+            return result;
         }
 
         private static string DescribeLocateStrategy(ParsedElementLocator parsed)
@@ -432,9 +487,39 @@ namespace F2B.Browser.IExplore.Com
             if (!string.IsNullOrWhiteSpace(parsed.XPath))
                 return "xpath";
 
+            string name;
+            if (parsed.Filters.TryGetValue(ElementLocatorKeys.Name, out name) && !string.IsNullOrEmpty(name))
+                return "getElementsByName('" + name + "')+校验";
+
             string tag;
             parsed.Filters.TryGetValue(ElementLocatorKeys.Tag, out tag);
             return "扫描 getElementsByTagName('" + (string.IsNullOrWhiteSpace(tag) ? "*" : tag) + "')（慢）";
+        }
+
+        private static string DescribeFramePathHint(IList<IDictionary<string, object>> framePath) =>
+            framePath == null || framePath.Count == 0
+                ? ", frame=根文档"
+                : ", frame=" + framePath.Count + "段";
+
+        /// <summary>Resolve document for locate; returns null when frame is not ready yet (poll again).</summary>
+        private static IHTMLDocument2 TryGetDocumentForLocate(
+            ITridentDomHost window,
+            IList<IDictionary<string, object>> framePath)
+        {
+            IHTMLDocument2 root;
+            try
+            {
+                root = window.GetMsHtmlDocument();
+            }
+            catch
+            {
+                return null;
+            }
+
+            if (framePath == null || framePath.Count == 0)
+                return root;
+
+            return HtmlFrameHelper.TryGetFrameDocument(root, FramePathParse.Parse(framePath));
         }
 
         private static object[] FindRawElements(
@@ -451,7 +536,10 @@ namespace F2B.Browser.IExplore.Com
                 return HtmlElementFinder.FindAllInScope(IEHtmlElement.Unwrap(scope), parsed);
             }
 
-            var doc = TryResolveFrameDocument(window, framePath);
+            var doc = TryGetDocumentForLocate(window, framePath);
+            if (doc == null)
+                return new object[0];
+
             return HtmlElementFinder.TryFindAll(doc, parsed);
         }
 

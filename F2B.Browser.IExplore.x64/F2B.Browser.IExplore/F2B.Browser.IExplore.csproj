@@ -66,6 +66,7 @@
     <Compile Include="Com\IeLauncher.cs" />
     <Compile Include="Com\IeSecurityConfigurator.cs" />
     <Compile Include="Com\HtmlDocumentHelper.cs" />
+    <Compile Include="Com\HtmlDomQuery.cs" />
     <Compile Include="Com\MsHtmlInterop.cs" />
     <Compile Include="Com\ShDocVwHelper.cs" />
     <Compile Include="Com\ElementLocatorParse.cs" />
