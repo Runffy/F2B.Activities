@@ -29,7 +29,7 @@ namespace F2B.Browser.Chromium.Playwright
         [DisplayName("Element")]
         [Description("Parent element used as the search root.")]
         [Category("Input")]
-        public InArgument<PwElement> Element { get; set; }
+        public InArgument<object> Element { get; set; }
 
         [DisplayName("Selector")]
         [Description("Selector used to locate the target element.")]
@@ -87,10 +87,15 @@ namespace F2B.Browser.Chromium.Playwright
             }
             else
             {
-                var element = Element == null ? null : Element.Get(context);
+                var element = ActivityArgumentHelper.GetPwElement(Element, context);
                 if (element == null)
                 {
-                    throw new InvalidOperationException("Element must be provided when BaseOn=Element.");
+                    if (!ActivityArgumentHelper.HasExpression(Element))
+                    {
+                        throw new InvalidOperationException("Element must be provided when BaseOn=Element.");
+                    }
+
+                    throw new InvalidOperationException("Element must be provided when BaseOn=Element. The Element argument expression evaluated to null.");
                 }
 
                 found = element.FindElement(selector, index, timeout, waitState, delayBefore);
@@ -113,13 +118,6 @@ namespace F2B.Browser.Chromium.Playwright
                 if (Tab == null || Tab.Expression == null)
                 {
                     metadata.AddValidationError("Tab must be provided when BaseOn=Tab.");
-                }
-            }
-            else
-            {
-                if (Element == null || Element.Expression == null)
-                {
-                    metadata.AddValidationError("Element must be provided when BaseOn=Element.");
                 }
             }
         }

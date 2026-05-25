@@ -98,7 +98,7 @@ namespace F2B.Browser.Chromium.Playwright
             _targetTypeComboBox = BuildTargetTypeComboBox();
             _targetTypeComboBox.SelectionChanged += OnTargetTypeSelectionChanged;
             body.Children.Add(CreateRow("TargetType", _targetTypeComboBox));
-            _elementExpressionBox = CreateExpressionTextBox("Element", typeof(PwElement));
+            _elementExpressionBox = CreateExpressionTextBox("Element", typeof(object));
             _elementRow = CreateRow("Element", _elementExpressionBox, out _elementEditorBorder, RowSpacing);
             _tabExpressionBox = CreateExpressionTextBox("InputTab", typeof(PwTab));
             _tabRow = CreateRow("Tab", _tabExpressionBox, out _tabEditorBorder, RowSpacing);
@@ -472,9 +472,21 @@ namespace F2B.Browser.Chromium.Playwright
                 return true;
             }
 
+            if (property.ComputedValue != null)
+            {
+                return true;
+            }
+
             if (property.Value == null)
             {
                 return HasEditorInput(editor);
+            }
+
+            var propertyValueText = property.Value.ToString();
+            if (!string.IsNullOrWhiteSpace(propertyValueText) &&
+                !string.Equals(propertyValueText, "null", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
             }
 
             var expressionProperty = property.Value.Properties["Expression"];

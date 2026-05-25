@@ -19,7 +19,7 @@ namespace F2B.Browser.Chromium.Playwright
         [DisplayName("Element")]
         [Description("Element object to operate on directly.")]
         [Category("Target")]
-        public InArgument<PwElement> Element { get; set; }
+        public InArgument<object> Element { get; set; }
 
         [DisplayName("Selector")]
         [Description("Selector used to locate the target element.")]
@@ -64,10 +64,17 @@ namespace F2B.Browser.Chromium.Playwright
             var delayBefore = ActivityArgumentHelper.GetOrDefault(DelayBefore, context, 300);
             if (TargetType == ElementTargetType.Element)
             {
-                var element = Element == null ? null : Element.Get(context);
+                var element = ActivityArgumentHelper.GetPwElement(Element, context);
                 if (element == null)
                 {
-                    throw new ArgumentException("Element must be provided when TargetType=Element.");
+                    if (!ActivityArgumentHelper.HasExpression(Element))
+                    {
+                        throw new ArgumentException(
+                            "Element must be provided when TargetType=Element. Assign a variable or expression to the Element argument (for example [elm_parent]).");
+                    }
+
+                    throw new ArgumentException(
+                        "Element must be provided when TargetType=Element. The Element argument expression evaluated to null.");
                 }
 
                 PlaywrightSyncClient.ApplyDelay(delayBefore);
@@ -100,30 +107,6 @@ namespace F2B.Browser.Chromium.Playwright
         protected override void CacheMetadata(CodeActivityMetadata metadata)
         {
             base.CacheMetadata(metadata);
-
-            if (TargetType == ElementTargetType.Element)
-            {
-                if (Element == null || Element.Expression == null)
-                {
-                    metadata.AddValidationError("Element must be provided when TargetType=Element.");
-                }
-            }
-            else if (TargetType == ElementTargetType.Selector)
-            {
-                if (Selector == null || Selector.Expression == null)
-                {
-                    metadata.AddValidationError("Selector must be provided when TargetType=Selector.");
-                }
-
-                if (InputTab == null || InputTab.Expression == null)
-                {
-                    metadata.AddValidationError("Tab must be provided when TargetType=Selector.");
-                }
-            }
-            else
-            {
-                metadata.AddValidationError("Unsupported TargetType.");
-            }
         }
     }
 }

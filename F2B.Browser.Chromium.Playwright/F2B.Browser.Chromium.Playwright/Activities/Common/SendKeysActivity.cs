@@ -41,7 +41,7 @@ namespace F2B.Browser.Chromium.Playwright
         [DisplayName("Input Element")]
         [Description("Element object that directly receives keys.")]
         [Category("Input")]
-        public InArgument<PwElement> InputElement { get; set; }
+        public InArgument<object> InputElement { get; set; }
 
         [DisplayName("Delay Before")]
         [Description("Wait time in milliseconds before locating element.")]
@@ -103,10 +103,17 @@ namespace F2B.Browser.Chromium.Playwright
 
             if (TargetType == ElementTargetType.Element)
             {
-                var element = InputElement == null ? null : InputElement.Get(context);
+                var element = ActivityArgumentHelper.GetPwElement(InputElement, context);
                 if (element == null)
                 {
-                    throw new InvalidOperationException("InputElement must be provided when BaseOn=Element and TargetType=Element.");
+                    if (!ActivityArgumentHelper.HasExpression(InputElement))
+                    {
+                        throw new InvalidOperationException(
+                            "InputElement must be provided when BaseOn=Element and TargetType=Element. Assign a variable or expression (for example [elm_parent]).");
+                    }
+
+                    throw new InvalidOperationException(
+                        "InputElement must be provided when BaseOn=Element and TargetType=Element. The InputElement argument expression evaluated to null.");
                 }
 
                 PlaywrightSyncClient.ApplyDelay(delayBefore);
@@ -145,31 +152,8 @@ namespace F2B.Browser.Chromium.Playwright
                 {
                     metadata.AddValidationError("InputTab must be provided when BaseOn=Tab.");
                 }
+
                 return;
-            }
-
-            if (TargetType == ElementTargetType.Element)
-            {
-                if (InputElement == null || InputElement.Expression == null)
-                {
-                    metadata.AddValidationError("InputElement must be provided when BaseOn=Element and TargetType=Element.");
-                }
-            }
-            else if (TargetType == ElementTargetType.Selector)
-            {
-                if (InputTab == null || InputTab.Expression == null)
-                {
-                    metadata.AddValidationError("InputTab must be provided when BaseOn=Element and TargetType=Selector.");
-                }
-
-                if (Selector == null || Selector.Expression == null)
-                {
-                    metadata.AddValidationError("Selector must be provided when BaseOn=Element and TargetType=Selector.");
-                }
-            }
-            else
-            {
-                metadata.AddValidationError("Unsupported TargetType.");
             }
         }
     }
