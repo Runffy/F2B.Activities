@@ -1,3 +1,4 @@
+using System;
 using System.Activities;
 using System.ComponentModel;
 
@@ -39,14 +40,30 @@ namespace F2B.Browser.Chromium.Playwright
         [DefaultValue(500)]
         public InArgument<int> Interval { get; set; } = 500;
 
+        [DisplayName("Timeout (ms)")]
+        [Description("Timeout in milliseconds for locating the target element and input validation.")]
+        [Category("Input")]
+        [DefaultValue(15000)]
+        public InArgument<int> Timeout { get; set; } = 15000;
+
         protected override void Execute(CodeActivityContext context)
         {
-            ResolveTargetElement(context).Input(
+            var totalTimeout = ActivityArgumentHelper.GetOrDefault(Timeout, context, 15000);
+            var budget = new TimeoutBudget(totalTimeout);
+            var target = ResolveTargetElement(context, budget.RemainingAsNullableDouble());
+            var remaining = budget.RemainingMs;
+            if (remaining <= 0)
+            {
+                throw new TimeoutException("Input timeout before operation: no remaining timeout budget after locating target.");
+            }
+
+            target.Input(
                 value: Value.Get(context),
                 inputMethod: InputMethod,
                 typeDelay: TypeDelay == null ? null : TypeDelay.Get(context),
                 validateContentAfterInputted: ValidateContentAfterInputted,
-                interval: ActivityArgumentHelper.GetOrDefault(Interval, context, 500));
+                interval: ActivityArgumentHelper.GetOrDefault(Interval, context, 500),
+                timeout: remaining);
         }
     }
 }

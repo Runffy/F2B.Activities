@@ -5,7 +5,7 @@ using System.ComponentModel;
 namespace F2B.Browser.Chromium.Playwright
 {
     [DisplayName("Element Locator")]
-    [Description("Locate a selector from PwTab or PwElement and return sync wrapper PwLocator.")]
+    [Description("Instantly create a sync PwLocator from PwTab or PwElement. Does not wait for elements; use Count to check matches.")]
     [Designer(typeof(ParentSelectorActivityDesigner))]
     public sealed class ElementLocatorActivity : CodeActivity
     {
@@ -21,18 +21,6 @@ namespace F2B.Browser.Chromium.Playwright
         [Category("Input")]
         public InArgument<string> Selector { get; set; }
 
-        [DisplayName("Timeout (ms)")]
-        [Description("Timeout in milliseconds. Used to wait for locator attached state.")]
-        [Category("Input")]
-        [DefaultValue(15000)]
-        public InArgument<int?> Timeout { get; set; } = 15000;
-
-        [DisplayName("Delay Before")]
-        [Description("Wait time in milliseconds before locating.")]
-        [Category("Input")]
-        [DefaultValue(300)]
-        public InArgument<int> DelayBefore { get; set; } = 300;
-
         [DisplayName("Locator Result")]
         [Description("Outputs sync locator wrapper.")]
         [Category("Output")]
@@ -47,27 +35,14 @@ namespace F2B.Browser.Chromium.Playwright
                 throw new InvalidOperationException("Selector is required.");
             }
 
-            var timeoutValue = ActivityArgumentHelper.GetOrDefault(Timeout, context, 15000);
-            var timeoutMs = timeoutValue ?? 15000;
-            if (timeoutMs < 0)
-            {
-                timeoutMs = 0;
-            }
-
-            var delayBefore = ActivityArgumentHelper.GetOrDefault(DelayBefore, context, 300);
-            if (delayBefore < 0)
-            {
-                delayBefore = 0;
-            }
-
             PwLocator locator;
             if (parent is PwTab tab)
             {
-                locator = tab.Locate(selector, timeoutMs, delayBefore);
+                locator = tab.Locate(selector, timeout: null, delayBefore: 0);
             }
             else if (parent is PwElement element)
             {
-                locator = element.Locate(selector, timeoutMs, delayBefore);
+                locator = element.Locate(selector, timeout: null, delayBefore: 0);
             }
             else
             {

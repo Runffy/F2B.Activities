@@ -91,6 +91,12 @@ namespace F2B.Browser.Chromium.Playwright
             return tab.FindElement(selector, index: 0, timeout: effectiveTimeout, waitState: waitState, delayBefore: delayBefore);
         }
 
+        protected PwElement ResolveTargetElementWithTimeout(CodeActivityContext context, InArgument<int> timeout, int defaultTimeoutMs = 15000)
+        {
+            var timeoutMs = ActivityArgumentHelper.GetOrDefault(timeout, context, defaultTimeoutMs);
+            return ResolveTargetElement(context, timeoutMs);
+        }
+
         protected override void CacheMetadata(CodeActivityMetadata metadata)
         {
             base.CacheMetadata(metadata);

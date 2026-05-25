@@ -1615,7 +1615,8 @@ namespace F2B.Browser.Chromium.Playwright
             InputMethod inputMethod = InputMethod.Fill,
             float? typeDelay = null,
             bool validateContentAfterInputted = false,
-            int interval = 500)
+            int interval = 500,
+            int timeout = 15000)
         {
             var expected = value ?? string.Empty;
             if (inputMethod == InputMethod.Fill)
@@ -1631,6 +1632,11 @@ namespace F2B.Browser.Chromium.Playwright
                     throw new ArgumentOutOfRangeException(nameof(interval), "interval must not be less than 0.");
                 }
 
+                if (timeout <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(timeout), "timeout must be greater than 0.");
+                }
+
                 var startedAt = Stopwatch.StartNew();
                 while (true)
                 {
@@ -1640,9 +1646,9 @@ namespace F2B.Browser.Chromium.Playwright
                         return;
                     }
 
-                    if (startedAt.ElapsedMilliseconds >= 15000)
+                    if (startedAt.ElapsedMilliseconds >= timeout)
                     {
-                        throw new TimeoutException("Input timeout after 15000ms: value does not match expected content.");
+                        throw new TimeoutException($"Input timeout after {timeout}ms: value does not match expected content.");
                     }
 
                     Thread.Sleep(interval);
@@ -1683,7 +1689,8 @@ namespace F2B.Browser.Chromium.Playwright
             string[] texts = null,
             int[] indices = null,
             bool validateContentAfterSelected = false,
-            int interval = 500)
+            int interval = 500,
+            int timeout = 15000)
         {
             var options = new List<SelectOptionValue>();
             if (values != null)
@@ -1717,6 +1724,11 @@ namespace F2B.Browser.Chromium.Playwright
                 throw new ArgumentOutOfRangeException(nameof(interval), "interval must not be less than 0.");
             }
 
+            if (timeout <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(timeout), "timeout must be greater than 0.");
+            }
+
             var startedAt = Stopwatch.StartNew();
             while (true)
             {
@@ -1726,9 +1738,9 @@ namespace F2B.Browser.Chromium.Playwright
                     return;
                 }
 
-                if (startedAt.ElapsedMilliseconds >= 15000)
+                if (startedAt.ElapsedMilliseconds >= timeout)
                 {
-                    throw new TimeoutException("Select timeout after 15000ms: selected options do not match expected content.");
+                    throw new TimeoutException($"Select timeout after {timeout}ms: selected options do not match expected content.");
                 }
 
                 Thread.Sleep(interval);

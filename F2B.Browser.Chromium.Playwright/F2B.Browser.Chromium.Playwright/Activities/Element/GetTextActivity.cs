@@ -13,9 +13,15 @@ namespace F2B.Browser.Chromium.Playwright
         [Category("Output")]
         public OutArgument<string> Text { get; set; }
 
+        [DisplayName("Timeout (ms)")]
+        [Description("Timeout in milliseconds for locating the target element.")]
+        [Category("Input")]
+        [DefaultValue(15000)]
+        public InArgument<int> Timeout { get; set; } = 15000;
+
         protected override void Execute(CodeActivityContext context)
         {
-            Text?.Set(context, ResolveTargetElement(context).GetText());
+            Text?.Set(context, ResolveTargetElementWithTimeout(context, Timeout).GetText());
         }
     }
 }

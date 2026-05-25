@@ -26,9 +26,15 @@ namespace F2B.Browser.Chromium.Playwright
         [Category("Output")]
         public OutArgument<PwElement[]> Children { get; set; }
 
+        [DisplayName("Timeout (ms)")]
+        [Description("Timeout in milliseconds for locating the target element.")]
+        [Category("Input")]
+        [DefaultValue(15000)]
+        public InArgument<int> Timeout { get; set; } = 15000;
+
         protected override void Execute(CodeActivityContext context)
         {
-            var children = ResolveTargetElement(context).GetChildren(
+            var children = ResolveTargetElementWithTimeout(context, Timeout).GetChildren(
                 selector: ChildSelector == null ? null : ChildSelector.Get(context),
                 deepdive: Deepdive);
             Children?.Set(context, children);

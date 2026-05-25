@@ -1,3 +1,4 @@
+using System;
 using System.Activities;
 using System.ComponentModel;
 
@@ -58,6 +59,12 @@ namespace F2B.Browser.Chromium.Playwright
         [DefaultValue(500)]
         public InArgument<int> Interval { get; set; } = 500;
 
+        [DisplayName("Timeout (ms)")]
+        [Description("Timeout in milliseconds for locating the target element and selection validation.")]
+        [Category("Input")]
+        [DefaultValue(15000)]
+        public InArgument<int> Timeout { get; set; } = 15000;
+
         private SelectValType _valType = SelectValType.Text;
 
         protected override void Execute(CodeActivityContext context)
@@ -79,12 +86,22 @@ namespace F2B.Browser.Chromium.Playwright
                     break;
             }
 
-            ResolveTargetElement(context).Select(
+            var totalTimeout = ActivityArgumentHelper.GetOrDefault(Timeout, context, 15000);
+            var budget = new TimeoutBudget(totalTimeout);
+            var target = ResolveTargetElement(context, budget.RemainingAsNullableDouble());
+            var remaining = budget.RemainingMs;
+            if (remaining <= 0)
+            {
+                throw new TimeoutException("Select timeout before operation: no remaining timeout budget after locating target.");
+            }
+
+            target.Select(
                 values: values,
                 texts: texts,
                 indices: indices,
                 validateContentAfterSelected: ValidateContentAfterSelected,
-                interval: ActivityArgumentHelper.GetOrDefault(Interval, context, 500));
+                interval: ActivityArgumentHelper.GetOrDefault(Interval, context, 500),
+                timeout: remaining);
         }
 
         protected override void CacheMetadata(CodeActivityMetadata metadata)
