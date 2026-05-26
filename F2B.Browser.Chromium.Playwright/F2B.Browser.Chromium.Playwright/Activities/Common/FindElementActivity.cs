@@ -29,7 +29,7 @@ namespace F2B.Browser.Chromium.Playwright
         [DisplayName("Element")]
         [Description("Parent element used as the search root.")]
         [Category("Input")]
-        public InArgument<object> Element { get; set; }
+        public InArgument<PwElement> Element { get; set; }
 
         [DisplayName("Selector")]
         [Description("Selector used to locate the target element.")]
@@ -101,7 +101,7 @@ namespace F2B.Browser.Chromium.Playwright
                 found = element.FindElement(selector, index, timeout, waitState, delayBefore);
             }
 
-            ElementResult?.Set(context, found);
+            ActivityArgumentHelper.SetPwElement(ElementResult, context, found);
         }
 
         protected override void CacheMetadata(CodeActivityMetadata metadata)

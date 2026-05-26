@@ -98,7 +98,7 @@ namespace F2B.Browser.Chromium.Playwright
             _targetTypeComboBox = BuildTargetTypeComboBox();
             _targetTypeComboBox.SelectionChanged += OnTargetTypeSelectionChanged;
             body.Children.Add(CreateRow("TargetType", _targetTypeComboBox));
-            _elementExpressionBox = CreateExpressionTextBox("Element", typeof(object));
+            _elementExpressionBox = CreateExpressionTextBox("Element", typeof(PwElement));
             _elementRow = CreateRow("Element", _elementExpressionBox, out _elementEditorBorder, RowSpacing);
             _tabExpressionBox = CreateExpressionTextBox("InputTab", typeof(PwTab));
             _tabRow = CreateRow("Tab", _tabExpressionBox, out _tabEditorBorder, RowSpacing);
@@ -334,6 +334,11 @@ namespace F2B.Browser.Chromium.Playwright
             if (_targetTypeComboBox.SelectedItem is ElementTargetType targetType)
             {
                 ModelItem.Properties["TargetType"].SetValue(targetType);
+                if (ModelItem.GetCurrentValue() != null)
+                {
+                    TypeDescriptor.Refresh(ModelItem.GetCurrentValue());
+                }
+
                 RefreshTargetRows(targetType);
                 RefreshRequiredBorders();
             }

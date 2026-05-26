@@ -50,7 +50,8 @@ namespace F2B.Browser.Chromium.Playwright
             bool startMaximized = true,
             int? remoteDebuggingPort = null,
             bool useSystemDir = true,
-            string userDataDir = null)
+            string userDataDir = null,
+            int delayAfterKill = 2000)
         {
             CloseBrowser();
             EnsurePlaywrightDriverSearchPath();
@@ -73,6 +74,7 @@ namespace F2B.Browser.Chromium.Playwright
             }
 
             var executablePath = string.IsNullOrWhiteSpace(browserPath) ? null : browserPath;
+            var browserKind = BrowserWindowCloser.ResolveBrowserKind(executablePath);
             var effectiveUserDataDir = ResolveUserDataDir(useSystemDir, userDataDir, out var cleanupAfterClose);
             _runtimeUserDataDir = effectiveUserDataDir;
             _cleanupRuntimeUserDataDir = cleanupAfterClose;
@@ -80,12 +82,11 @@ namespace F2B.Browser.Chromium.Playwright
 
             if (useSystemDir)
             {
-                var existingEdgeCount = GetRunningEdgePids().Count;
-                if (existingEdgeCount > 0)
+                var existingBrowserCount = BrowserWindowCloser.GetRunningPids(browserKind).Count;
+                if (existingBrowserCount > 0)
                 {
-                    var killedCount = KillAllEdgeProcesses();
-                    Thread.Sleep(2000);
-                    if (killedCount > 0)
+                    var killedCount = BrowserWindowCloser.CleanupBrowserProcesses(browserKind, delayAfterKill);
+                    if (killedCount > 0 && browserKind == ChromiumBrowserKind.Edge)
                     {
                         TrySetEdgeExitTypeNormal(effectiveUserDataDir);
                     }
@@ -100,10 +101,9 @@ namespace F2B.Browser.Chromium.Playwright
             {
                 CloseBrowser();
 
-                // When UseSystemDir=true, after the first failure kill leftover msedge processes and retry launch once.
-                var killedCount = KillAllEdgeProcesses();
-                Thread.Sleep(2000);
-                if (killedCount > 0)
+                // When UseSystemDir=true, after the first failure soft-close/kill leftover browser processes and retry launch once.
+                var killedCount = BrowserWindowCloser.CleanupBrowserProcesses(browserKind, delayAfterKill);
+                if (killedCount > 0 && browserKind == ChromiumBrowserKind.Edge)
                 {
                     TrySetEdgeExitTypeNormal(effectiveUserDataDir);
                 }
@@ -115,8 +115,10 @@ namespace F2B.Browser.Chromium.Playwright
                 catch (PlaywrightException retryEx)
                 {
                     CloseBrowser();
-                    var message = BuildUseSystemDirFailureMessage(retryEx, effectiveUserDataDir)
-                        + "\n- Auto recovery: terminated " + killedCount + " msedge process(es), waited 2000ms, retried launch once."
+                    var message = BuildUseSystemDirFailureMessage(retryEx, effectiveUserDataDir, browserKind)
+                        + "\n- Auto recovery: soft-closed browser windows, terminated " + killedCount + " "
+                        + BrowserWindowCloser.GetProcessName(browserKind) + " process(es), waited "
+                        + delayAfterKill + "ms, retried launch once."
                         + "\n- First failure error: " + (string.IsNullOrWhiteSpace(ex.Message) ? "<empty>" : ex.Message.Trim());
                     throw new InvalidOperationException(message, retryEx);
                 }
@@ -491,61 +493,27 @@ namespace F2B.Browser.Chromium.Playwright
             _currentPage = page;
         }
 
-        private static string BuildUseSystemDirFailureMessage(PlaywrightException ex, string userDataDir)
+        private static string BuildUseSystemDirFailureMessage(
+            PlaywrightException ex,
+            string userDataDir,
+            ChromiumBrowserKind browserKind)
         {
-            var edgePids = GetRunningEdgePids();
-            var pidText = edgePids.Count == 0 ? "(none)" : string.Join(", ", edgePids);
+            var browserPids = BrowserWindowCloser.GetRunningPids(browserKind);
+            var pidText = browserPids.Count == 0 ? "(none)" : string.Join(", ", browserPids);
             var raw = (ex?.Message ?? string.Empty).Trim();
             var lockHint = IsUserDataDirInUseError(raw)
                 ? "Directory-in-use pattern detected (user data dir in use / singleton lock)."
                 : "No clear directory lock pattern; may be permissions, enterprise policy, or conflicting browser flags.";
+            var processName = BrowserWindowCloser.GetProcessName(browserKind);
 
             return
                 "Failed to launch with UseSystemDir=true." +
                 "\n- UserDataDir: " + (string.IsNullOrWhiteSpace(userDataDir) ? "<empty>" : userDataDir) +
-                "\n- Running msedge PIDs: " + pidText +
+                "\n- Running " + processName + " PIDs: " + pidText +
                 "\n- Diagnosis: " + lockHint +
                 "\n- Playwright error: " + (string.IsNullOrWhiteSpace(raw) ? "<empty>" : raw) +
-                "\nSuggestion: for stable automation prefer UseSystemDir=false (isolated profile); if you must use the system profile, exit all msedge instances first, then retry.";
-        }
-
-        private static List<int> GetRunningEdgePids()
-        {
-            try
-            {
-                return Process.GetProcessesByName("msedge")
-                    .Select(p => p.Id)
-                    .OrderBy(id => id)
-                    .ToList();
-            }
-            catch
-            {
-                return new List<int>();
-            }
-        }
-
-        private static int KillAllEdgeProcesses()
-        {
-            var killed = 0;
-            try
-            {
-                foreach (var p in Process.GetProcessesByName("msedge"))
-                {
-                    try
-                    {
-                        p.Kill();
-                        killed++;
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
-            catch
-            {
-            }
-
-            return killed;
+                "\nSuggestion: for stable automation prefer UseSystemDir=false (isolated profile); if you must use the system profile, exit all "
+                + processName + " instances first, then retry.";
         }
 
         private static void TrySetEdgeExitTypeNormal(string userDataDir)

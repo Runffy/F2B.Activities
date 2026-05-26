@@ -19,7 +19,7 @@ namespace F2B.Browser.Chromium.Playwright
         [DisplayName("Element")]
         [Description("Element object to operate on directly.")]
         [Category("Target")]
-        public InArgument<object> Element { get; set; }
+        public InArgument<PwElement> Element { get; set; }
 
         [DisplayName("Selector")]
         [Description("Selector used to locate the target element.")]
@@ -36,23 +36,13 @@ namespace F2B.Browser.Chromium.Playwright
         [Category("Target")]
         [DefaultValue(ElementTargetType.Selector)]
         [TypeConverter("F2B.Browser.Chromium.Playwright.ElementTargetTypeConverter, F2B.Browser.Chromium.Playwright")]
-        public ElementTargetType TargetType
-        {
-            get => _targetType;
-            set
-            {
-                _targetType = value;
-                TypeDescriptor.Refresh(this);
-            }
-        }
+        public ElementTargetType TargetType { get; set; } = ElementTargetType.Selector;
 
         [DisplayName("Delay Before")]
         [Description("Wait time in milliseconds before execution.")]
         [Category("Time")]
         [DefaultValue(300)]
         public InArgument<int> DelayBefore { get; set; } = 300;
-
-        private ElementTargetType _targetType = ElementTargetType.Selector;
 
         protected PwElement ResolveTargetElement(CodeActivityContext context)
         {
@@ -70,11 +60,13 @@ namespace F2B.Browser.Chromium.Playwright
                     if (!ActivityArgumentHelper.HasExpression(Element))
                     {
                         throw new ArgumentException(
-                            "Element must be provided when TargetType=Element. Assign a variable or expression to the Element argument (for example [elm_parent]).");
+                            "Element must be provided when TargetType=Element. Assign a PwElement variable to the Element argument (for example elm_parent).");
                     }
 
                     throw new ArgumentException(
-                        "Element must be provided when TargetType=Element. The Element argument expression evaluated to null.");
+                        "Element must be provided when TargetType=Element. Variable '" +
+                        ActivityArgumentHelper.TryGetBoundVariableName(Element) +
+                        "' is null. Verify the upstream FindElement activity assigned ElementResult to the same variable in the same scope.");
                 }
 
                 PlaywrightSyncClient.ApplyDelay(delayBefore);

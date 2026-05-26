@@ -41,7 +41,7 @@ namespace F2B.Browser.Chromium.Playwright
         [DisplayName("Input Element")]
         [Description("Element object used directly as script target.")]
         [Category("Input")]
-        public InArgument<object> InputElement { get; set; }
+        public InArgument<PwElement> InputElement { get; set; }
 
         [DisplayName("Delay Before")]
         [Description("Wait time in milliseconds before locating element.")]
@@ -117,11 +117,13 @@ namespace F2B.Browser.Chromium.Playwright
                     if (!ActivityArgumentHelper.HasExpression(InputElement))
                     {
                         throw new InvalidOperationException(
-                            "InputElement must be provided when BaseOn=Element and TargetType=Element. Assign a variable or expression (for example [elm_parent]).");
+                            "InputElement must be provided when BaseOn=Element and TargetType=Element. Assign a PwElement variable (for example elm_parent).");
                     }
 
                     throw new InvalidOperationException(
-                        "InputElement must be provided when BaseOn=Element and TargetType=Element. The InputElement argument expression evaluated to null.");
+                        "InputElement must be provided when BaseOn=Element and TargetType=Element. Variable '" +
+                        ActivityArgumentHelper.TryGetBoundVariableName(InputElement) +
+                        "' is null.");
                 }
 
                 PlaywrightSyncClient.ApplyDelay(delayBefore);

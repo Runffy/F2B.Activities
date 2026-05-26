@@ -53,6 +53,12 @@ namespace F2B.Browser.Chromium.Playwright
         [Category("Input")]
         public InArgument<string> UserDataDir { get; set; }
 
+        [DisplayName("Delay After Kill (ms)")]
+        [Description("Wait time after soft-closing browser windows and killing leftover browser processes.")]
+        [Category("Input")]
+        [DefaultValue(2000)]
+        public InArgument<int> DelayAfterKill { get; set; } = 2000;
+
         [DisplayName("Output Browser")]
         [Description("Outputs the opened browser instance.")]
         [Category("Output")]
@@ -70,6 +76,10 @@ namespace F2B.Browser.Chromium.Playwright
         {
             var client = new PlaywrightSyncClient();
 
+            var delayAfterKill = DelayAfterKill == null || DelayAfterKill.Expression == null
+                ? 2000
+                : DelayAfterKill.Get(context);
+
             var browser = client.BrowserOpen(
                 out var initialTab,
                 headless: Headless,
@@ -77,7 +87,8 @@ namespace F2B.Browser.Chromium.Playwright
                 startMaximized: StartMaximized,
                 remoteDebuggingPort: RemoteDebuggingPort == null ? null : RemoteDebuggingPort.Get(context),
                 useSystemDir: UseSystemDir,
-                userDataDir: UserDataDir == null ? null : UserDataDir.Get(context));
+                userDataDir: UserDataDir == null ? null : UserDataDir.Get(context),
+                delayAfterKill: delayAfterKill);
             Browser?.Set(context, browser);
 
             Tab?.Set(context, initialTab);

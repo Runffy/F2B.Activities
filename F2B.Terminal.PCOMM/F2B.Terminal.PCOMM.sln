@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36203.30 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "F2B.Terminal.PCOMM", "F2B.Terminal.PCOMM\F2B.Terminal.PCOMM.csproj", "{8A803958-14C8-4BD6-AF64-150A102DAE05}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8A803958-14C8-4BD6-AF64-150A102DAE05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A803958-14C8-4BD6-AF64-150A102DAE05}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A803958-14C8-4BD6-AF64-150A102DAE05}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A803958-14C8-4BD6-AF64-150A102DAE05}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1A48F4A9-68A8-4D89-9CF6-2C03141274A6}
+	EndGlobalSection
+EndGlobal

@@ -93,7 +93,25 @@ namespace F2B.Browser.Chromium.Playwright
             public override object GetValue(object component) => _inner.GetValue(component);
             public override void ResetValue(object component) => _inner.ResetValue(component);
             public override void SetValue(object component, object value) => _inner.SetValue(component, value);
-            public override bool ShouldSerializeValue(object component) => _inner.ShouldSerializeValue(component);
+            public override bool ShouldSerializeValue(object component)
+            {
+                if (component is ElementTargetActivityBase activity)
+                {
+                    switch (Name)
+                    {
+                        case "Element":
+                            return ActivityArgumentHelper.HasExpression(activity.Element);
+                        case "Selector":
+                            return ActivityArgumentHelper.HasExpression(activity.Selector);
+                        case "InputTab":
+                            return ActivityArgumentHelper.HasExpression(activity.InputTab);
+                        case "TargetType":
+                            return activity.TargetType != ElementTargetType.Selector;
+                    }
+                }
+
+                return _inner.ShouldSerializeValue(component);
+            }
         }
     }
 }

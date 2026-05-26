@@ -29,7 +29,7 @@ namespace F2B.Browser.Chromium.Playwright
         {
             var parent = ResolveTargetElementWithTimeout(context, Timeout)
                 .GetParent(ActivityArgumentHelper.GetOrDefault(Level, context, 1));
-            Parent?.Set(context, parent);
+            ActivityArgumentHelper.SetPwElement(Parent, context, parent);
         }
     }
 }
