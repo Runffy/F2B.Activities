@@ -4,31 +4,26 @@ using System.ComponentModel;
 
 namespace F2B.Browser.Chromium.Playwright
 {
-    public interface IClickValidationConfig
-    {
-        ClickValidateMode Validate { get; }
-    }
-
-    public sealed class ClickValidationTypeDescriptionProvider : TypeDescriptionProvider
+    public sealed class TakeScreenshotTypeDescriptionProvider : TypeDescriptionProvider
     {
         private static readonly TypeDescriptionProvider DefaultProvider =
             TypeDescriptor.GetProvider(typeof(CodeActivity));
 
-        public ClickValidationTypeDescriptionProvider() : base(DefaultProvider)
+        public TakeScreenshotTypeDescriptionProvider() : base(DefaultProvider)
         {
         }
 
         public override ICustomTypeDescriptor GetTypeDescriptor(Type objectType, object instance)
         {
             var baseDescriptor = base.GetTypeDescriptor(objectType, instance);
-            return new ClickValidationTypeDescriptor(baseDescriptor, instance);
+            return new TakeScreenshotTypeDescriptor(baseDescriptor, instance);
         }
 
-        private sealed class ClickValidationTypeDescriptor : CustomTypeDescriptor
+        private sealed class TakeScreenshotTypeDescriptor : CustomTypeDescriptor
         {
             private readonly object _instance;
 
-            public ClickValidationTypeDescriptor(ICustomTypeDescriptor parent, object instance)
+            public TakeScreenshotTypeDescriptor(ICustomTypeDescriptor parent, object instance)
                 : base(parent)
             {
                 _instance = instance;
@@ -45,19 +40,19 @@ namespace F2B.Browser.Chromium.Playwright
                 var filtered = new PropertyDescriptor[original.Count];
                 for (var i = 0; i < original.Count; i++)
                 {
-                    filtered[i] = new ClickValidationPropertyDescriptor(original[i], _instance);
+                    filtered[i] = new TakeScreenshotPropertyDescriptor(original[i], _instance);
                 }
 
                 return new PropertyDescriptorCollection(filtered, true);
             }
         }
 
-        private sealed class ClickValidationPropertyDescriptor : PropertyDescriptor
+        private sealed class TakeScreenshotPropertyDescriptor : PropertyDescriptor
         {
             private readonly PropertyDescriptor _inner;
             private readonly object _instance;
 
-            public ClickValidationPropertyDescriptor(PropertyDescriptor inner, object instance)
+            public TakeScreenshotPropertyDescriptor(PropertyDescriptor inner, object instance)
                 : base(inner)
             {
                 _inner = inner;
@@ -68,16 +63,30 @@ namespace F2B.Browser.Chromium.Playwright
             {
                 get
                 {
-                    var clickConfig = _instance as IClickValidationConfig;
-                    if (clickConfig != null &&
-                        clickConfig.Validate == ClickValidateMode.None &&
-                        (Name == "ValidationSelector" || Name == "WaitBeforeValidate"))
+                    var screenshotConfig = _instance as ITakeScreenshotConfig;
+                    if (screenshotConfig != null)
                     {
-                        return false;
+                        if (screenshotConfig.BaseOn != TakeScreenshotBaseOn.Tab &&
+                            Name == "FullPage")
+                        {
+                            return false;
+                        }
+
+                        if (screenshotConfig.BaseOn == TakeScreenshotBaseOn.Tab &&
+                            (Name == "TargetType" ||
+                             Name == "Selector" ||
+                             Name == "InputElement" ||
+                             Name == "Timeout" ||
+                             Name == "DelayBefore"))
+                        {
+                            return false;
+                        }
                     }
 
                     var targetConfig = _instance as IElementTargetConfig;
-                    if (targetConfig != null)
+                    if (targetConfig != null &&
+                        screenshotConfig != null &&
+                        screenshotConfig.BaseOn == TakeScreenshotBaseOn.Element)
                     {
                         if (targetConfig.TargetType == ElementTargetType.Element &&
                             (Name == "InputTab" || Name == "Selector"))
@@ -85,7 +94,7 @@ namespace F2B.Browser.Chromium.Playwright
                             return false;
                         }
 
-                        if (targetConfig.TargetType == ElementTargetType.Selector && Name == "Element")
+                        if (targetConfig.TargetType == ElementTargetType.Selector && Name == "InputElement")
                         {
                             return false;
                         }

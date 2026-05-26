@@ -8,6 +8,11 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class BrowserCloseActivity : CodeActivity
     {
+        public BrowserCloseActivity()
+        {
+            DisplayName = "Close Browser";
+        }
+
         [DisplayName("Input Browser")]
         [Description("Browser instance to close.")]
         [RequiredArgument]

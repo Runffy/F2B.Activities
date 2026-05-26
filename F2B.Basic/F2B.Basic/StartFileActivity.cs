@@ -12,6 +12,7 @@ namespace F2B.Basic
     {
         public StartFileActivity()
         {
+            DisplayName = "Start File";
             Operation = new InArgument<string>("open");
             WaitForExit = new InArgument<bool>(false);
             ShowWindow = new InArgument<bool>(true);
@@ -20,26 +21,33 @@ namespace F2B.Basic
         [RequiredArgument]
         [DisplayName("Path")]
         [Description("File path, folder path, or URL to open.")]
+        [Category("Input.A")]
         public InArgument<string> Path { get; set; }
 
         [DisplayName("Operation")]
         [Description("Shell verb, e.g. open, edit, print.")]
+        [Category("Input.C")]
         public InArgument<string> Operation { get; set; }
 
         [DisplayName("Arguments")]
         [Description("Optional command-line arguments for executable targets.")]
+        [Category("Input.B")]
         public InArgument<string> Arguments { get; set; }
 
         [DisplayName("Working directory")]
+        [Category("Input.D")]
         public InArgument<string> WorkingDirectory { get; set; }
 
         [DisplayName("Wait for exit")]
+        [Category("Input.D")]
         public InArgument<bool> WaitForExit { get; set; }
 
         [DisplayName("Show window")]
+        [Category("Input.D")]
         public InArgument<bool> ShowWindow { get; set; }
 
         [DisplayName("Result")]
+        [Category("Output")]
         [Description("Result message, including PID when available.")]
         public OutArgument<string> Result { get; set; }
 

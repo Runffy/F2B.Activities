@@ -8,6 +8,11 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class TabCloseActivity : CodeActivity
     {
+        public TabCloseActivity()
+        {
+            DisplayName = "Close Tab";
+        }
+
         [DisplayName("Input Tab")]
         [Description("Tab instance to close.")]
         [RequiredArgument]

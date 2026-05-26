@@ -8,6 +8,11 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class BackActivity : CodeActivity
     {
+        public BackActivity()
+        {
+            DisplayName = "Back";
+        }
+
         [DisplayName("Input Tab")]
         [Description("Tab instance to move back.")]
         [RequiredArgument]

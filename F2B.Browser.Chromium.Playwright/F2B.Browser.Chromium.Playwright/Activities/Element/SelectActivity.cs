@@ -16,9 +16,11 @@ namespace F2B.Browser.Chromium.Playwright
     [TypeDescriptionProvider(typeof(ElementTargetTypeDescriptionProvider))]
     public sealed class SelectActivity : ElementTargetActivityBase
     {
+        public SelectActivity() : base("Select") {}
+
         [DisplayName("Value Type")]
         [Description("Select options by text, value, or index.")]
-        [Category("Input")]
+        [Category("Input.D")]
         [DefaultValue(SelectValType.Text)]
         [TypeConverter("F2B.Browser.Chromium.Playwright.SelectValTypeTypeConverter, F2B.Browser.Chromium.Playwright")]
         public SelectValType ValType
@@ -33,35 +35,35 @@ namespace F2B.Browser.Chromium.Playwright
 
         [DisplayName("Values")]
         [Description("Option values used when selecting by value.")]
-        [Category("Input")]
+        [Category("Input.E")]
         public InArgument<string[]> Values { get; set; }
 
         [DisplayName("Texts")]
         [Description("Option texts used when selecting by text.")]
-        [Category("Input")]
+        [Category("Input.E")]
         public InArgument<string[]> Texts { get; set; }
 
         [DisplayName("Indices")]
         [Description("Option indices used when selecting by index.")]
-        [Category("Input")]
+        [Category("Input.E")]
         public InArgument<int[]> Indices { get; set; }
 
         [DisplayName("Validate Content After Selected")]
         [Description("Whether to validate selected options after selection.")]
-        [Category("Input")]
+        [Category("Input.F")]
         [DefaultValue(false)]
         [TypeConverter("F2B.Browser.Chromium.Playwright.BooleanTypeConverter, F2B.Browser.Chromium.Playwright")]
         public bool ValidateContentAfterSelected { get; set; } = false;
 
-        [DisplayName("Interval")]
+        [DisplayName("Wait Before Validate")]
         [Description("Retry interval in milliseconds for validation.")]
-        [Category("Input")]
+        [Category("Input.F")]
         [DefaultValue(500)]
         public InArgument<int> Interval { get; set; } = 500;
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element and selection validation.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
 

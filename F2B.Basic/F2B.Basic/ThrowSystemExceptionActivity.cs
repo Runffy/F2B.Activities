@@ -9,8 +9,14 @@ namespace F2B.Basic
     [DisplayName("Throw System Exception")]
     public sealed class ThrowSystemExceptionActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {
+        public ThrowSystemExceptionActivity()
+        {
+            DisplayName = "Throw System Exception";
+        }
+
         [RequiredArgument]
         [DisplayName("Message")]
+        [Category("Input")]
         public InArgument<string> Message { get; set; }
 
         public Activity Create(DependencyObject target)

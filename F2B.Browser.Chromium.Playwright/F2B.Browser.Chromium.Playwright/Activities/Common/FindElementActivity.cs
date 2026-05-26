@@ -15,49 +15,54 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class FindElementActivity : CodeActivity
     {
+        public FindElementActivity()
+        {
+            DisplayName = "Find Element";
+        }
+
         [DisplayName("Base On")]
         [Description("Choose whether to search from a tab or parent element.")]
-        [Category("Input")]
+        [Category("Input.A")]
         [DefaultValue(FindElementBaseOn.Tab)]
         public FindElementBaseOn BaseOn { get; set; } = FindElementBaseOn.Tab;
 
         [DisplayName("Input Tab")]
         [Description("Tab instance used for element search.")]
-        [Category("Input")]
+        [Category("Input.B")]
         public InArgument<PwTab> Tab { get; set; }
 
-        [DisplayName("Element")]
+        [DisplayName("Input Element")]
         [Description("Parent element used as the search root.")]
-        [Category("Input")]
+        [Category("Input.B")]
         public InArgument<PwElement> Element { get; set; }
 
         [DisplayName("Selector")]
         [Description("Selector used to locate the target element.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.C")]
         public InArgument<string> Selector { get; set; }
 
         [DisplayName("Index")]
         [Description("Index used when multiple elements match (0-based).")]
-        [Category("Input")]
+        [Category("Input.C")]
         [DefaultValue(0)]
         public InArgument<int> Index { get; set; } = 0;
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for element search.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int?> Timeout { get; set; } = 15000;
 
         [DisplayName("Wait State")]
         [Description("Element state to wait for during search.")]
-        [Category("Input")]
+        [Category("Input.D")]
         [DefaultValue(FindElementWaitState.None)]
         public FindElementWaitState WaitState { get; set; } = FindElementWaitState.None;
 
         [DisplayName("Delay Before")]
         [Description("Wait time in milliseconds before starting search.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         [DefaultValue(300)]
         public InArgument<int> DelayBefore { get; set; } = 300;
 

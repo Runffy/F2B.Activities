@@ -8,6 +8,11 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class RefreshActivity : CodeActivity
     {
+        public RefreshActivity()
+        {
+            DisplayName = "Refresh";
+        }
+
         [DisplayName("Input Tab")]
         [Description("Tab instance to refresh.")]
         [RequiredArgument]

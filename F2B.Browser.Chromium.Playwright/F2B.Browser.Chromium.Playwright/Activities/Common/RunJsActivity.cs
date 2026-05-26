@@ -15,55 +15,60 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class RunJsActivity : CodeActivity
     {
+        public RunJsActivity()
+        {
+            DisplayName = "Run JavaScript";
+        }
+
         [DisplayName("Base On")]
         [Description("Choose whether to run script on a tab or element.")]
-        [Category("Input")]
+        [Category("Input.A")]
         [DefaultValue(RunJsBaseOn.Element)]
         public RunJsBaseOn BaseOn { get; set; } = RunJsBaseOn.Element;
 
         [DisplayName("Input Tab")]
         [Description("Tab instance used to run the script.")]
-        [Category("Input")]
+        [Category("Input.B")]
         public InArgument<PwTab> InputTab { get; set; }
 
         [DisplayName("Selector")]
         [Description("Selector used when locating the target element.")]
-        [Category("Input")]
+        [Category("Input.D")]
         public InArgument<string> Selector { get; set; }
 
         [DisplayName("Target Type")]
         [Description("Specify whether to target by element or selector.")]
-        [Category("Input")]
+        [Category("Input.C")]
         [DefaultValue(ElementTargetType.Selector)]
         [TypeConverter("F2B.Browser.Chromium.Playwright.ElementTargetTypeConverter, F2B.Browser.Chromium.Playwright")]
         public ElementTargetType TargetType { get; set; } = ElementTargetType.Selector;
 
         [DisplayName("Input Element")]
         [Description("Element object used directly as script target.")]
-        [Category("Input")]
+        [Category("Input.E")]
         public InArgument<PwElement> InputElement { get; set; }
 
         [DisplayName("Delay Before")]
         [Description("Wait time in milliseconds before locating element.")]
-        [Category("Time")]
+        [Category("Input.Z")]
         [DefaultValue(300)]
         public InArgument<int> DelayBefore { get; set; } = 300;
 
         [DisplayName("Timeout (ms)")]
         [Description("Total timeout in milliseconds for locate + script evaluation when BaseOn=Element.")]
-        [Category("Time")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
 
         [DisplayName("Script")]
         [Description("JavaScript code to execute.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.F")]
         public InArgument<string> Script { get; set; }
 
         [DisplayName("Arg")]
         [Description("Argument object passed to the script.")]
-        [Category("Input")]
+        [Category("Input.G")]
         public InArgument<object> Arg { get; set; }
 
         [DisplayName("Result")]

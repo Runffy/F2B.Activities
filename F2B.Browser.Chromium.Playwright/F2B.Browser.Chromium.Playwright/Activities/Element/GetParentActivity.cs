@@ -8,9 +8,11 @@ namespace F2B.Browser.Chromium.Playwright
     [TypeDescriptionProvider(typeof(ElementTargetTypeDescriptionProvider))]
     public sealed class GetParentActivity : ElementTargetActivityBase
     {
+        public GetParentActivity() : base("Get Parent") {}
+
         [DisplayName("Level")]
         [Description("Number of levels to move up.")]
-        [Category("Input")]
+        [Category("Input.D")]
         [DefaultValue(1)]
         public InArgument<int> Level { get; set; } = 1;
 
@@ -21,7 +23,7 @@ namespace F2B.Browser.Chromium.Playwright
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
 

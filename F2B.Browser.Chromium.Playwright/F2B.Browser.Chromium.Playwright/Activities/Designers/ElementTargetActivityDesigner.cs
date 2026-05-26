@@ -20,6 +20,8 @@ namespace F2B.Browser.Chromium.Playwright
         private const double EditorMinWidth = 190;
         private const double RowSpacing = 4;
 
+        private readonly FrameworkElement _targetTypeRow;
+        private readonly FrameworkElement _takeScreenshotBaseOnRow;
         private readonly FrameworkElement _elementRow;
         private readonly FrameworkElement _tabRow;
         private readonly FrameworkElement _selectorRow;
@@ -62,11 +64,13 @@ namespace F2B.Browser.Chromium.Playwright
         private readonly ExpressionTextBox _valuesExpressionBox;
         private readonly ExpressionTextBox _indicesExpressionBox;
         private readonly ComboBox _targetTypeComboBox;
+        private readonly ComboBox _takeScreenshotBaseOnComboBox;
         private readonly ComboBox _valTypeComboBox;
         private readonly TextBlock _metricsText;
 
         private DesignerMode _designerMode = DesignerMode.General;
         private bool _isSyncingTargetType;
+        private bool _isSyncingTakeScreenshotBaseOn;
         private bool _isSyncingValType;
 
         public ElementTargetActivityDesigner()
@@ -95,9 +99,15 @@ namespace F2B.Browser.Chromium.Playwright
             };
             Grid.SetIsSharedSizeScope(body, true);
 
+            _takeScreenshotBaseOnComboBox = BuildTakeScreenshotBaseOnComboBox();
+            _takeScreenshotBaseOnComboBox.SelectionChanged += OnTakeScreenshotBaseOnSelectionChanged;
+            _takeScreenshotBaseOnRow = CreateRow("BaseOn", _takeScreenshotBaseOnComboBox);
+            body.Children.Add(_takeScreenshotBaseOnRow);
+
             _targetTypeComboBox = BuildTargetTypeComboBox();
             _targetTypeComboBox.SelectionChanged += OnTargetTypeSelectionChanged;
-            body.Children.Add(CreateRow("TargetType", _targetTypeComboBox));
+            _targetTypeRow = CreateRow("TargetType", _targetTypeComboBox);
+            body.Children.Add(_targetTypeRow);
             _elementExpressionBox = CreateExpressionTextBox("Element", typeof(PwElement));
             _elementRow = CreateRow("Element", _elementExpressionBox, out _elementEditorBorder, RowSpacing);
             _tabExpressionBox = CreateExpressionTextBox("InputTab", typeof(PwTab));
@@ -291,6 +301,42 @@ namespace F2B.Browser.Chromium.Playwright
             return comboBox;
         }
 
+        private static ComboBox BuildTakeScreenshotBaseOnComboBox()
+        {
+            var comboBox = new ComboBox
+            {
+                IsEditable = false
+            };
+            comboBox.Items.Add("Tab");
+            comboBox.Items.Add("Element");
+            return comboBox;
+        }
+
+        private static TakeScreenshotBaseOn ReadTakeScreenshotBaseOn(ModelItem modelItem)
+        {
+            var modelProperty = modelItem?.Properties["BaseOn"];
+            if (modelProperty?.ComputedValue is TakeScreenshotBaseOn value)
+            {
+                return value;
+            }
+
+            return TakeScreenshotBaseOn.Element;
+        }
+
+        private static TakeScreenshotBaseOn ParseTakeScreenshotBaseOn(string text)
+        {
+            return string.Equals(text, "Tab", StringComparison.OrdinalIgnoreCase)
+                ? TakeScreenshotBaseOn.Tab
+                : TakeScreenshotBaseOn.Element;
+        }
+
+        private void SyncTakeScreenshotBaseOnCombo(TakeScreenshotBaseOn baseOn)
+        {
+            _isSyncingTakeScreenshotBaseOn = true;
+            _takeScreenshotBaseOnComboBox.SelectedItem = baseOn == TakeScreenshotBaseOn.Tab ? "Tab" : "Element";
+            _isSyncingTakeScreenshotBaseOn = false;
+        }
+
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             if (ModelItem == null)
@@ -306,6 +352,13 @@ namespace F2B.Browser.Chromium.Playwright
 
             _designerMode = ReadDesignerMode(ModelItem);
             RefreshSpecificRows();
+
+            if (_designerMode == DesignerMode.TakeScreenshot)
+            {
+                var baseOn = ReadTakeScreenshotBaseOn(ModelItem);
+                SyncTakeScreenshotBaseOnCombo(baseOn);
+                RefreshTakeScreenshotRows(baseOn, current);
+            }
 
             if (_designerMode == DesignerMode.Select)
             {
@@ -340,8 +393,31 @@ namespace F2B.Browser.Chromium.Playwright
                 }
 
                 RefreshTargetRows(targetType);
+                if (_designerMode == DesignerMode.TakeScreenshot)
+                {
+                    RefreshTakeScreenshotRows(ReadTakeScreenshotBaseOn(ModelItem), targetType);
+                }
+
                 RefreshRequiredBorders();
             }
+        }
+
+        private void OnTakeScreenshotBaseOnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isSyncingTakeScreenshotBaseOn || ModelItem == null || _designerMode != DesignerMode.TakeScreenshot)
+            {
+                return;
+            }
+
+            var baseOn = ParseTakeScreenshotBaseOn(_takeScreenshotBaseOnComboBox.SelectedItem as string);
+            ModelItem.Properties["BaseOn"].SetValue(baseOn);
+            if (ModelItem.GetCurrentValue() != null)
+            {
+                TypeDescriptor.Refresh(ModelItem.GetCurrentValue());
+            }
+
+            RefreshTakeScreenshotRows(baseOn, ReadTargetType(ModelItem));
+            RefreshRequiredBorders();
         }
 
         private void OnValTypeSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -375,14 +451,47 @@ namespace F2B.Browser.Chromium.Playwright
 
         private void RefreshTargetRows(ElementTargetType targetType)
         {
+            if (_designerMode == DesignerMode.TakeScreenshot &&
+                ReadTakeScreenshotBaseOn(ModelItem) == TakeScreenshotBaseOn.Tab)
+            {
+                _elementRow.Visibility = Visibility.Collapsed;
+                _tabRow.Visibility = Visibility.Visible;
+                _selectorRow.Visibility = Visibility.Collapsed;
+                return;
+            }
+
             var isElement = targetType == ElementTargetType.Element;
             _elementRow.Visibility = isElement ? Visibility.Visible : Visibility.Collapsed;
             _tabRow.Visibility = isElement ? Visibility.Collapsed : Visibility.Visible;
             _selectorRow.Visibility = isElement ? Visibility.Collapsed : Visibility.Visible;
         }
 
+        private void RefreshTakeScreenshotRows(TakeScreenshotBaseOn baseOn, ElementTargetType targetType)
+        {
+            if (_designerMode != DesignerMode.TakeScreenshot)
+            {
+                return;
+            }
+
+            _takeScreenshotBaseOnRow.Visibility = Visibility.Visible;
+            _pathRow.Visibility = Visibility.Visible;
+
+            if (baseOn == TakeScreenshotBaseOn.Tab)
+            {
+                _targetTypeRow.Visibility = Visibility.Collapsed;
+                _elementRow.Visibility = Visibility.Collapsed;
+                _tabRow.Visibility = Visibility.Visible;
+                _selectorRow.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            _targetTypeRow.Visibility = Visibility.Visible;
+            RefreshTargetRows(targetType);
+        }
+
         private void RefreshSpecificRows()
         {
+            _takeScreenshotBaseOnRow.Visibility = _designerMode == DesignerMode.TakeScreenshot ? Visibility.Visible : Visibility.Collapsed;
             _saveAsPathRow.Visibility = _designerMode == DesignerMode.ClickForDownload ? Visibility.Visible : Visibility.Collapsed;
             _childSelectorRow.Visibility = _designerMode == DesignerMode.GetChildren ? Visibility.Visible : Visibility.Collapsed;
             _valueRow.Visibility = _designerMode == DesignerMode.Input || _designerMode == DesignerMode.SetAttribute ? Visibility.Visible : Visibility.Collapsed;
@@ -423,7 +532,17 @@ namespace F2B.Browser.Chromium.Playwright
 
                 var targetType = ReadTargetType(ModelItem);
                 SyncTargetTypeCombo(targetType);
-                RefreshTargetRows(targetType);
+
+                if (_designerMode == DesignerMode.TakeScreenshot)
+                {
+                    var baseOn = ReadTakeScreenshotBaseOn(ModelItem);
+                    SyncTakeScreenshotBaseOnCombo(baseOn);
+                    RefreshTakeScreenshotRows(baseOn, targetType);
+                }
+                else
+                {
+                    RefreshTargetRows(targetType);
+                }
 
                 if (_designerMode == DesignerMode.Select)
                 {
@@ -445,10 +564,13 @@ namespace F2B.Browser.Chromium.Playwright
 
             var targetType = ReadTargetType(ModelItem);
             var valType = ReadValType(ModelItem);
+            var takeScreenshotBaseOn = ReadTakeScreenshotBaseOn(ModelItem);
+            var isTakeScreenshotTab = _designerMode == DesignerMode.TakeScreenshot && takeScreenshotBaseOn == TakeScreenshotBaseOn.Tab;
+            var isTakeScreenshotElement = _designerMode == DesignerMode.TakeScreenshot && takeScreenshotBaseOn == TakeScreenshotBaseOn.Element;
 
-            SetRequiredBorder(_elementEditorBorder, targetType == ElementTargetType.Element, IsArgumentFilled(ModelItem, "Element", _elementExpressionBox));
-            SetRequiredBorder(_tabEditorBorder, targetType == ElementTargetType.Selector, IsArgumentFilled(ModelItem, "InputTab", _tabExpressionBox));
-            SetRequiredBorder(_selectorEditorBorder, targetType == ElementTargetType.Selector, IsArgumentFilled(ModelItem, "Selector", _selectorExpressionBox));
+            SetRequiredBorder(_elementEditorBorder, isTakeScreenshotElement && targetType == ElementTargetType.Element, IsArgumentFilled(ModelItem, "Element", _elementExpressionBox));
+            SetRequiredBorder(_tabEditorBorder, (isTakeScreenshotTab || (isTakeScreenshotElement && targetType == ElementTargetType.Selector)) || (_designerMode != DesignerMode.TakeScreenshot && targetType == ElementTargetType.Selector), IsArgumentFilled(ModelItem, "InputTab", _tabExpressionBox));
+            SetRequiredBorder(_selectorEditorBorder, isTakeScreenshotElement && targetType == ElementTargetType.Selector, IsArgumentFilled(ModelItem, "Selector", _selectorExpressionBox));
 
             SetRequiredBorder(_saveAsPathEditorBorder, _designerMode == DesignerMode.ClickForDownload, IsArgumentFilled(ModelItem, "SaveAsPath", _saveAsPathExpressionBox));
             SetRequiredBorder(_childSelectorEditorBorder, _designerMode == DesignerMode.GetChildren, IsArgumentFilled(ModelItem, "ChildSelector", _childSelectorExpressionBox));

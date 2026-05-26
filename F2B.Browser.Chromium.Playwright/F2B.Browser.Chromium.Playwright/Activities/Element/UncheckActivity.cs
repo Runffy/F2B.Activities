@@ -8,9 +8,11 @@ namespace F2B.Browser.Chromium.Playwright
     [TypeDescriptionProvider(typeof(ElementTargetTypeDescriptionProvider))]
     public sealed class UncheckActivity : ElementTargetActivityBase
     {
+        public UncheckActivity() : base("Uncheck") {}
+
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
 

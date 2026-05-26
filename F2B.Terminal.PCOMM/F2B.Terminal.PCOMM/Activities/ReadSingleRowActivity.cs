@@ -9,26 +9,28 @@ namespace F2B.Terminal.PCOMM
     [Description("Read text from a single terminal row within the specified column range.")]
     public sealed class ReadSingleRowActivity : PcommDelayActivityBase
     {
+        public ReadSingleRowActivity() : base("Read Single Row") {}
+
         [DisplayName("Session")]
         [Description("Connected PCOMM presentation space session.")]
         [RequiredArgument]
-        [Category("Input.A.Window")]
+        [Category("Input.A")]
         public InArgument<PcommSession> Session { get; set; }
 
         [DisplayName("Row")]
         [Description("Row number on the terminal screen.")]
         [RequiredArgument]
-        [Category("Input.B.Location")]
+        [Category("Input.B")]
         public InArgument<int> Row { get; set; }
 
         [DisplayName("Start Col")]
         [Description("Start column. When empty, defaults to 1.")]
-        [Category("Input.C.Location")]
+        [Category("Input.C")]
         public InArgument<int?> StartCol { get; set; }
 
         [DisplayName("End Col")]
         [Description("End column. When empty, defaults to the session column count.")]
-        [Category("Input.C.Location")]
+        [Category("Input.C")]
         public InArgument<int?> EndCol { get; set; }
 
         [DisplayName("Content")]

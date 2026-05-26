@@ -8,6 +8,11 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class BrowserGetAllTabActivity : CodeActivity
     {
+        public BrowserGetAllTabActivity()
+        {
+            DisplayName = "Get All Tabs";
+        }
+
         [DisplayName("Input Browser")]
         [Description("Browser instance to read from.")]
         [RequiredArgument]

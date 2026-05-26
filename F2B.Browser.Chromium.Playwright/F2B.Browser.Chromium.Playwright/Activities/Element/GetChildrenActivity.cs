@@ -8,15 +8,17 @@ namespace F2B.Browser.Chromium.Playwright
     [TypeDescriptionProvider(typeof(ElementTargetTypeDescriptionProvider))]
     public sealed class GetChildrenActivity : ElementTargetActivityBase
     {
+        public GetChildrenActivity() : base("Get Children") {}
+
         [DisplayName("Child Selector")]
         [Description("Selector used to filter child elements.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.D")]
         public InArgument<string> ChildSelector { get; set; }
 
         [DisplayName("Deepdive")]
         [Description("Whether to search deeper descendants recursively.")]
-        [Category("Input")]
+        [Category("Input.E")]
         [DefaultValue(false)]
         [TypeConverter("F2B.Browser.Chromium.Playwright.BooleanTypeConverter, F2B.Browser.Chromium.Playwright")]
         public bool Deepdive { get; set; } = false;
@@ -28,7 +30,7 @@ namespace F2B.Browser.Chromium.Playwright
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
 

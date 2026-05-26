@@ -15,26 +15,31 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class GetStorageActivity : CodeActivity
     {
+        public GetStorageActivity()
+        {
+            DisplayName = "Get Storage";
+        }
+
         [DisplayName("Base On")]
         [Description("Choose whether to read storage from browser or tab.")]
-        [Category("Input")]
+        [Category("Input.A")]
         [DefaultValue(GetCookiesBaseOn.Tab)]
         public GetCookiesBaseOn BaseOn { get; set; } = GetCookiesBaseOn.Tab;
 
         [DisplayName("Scope")]
         [Description("Specify SessionStorage or LocalStorage.")]
-        [Category("Input")]
+        [Category("Input.C")]
         [DefaultValue(GetStorageScope.Session)]
         public GetStorageScope Scope { get; set; } = GetStorageScope.Session;
 
         [DisplayName("Input Browser")]
         [Description("Browser instance used to read storage.")]
-        [Category("Input")]
+        [Category("Input.B")]
         public InArgument<PwBrowser> InputBrowser { get; set; }
 
         [DisplayName("Input Tab")]
         [Description("Tab instance used to read storage.")]
-        [Category("Input")]
+        [Category("Input.B")]
         public InArgument<PwTab> InputTab { get; set; }
 
         [DisplayName("Storage")]

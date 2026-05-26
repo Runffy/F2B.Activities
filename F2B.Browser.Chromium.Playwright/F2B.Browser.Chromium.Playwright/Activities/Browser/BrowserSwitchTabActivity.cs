@@ -18,45 +18,50 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class BrowserSwitchTabActivity : CodeActivity
     {
+        public BrowserSwitchTabActivity()
+        {
+            DisplayName = "Switch Tab";
+        }
+
         [DisplayName("Input Browser")]
         [Description("Browser instance where tab switching is performed.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.A")]
         public InArgument<PwBrowser> Browser { get; set; }
 
         [DisplayName("Index")]
         [Description("Tab index used when switching by index (0-based).")]
-        [Category("Input")]
+        [Category("Input.C")]
         public InArgument<int?> Index { get; set; }
 
         [DisplayName("Title")]
         [Description("Exact title text used when switching by title.")]
-        [Category("Input")]
+        [Category("Input.C")]
         public InArgument<string> Title { get; set; }
 
-        [DisplayName("Title Re")]
+        [DisplayName("Title Regex")]
         [Description("Regular expression used when switching by title.")]
-        [Category("Input")]
+        [Category("Input.C")]
         public InArgument<string> TitleRe { get; set; }
 
         [DisplayName("Url")]
         [Description("Exact URL used when switching by URL.")]
-        [Category("Input")]
+        [Category("Input.C")]
         public InArgument<string> Url { get; set; }
 
-        [DisplayName("Url Re")]
+        [DisplayName("Url Regex")]
         [Description("Regular expression used when switching by URL.")]
-        [Category("Input")]
+        [Category("Input.C")]
         public InArgument<string> UrlRe { get; set; }
 
         [DisplayName("Input Tab")]
         [Description("Target tab used when switching by tab object.")]
-        [Category("Input")]
+        [Category("Input.C")]
         public InArgument<PwTab> InputTab { get; set; }
 
         [DisplayName("By Type")]
         [Description("Matching mode used to switch tabs.")]
-        [Category("Input")]
+        [Category("Input.B")]
         [DefaultValue(BrowserSwitchTabByType.Index)]
         [TypeConverter("F2B.Browser.Chromium.Playwright.BrowserSwitchTabByTypeTypeConverter, F2B.Browser.Chromium.Playwright")]
         public BrowserSwitchTabByType ByType

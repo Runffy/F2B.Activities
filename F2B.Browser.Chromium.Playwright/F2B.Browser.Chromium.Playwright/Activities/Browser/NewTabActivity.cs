@@ -8,20 +8,25 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class NewTabActivity : CodeActivity
     {
+        public NewTabActivity()
+        {
+            DisplayName = "New Tab";
+        }
+
         [DisplayName("Input Browser")]
         [Description("Browser instance used to create the tab.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.A")]
         public InArgument<PwBrowser> Browser { get; set; }
 
         [DisplayName("Url")]
         [Description("Target URL to open in the new tab.")]
-        [Category("Input")]
+        [Category("Input.B")]
         public InArgument<string> Url { get; set; }
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for tab creation and navigation.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int?> Timeout { get; set; } = 15000;
 

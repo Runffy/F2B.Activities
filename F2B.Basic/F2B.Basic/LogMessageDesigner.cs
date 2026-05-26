@@ -63,11 +63,12 @@ namespace F2B.Basic
 
             expressionTextBox = new ExpressionTextBox
             {
-                Margin = new Thickness(4, 0, 0, 0),
                 Width = 200,
                 MaxWidth = 200,
                 HintText = hint,
-                ExpressionType = expressionType
+                ExpressionType = expressionType,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Center
             };
 
             BindingOperations.SetBinding(expressionTextBox, ExpressionTextBox.OwnerActivityProperty, new Binding("ModelItem"));
@@ -80,7 +81,7 @@ namespace F2B.Basic
 
             editorBorder = new Border
             {
-                Margin = new Thickness(0, 0, 0, 0),
+                Margin = new Thickness(4, 0, 0, 0),
                 BorderBrush = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
                 Child = expressionTextBox

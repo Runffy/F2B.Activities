@@ -20,6 +20,7 @@ namespace F2B.Basic
 
         public LogMessageActivity()
         {
+            DisplayName = "Log Message";
             Level = new InArgument<string>("INFO");
         }
 
@@ -32,9 +33,11 @@ namespace F2B.Basic
 
         [Editor(typeof(LogLevelOptionsEditor), typeof(global::System.Activities.Presentation.PropertyEditing.ExtendedPropertyValueEditor))]
         [RequiredArgument]
+        [Category("Input.A")]
         public InArgument<string> Level { get; set; }
 
         [RequiredArgument]
+        [Category("Input.A")]
         public InArgument<object> Message { get; set; }
 
         public Activity Create(DependencyObject target)

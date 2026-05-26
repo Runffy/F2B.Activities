@@ -16,31 +16,46 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(ElementTargetActivityDesigner))]
     public abstract class ElementTargetActivityBase : CodeActivity, IElementTargetConfig
     {
-        [DisplayName("Element")]
-        [Description("Element object to operate on directly.")]
-        [Category("Target")]
-        public InArgument<PwElement> Element { get; set; }
+        protected ElementTargetActivityBase(string displayName)
+        {
+            DisplayName = displayName;
+        }
 
-        [DisplayName("Selector")]
-        [Description("Selector used to locate the target element.")]
-        [Category("Target")]
-        public InArgument<string> Selector { get; set; }
-
-        [DisplayName("Input Tab")]
-        [Description("Tab instance used when locating by selector.")]
-        [Category("Target")]
-        public InArgument<PwTab> InputTab { get; set; }
-
+        
         [DisplayName("Target Type")]
         [Description("Choose whether to resolve target by element or selector.")]
-        [Category("Target")]
+        [Category("Input.A")]
         [DefaultValue(ElementTargetType.Selector)]
         [TypeConverter("F2B.Browser.Chromium.Playwright.ElementTargetTypeConverter, F2B.Browser.Chromium.Playwright")]
         public ElementTargetType TargetType { get; set; } = ElementTargetType.Selector;
 
+        [DisplayName("Input Tab")]
+        [Description("Tab instance used when locating by selector.")]
+        [Category("Input.B")]
+        public InArgument<PwTab> InputTab { get; set; }
+
+        [DisplayName("Selector")]
+        [Description("Selector used to locate the target element.")]
+        [Category("Input.B")]
+        public InArgument<string> Selector { get; set; }
+
+
+
+
+        [DisplayName("Input Element")]
+        [Description("Element object to operate on directly.")]
+        [Category("Input.C")]
+        public InArgument<PwElement> Element { get; set; }
+
+        
+
+        
+
+        
+
         [DisplayName("Delay Before")]
         [Description("Wait time in milliseconds before execution.")]
-        [Category("Time")]
+        [Category("Input.Z")]
         [DefaultValue(300)]
         public InArgument<int> DelayBefore { get; set; } = 300;
 

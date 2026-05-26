@@ -13,21 +13,26 @@ namespace F2B.Basic
     {
         public RunCmdCommandActivity()
         {
+            DisplayName = "Run CMD Command";
             WaitForCompletion = new InArgument<bool>(true);
             ShowWindow = new InArgument<bool>(false);
         }
 
         [RequiredArgument]
         [DisplayName("Command")]
+        [Category("Input.A")]
         public InArgument<string> Command { get; set; }
 
         [DisplayName("Wait for completion")]
+        [Category("Input.B")]
         public InArgument<bool> WaitForCompletion { get; set; }
 
         [DisplayName("Show CMD window")]
+        [Category("Input.B")]
         public InArgument<bool> ShowWindow { get; set; }
 
         [DisplayName("Result")]
+        [Category("Output")]
         public OutArgument<string> Result { get; set; }
 
         public Activity Create(DependencyObject target)

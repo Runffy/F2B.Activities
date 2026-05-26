@@ -9,16 +9,21 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(ParentSelectorActivityDesigner))]
     public sealed class ElementLocatorActivity : CodeActivity
     {
+        public ElementLocatorActivity()
+        {
+            DisplayName = "Element Locator";
+        }
+
         [DisplayName("Parent Object")]
         [Description("Root object for query. Accepts PwTab or PwElement.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.A")]
         public InArgument<object> ParentObject { get; set; }
 
         [DisplayName("Selector")]
         [Description("Selector used to locate the target.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.A")]
         public InArgument<string> Selector { get; set; }
 
         [DisplayName("Locator Result")]

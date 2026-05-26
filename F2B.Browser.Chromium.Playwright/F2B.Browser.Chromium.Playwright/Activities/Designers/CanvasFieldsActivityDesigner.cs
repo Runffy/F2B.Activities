@@ -107,6 +107,11 @@ namespace F2B.Browser.Chromium.Playwright
         private readonly ComboBox _switchTabByTypeComboBox;
         private readonly ComboBox _getCookiesBaseOnComboBox;
         private readonly ComboBox _getStorageScopeComboBox;
+        private readonly FrameworkElement _takeScreenshotBaseOnRow;
+        private readonly FrameworkElement _takeScreenshotPathRow;
+        private readonly Border _takeScreenshotPathEditorBorder;
+        private readonly ExpressionTextBox _takeScreenshotPathExpressionBox;
+        private readonly ComboBox _takeScreenshotBaseOnComboBox;
 
         private DesignerMode _designerMode = DesignerMode.None;
         private bool _isSyncingSwitchByType;
@@ -122,6 +127,8 @@ namespace F2B.Browser.Chromium.Playwright
         private bool _isSyncingSendKeysBaseOn;
         private bool _isSyncingSendKeysTargetType;
         private bool _isUpdatingSendKeysArguments;
+        private bool _isSyncingTakeScreenshotBaseOn;
+        private bool _isUpdatingTakeScreenshotArguments;
 
         public CanvasFieldsActivityDesigner()
         {
@@ -218,7 +225,13 @@ namespace F2B.Browser.Chromium.Playwright
             _getStorageScopeComboBox = BuildGetStorageScopeComboBox();
             _getStorageScopeComboBox.SelectionChanged += OnGetStorageScopeSelectionChanged;
             _getStorageScopeRow = CreateRow("Scope", _getStorageScopeComboBox, RowSpacing);
+            _takeScreenshotPathExpressionBox = CreateExpressionTextBox("Path", typeof(string));
+            _takeScreenshotBaseOnComboBox = BuildTakeScreenshotBaseOnComboBox();
+            _takeScreenshotBaseOnComboBox.SelectionChanged += OnTakeScreenshotBaseOnSelectionChanged;
+            _takeScreenshotBaseOnRow = CreateRow("BaseOn", _takeScreenshotBaseOnComboBox);
+            _takeScreenshotPathRow = CreateRow("Path", _takeScreenshotPathExpressionBox, out _takeScreenshotPathEditorBorder, RowSpacing);
 
+            body.Children.Add(_takeScreenshotBaseOnRow);
             body.Children.Add(_browserRow);
             body.Children.Add(_tabRow);
             body.Children.Add(_findElementBaseOnRow);
@@ -233,6 +246,7 @@ namespace F2B.Browser.Chromium.Playwright
             body.Children.Add(_runJsInputTabRow);
             body.Children.Add(_runJsInputElementRow);
             body.Children.Add(_runJsSelectorRow);
+            body.Children.Add(_takeScreenshotPathRow);
             body.Children.Add(_runJsScriptRow);
             body.Children.Add(_sendKeysBaseOnRow);
             body.Children.Add(_sendKeysTargetTypeRow);
@@ -315,6 +329,15 @@ namespace F2B.Browser.Chromium.Playwright
                 ClearInactiveSendKeysArguments(sendKeysBaseOn, sendKeysTargetType);
                 RefreshSendKeysRows(sendKeysBaseOn, sendKeysTargetType);
             }
+            else if (_designerMode == DesignerMode.TakeScreenshot)
+            {
+                var baseOn = ReadTakeScreenshotBaseOn(ModelItem);
+                var targetType = ReadRunJsTargetType(ModelItem);
+                SyncTakeScreenshotBaseOnCombo(baseOn);
+                SyncRunJsTargetTypeCombo(targetType);
+                ClearInactiveTakeScreenshotArguments(baseOn, targetType);
+                RefreshTakeScreenshotRows(baseOn, targetType);
+            }
 
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
             RefreshRequiredBorders();
@@ -391,16 +414,55 @@ namespace F2B.Browser.Chromium.Playwright
 
         private void OnRunJsTargetTypeSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_isSyncingRunJsTargetType || ModelItem == null || _designerMode != DesignerMode.RunJs)
+            if (_isSyncingRunJsTargetType || ModelItem == null)
             {
                 return;
             }
 
-            var runJsBaseOn = ReadRunJsBaseOn(ModelItem);
-            var runJsTargetType = ParseRunJsTargetType(_runJsTargetTypeComboBox.SelectedItem as string);
-            ModelItem.Properties["TargetType"].SetValue(runJsTargetType);
-            ClearInactiveRunJsArguments(runJsBaseOn, runJsTargetType);
-            RefreshRunJsRows(runJsBaseOn, runJsTargetType);
+            if (_designerMode == DesignerMode.RunJs)
+            {
+                var runJsBaseOn = ReadRunJsBaseOn(ModelItem);
+                var runJsTargetType = ParseRunJsTargetType(_runJsTargetTypeComboBox.SelectedItem as string);
+                ModelItem.Properties["TargetType"].SetValue(runJsTargetType);
+                ClearInactiveRunJsArguments(runJsBaseOn, runJsTargetType);
+                RefreshRunJsRows(runJsBaseOn, runJsTargetType);
+                RefreshRequiredBorders();
+                return;
+            }
+
+            if (_designerMode == DesignerMode.TakeScreenshot)
+            {
+                var baseOn = ReadTakeScreenshotBaseOn(ModelItem);
+                var targetType = ParseRunJsTargetType(_runJsTargetTypeComboBox.SelectedItem as string);
+                ModelItem.Properties["TargetType"].SetValue(targetType);
+                if (ModelItem.GetCurrentValue() != null)
+                {
+                    TypeDescriptor.Refresh(ModelItem.GetCurrentValue());
+                }
+
+                ClearInactiveTakeScreenshotArguments(baseOn, targetType);
+                RefreshTakeScreenshotRows(baseOn, targetType);
+                RefreshRequiredBorders();
+            }
+        }
+
+        private void OnTakeScreenshotBaseOnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isSyncingTakeScreenshotBaseOn || ModelItem == null || _designerMode != DesignerMode.TakeScreenshot)
+            {
+                return;
+            }
+
+            var baseOn = ParseTakeScreenshotBaseOn(_takeScreenshotBaseOnComboBox.SelectedItem as string);
+            var targetType = ReadRunJsTargetType(ModelItem);
+            ModelItem.Properties["BaseOn"].SetValue(baseOn);
+            if (ModelItem.GetCurrentValue() != null)
+            {
+                TypeDescriptor.Refresh(ModelItem.GetCurrentValue());
+            }
+
+            ClearInactiveTakeScreenshotArguments(baseOn, targetType);
+            RefreshTakeScreenshotRows(baseOn, targetType);
             RefreshRequiredBorders();
         }
 
@@ -446,7 +508,6 @@ namespace F2B.Browser.Chromium.Playwright
             _tabFindSelectorRow.Visibility = Visibility.Collapsed;
             _tabNavigateUrlRow.Visibility = _designerMode == DesignerMode.TabNavigateUrl ? Visibility.Visible : Visibility.Collapsed;
             _runJsBaseOnRow.Visibility = _designerMode == DesignerMode.RunJs ? Visibility.Visible : Visibility.Collapsed;
-            _runJsTargetTypeRow.Visibility = _designerMode == DesignerMode.RunJs ? Visibility.Visible : Visibility.Collapsed;
             _runJsScriptRow.Visibility = _designerMode == DesignerMode.RunJs ? Visibility.Visible : Visibility.Collapsed;
             _sendKeysBaseOnRow.Visibility = _designerMode == DesignerMode.SendKeys ? Visibility.Visible : Visibility.Collapsed;
             _sendKeysTargetTypeRow.Visibility = _designerMode == DesignerMode.SendKeys ? Visibility.Visible : Visibility.Collapsed;
@@ -454,6 +515,9 @@ namespace F2B.Browser.Chromium.Playwright
             _switchTabByTypeRow.Visibility = _designerMode == DesignerMode.BrowserSwitchTab ? Visibility.Visible : Visibility.Collapsed;
             _getCookiesBaseOnRow.Visibility = (_designerMode == DesignerMode.GetCookies || _designerMode == DesignerMode.GetStorage) ? Visibility.Visible : Visibility.Collapsed;
             _getStorageScopeRow.Visibility = _designerMode == DesignerMode.GetStorage ? Visibility.Visible : Visibility.Collapsed;
+            _takeScreenshotBaseOnRow.Visibility = _designerMode == DesignerMode.TakeScreenshot ? Visibility.Visible : Visibility.Collapsed;
+            _takeScreenshotPathRow.Visibility = _designerMode == DesignerMode.TakeScreenshot ? Visibility.Visible : Visibility.Collapsed;
+            _runJsTargetTypeRow.Visibility = (_designerMode == DesignerMode.RunJs || _designerMode == DesignerMode.TakeScreenshot) ? Visibility.Visible : Visibility.Collapsed;
 
             if (_designerMode != DesignerMode.BrowserSwitchTab)
             {
@@ -474,7 +538,7 @@ namespace F2B.Browser.Chromium.Playwright
             {
                 _getStorageScopeRow.Visibility = Visibility.Collapsed;
             }
-            if (_designerMode != DesignerMode.RunJs)
+            if (_designerMode != DesignerMode.RunJs && _designerMode != DesignerMode.TakeScreenshot)
             {
                 _runJsInputTabRow.Visibility = Visibility.Collapsed;
                 _runJsInputElementRow.Visibility = Visibility.Collapsed;
@@ -607,6 +671,89 @@ namespace F2B.Browser.Chromium.Playwright
             _sendKeysInputElementRow.Visibility = targetType == ElementTargetType.Element ? Visibility.Visible : Visibility.Collapsed;
             _sendKeysInputTabRow.Visibility = targetType == ElementTargetType.Selector ? Visibility.Visible : Visibility.Collapsed;
             _sendKeysSelectorRow.Visibility = targetType == ElementTargetType.Selector ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void RefreshTakeScreenshotRows(TakeScreenshotBaseOn baseOn, ElementTargetType targetType)
+        {
+            if (_designerMode != DesignerMode.TakeScreenshot)
+            {
+                return;
+            }
+
+            if (baseOn == TakeScreenshotBaseOn.Tab)
+            {
+                _runJsTargetTypeRow.Visibility = Visibility.Collapsed;
+                _runJsInputTabRow.Visibility = Visibility.Visible;
+                _runJsInputElementRow.Visibility = Visibility.Collapsed;
+                _runJsSelectorRow.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            _runJsTargetTypeRow.Visibility = Visibility.Visible;
+            _runJsInputElementRow.Visibility = targetType == ElementTargetType.Element ? Visibility.Visible : Visibility.Collapsed;
+            _runJsInputTabRow.Visibility = targetType == ElementTargetType.Selector ? Visibility.Visible : Visibility.Collapsed;
+            _runJsSelectorRow.Visibility = targetType == ElementTargetType.Selector ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private static ComboBox BuildTakeScreenshotBaseOnComboBox()
+        {
+            var comboBox = new ComboBox
+            {
+                IsEditable = false
+            };
+            comboBox.Items.Add("Tab");
+            comboBox.Items.Add("Element");
+            return comboBox;
+        }
+
+        private static TakeScreenshotBaseOn ReadTakeScreenshotBaseOn(ModelItem modelItem)
+        {
+            var modelProperty = modelItem?.Properties["BaseOn"];
+            if (modelProperty?.ComputedValue is TakeScreenshotBaseOn value)
+            {
+                return value;
+            }
+
+            return TakeScreenshotBaseOn.Element;
+        }
+
+        private static TakeScreenshotBaseOn ParseTakeScreenshotBaseOn(string text)
+        {
+            return string.Equals(text, "Tab", StringComparison.OrdinalIgnoreCase)
+                ? TakeScreenshotBaseOn.Tab
+                : TakeScreenshotBaseOn.Element;
+        }
+
+        private void SyncTakeScreenshotBaseOnCombo(TakeScreenshotBaseOn baseOn)
+        {
+            _isSyncingTakeScreenshotBaseOn = true;
+            _takeScreenshotBaseOnComboBox.SelectedItem = baseOn == TakeScreenshotBaseOn.Tab ? "Tab" : "Element";
+            _isSyncingTakeScreenshotBaseOn = false;
+        }
+
+        private void ClearInactiveTakeScreenshotArguments(TakeScreenshotBaseOn baseOn, ElementTargetType targetType)
+        {
+            if (ModelItem == null || _designerMode != DesignerMode.TakeScreenshot)
+            {
+                return;
+            }
+
+            _isUpdatingTakeScreenshotArguments = true;
+            try
+            {
+                var keepInputTab = baseOn == TakeScreenshotBaseOn.Tab ||
+                                   (baseOn == TakeScreenshotBaseOn.Element && targetType == ElementTargetType.Selector);
+                var keepInputElement = baseOn == TakeScreenshotBaseOn.Element && targetType == ElementTargetType.Element;
+                var keepSelector = baseOn == TakeScreenshotBaseOn.Element && targetType == ElementTargetType.Selector;
+
+                ClearRunJsArgumentIfHidden("InputTab", keepInputTab);
+                ClearRunJsArgumentIfHidden("InputElement", keepInputElement);
+                ClearRunJsArgumentIfHidden("Selector", keepSelector);
+            }
+            finally
+            {
+                _isUpdatingTakeScreenshotArguments = false;
+            }
         }
 
         private void SyncSendKeysBaseOnCombo(SendKeysBaseOn baseOn)
@@ -1083,6 +1230,8 @@ namespace F2B.Browser.Chromium.Playwright
                     return DesignerMode.RunJs;
                 case nameof(SendkeysActivity):
                     return DesignerMode.SendKeys;
+                case nameof(TakeScreenshotActivity):
+                    return DesignerMode.TakeScreenshot;
                 default:
                     return DesignerMode.None;
             }
@@ -1164,6 +1313,18 @@ namespace F2B.Browser.Chromium.Playwright
                         if (!_isUpdatingSendKeysArguments)
                         {
                             ClearInactiveSendKeysArguments(sendKeysBaseOn, sendKeysTargetType);
+                        }
+                    }
+                    else if (ModelItem != null && _designerMode == DesignerMode.TakeScreenshot)
+                    {
+                        var baseOn = ReadTakeScreenshotBaseOn(ModelItem);
+                        var targetType = ReadRunJsTargetType(ModelItem);
+                        SyncTakeScreenshotBaseOnCombo(baseOn);
+                        SyncRunJsTargetTypeCombo(targetType);
+                        RefreshTakeScreenshotRows(baseOn, targetType);
+                        if (!_isUpdatingTakeScreenshotArguments)
+                        {
+                            ClearInactiveTakeScreenshotArguments(baseOn, targetType);
                         }
                     }
 
@@ -1343,6 +1504,8 @@ namespace F2B.Browser.Chromium.Playwright
             var runJsTargetType = ReadRunJsTargetType(ModelItem);
             var sendKeysBaseOn = ReadSendKeysBaseOn(ModelItem);
             var sendKeysTargetType = ReadSendKeysTargetType(ModelItem);
+            var takeScreenshotBaseOn = ReadTakeScreenshotBaseOn(ModelItem);
+            var takeScreenshotTargetType = ReadRunJsTargetType(ModelItem);
 
             SetRequiredBorder(_browserEditorBorder, IsBrowserMode(_designerMode), IsArgumentFilled(ModelItem, "Browser", _browserExpressionBox));
             SetRequiredBorder(_tabEditorBorder, IsTabMode(_designerMode), IsArgumentFilled(ModelItem, "Tab", _tabExpressionBox));
@@ -1354,19 +1517,23 @@ namespace F2B.Browser.Chromium.Playwright
             var isRunJsTab = _designerMode == DesignerMode.RunJs && runJsBaseOn == RunJsBaseOn.Tab;
             var isRunJsElementByElement = _designerMode == DesignerMode.RunJs && runJsBaseOn == RunJsBaseOn.Element && runJsTargetType == ElementTargetType.Element;
             var isRunJsElementBySelector = _designerMode == DesignerMode.RunJs && runJsBaseOn == RunJsBaseOn.Element && runJsTargetType == ElementTargetType.Selector;
-
-            SetRequiredBorder(_runJsInputTabEditorBorder, isRunJsTab || isRunJsElementBySelector, IsArgumentFilled(ModelItem, "InputTab", _runJsInputTabExpressionBox));
-            SetRequiredBorder(_runJsInputElementEditorBorder, isRunJsElementByElement, IsArgumentFilled(ModelItem, "InputElement", _runJsInputElementExpressionBox));
-            SetRequiredBorder(_runJsSelectorEditorBorder, isRunJsElementBySelector, IsArgumentFilled(ModelItem, "Selector", _runJsSelectorExpressionBox));
-            SetRequiredBorder(_runJsScriptEditorBorder, _designerMode == DesignerMode.RunJs, IsArgumentFilled(ModelItem, "Script", _runJsScriptExpressionBox));
             var isSendKeysTab = _designerMode == DesignerMode.SendKeys && sendKeysBaseOn == SendKeysBaseOn.Tab;
             var isSendKeysElementByElement = _designerMode == DesignerMode.SendKeys && sendKeysBaseOn == SendKeysBaseOn.Element && sendKeysTargetType == ElementTargetType.Element;
             var isSendKeysElementBySelector = _designerMode == DesignerMode.SendKeys && sendKeysBaseOn == SendKeysBaseOn.Element && sendKeysTargetType == ElementTargetType.Selector;
+            var isTakeScreenshotTab = _designerMode == DesignerMode.TakeScreenshot && takeScreenshotBaseOn == TakeScreenshotBaseOn.Tab;
+            var isTakeScreenshotElementByElement = _designerMode == DesignerMode.TakeScreenshot && takeScreenshotBaseOn == TakeScreenshotBaseOn.Element && takeScreenshotTargetType == ElementTargetType.Element;
+            var isTakeScreenshotElementBySelector = _designerMode == DesignerMode.TakeScreenshot && takeScreenshotBaseOn == TakeScreenshotBaseOn.Element && takeScreenshotTargetType == ElementTargetType.Selector;
+
+            SetRequiredBorder(_runJsInputTabEditorBorder, isRunJsTab || isRunJsElementBySelector || isSendKeysTab || isSendKeysElementBySelector || isTakeScreenshotTab || isTakeScreenshotElementBySelector, IsArgumentFilled(ModelItem, "InputTab", _runJsInputTabExpressionBox));
+            SetRequiredBorder(_runJsInputElementEditorBorder, isRunJsElementByElement || isSendKeysElementByElement || isTakeScreenshotElementByElement, IsArgumentFilled(ModelItem, "InputElement", _runJsInputElementExpressionBox));
+            SetRequiredBorder(_runJsSelectorEditorBorder, isRunJsElementBySelector || isSendKeysElementBySelector || isTakeScreenshotElementBySelector, IsArgumentFilled(ModelItem, "Selector", _runJsSelectorExpressionBox));
+            SetRequiredBorder(_runJsScriptEditorBorder, _designerMode == DesignerMode.RunJs, IsArgumentFilled(ModelItem, "Script", _runJsScriptExpressionBox));
 
             SetRequiredBorder(_sendKeysInputTabEditorBorder, isSendKeysTab || isSendKeysElementBySelector, IsArgumentFilled(ModelItem, "InputTab", _sendKeysInputTabExpressionBox));
             SetRequiredBorder(_sendKeysInputElementEditorBorder, isSendKeysElementByElement, IsArgumentFilled(ModelItem, "InputElement", _sendKeysInputElementExpressionBox));
             SetRequiredBorder(_sendKeysSelectorEditorBorder, isSendKeysElementBySelector, IsArgumentFilled(ModelItem, "Selector", _sendKeysSelectorExpressionBox));
             SetRequiredBorder(_sendKeysKeysEditorBorder, _designerMode == DesignerMode.SendKeys, IsArgumentFilled(ModelItem, "Keys", _sendKeysKeysExpressionBox));
+            SetRequiredBorder(_takeScreenshotPathEditorBorder, _designerMode == DesignerMode.TakeScreenshot, IsArgumentFilled(ModelItem, "Path", _takeScreenshotPathExpressionBox));
 
             SetRequiredBorder(_switchTabIndexEditorBorder, _designerMode == DesignerMode.BrowserSwitchTab && byType == BrowserSwitchTabByType.Index, IsArgumentFilled(ModelItem, "Index", _switchTabIndexExpressionBox));
             SetRequiredBorder(_switchTabTitleEditorBorder, _designerMode == DesignerMode.BrowserSwitchTab && byType == BrowserSwitchTabByType.Title, IsArgumentFilled(ModelItem, "Title", _switchTabTitleExpressionBox));
@@ -1549,7 +1716,8 @@ namespace F2B.Browser.Chromium.Playwright
             TabNavigateUrl,
             TabRefresh,
             RunJs,
-            SendKeys
+            SendKeys,
+            TakeScreenshot
         }
     }
 }

@@ -12,29 +12,34 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(ParentSelectorActivityDesigner))]
     public sealed class ParallelFindElementActivity : CodeActivity
     {
+        public ParallelFindElementActivity()
+        {
+            DisplayName = "Parallel Find Element";
+        }
+
         private const int PollIntervalMs = 100;
 
         [DisplayName("Parent Object")]
         [Description("Root object for query. Accepts PwTab or PwElement.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.A")]
         public InArgument<object> ParentObject { get; set; }
 
         [DisplayName("Selectors")]
         [Description("Selector list to evaluate in parallel-like polling order.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.B")]
         public InArgument<List<string>> Selectors { get; set; }
 
         [DisplayName("Wait State")]
         [Description("Element state that must be satisfied.")]
-        [Category("Input")]
+        [Category("Input.C")]
         [DefaultValue(FindElementWaitState.None)]
         public FindElementWaitState WaitState { get; set; } = FindElementWaitState.None;
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int?> Timeout { get; set; } = 15000;
 

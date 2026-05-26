@@ -1288,6 +1288,21 @@ namespace F2B.Browser.Chromium.Playwright
             _page.ReloadAsync().GetAwaiter().GetResult();
         }
 
+        public void TakeScreenshot(string path, bool fullPage = true)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ArgumentException("path is required.", nameof(path));
+            }
+
+            _client.EnsureTabAlive(_page);
+            _page.ScreenshotAsync(new PageScreenshotOptions
+            {
+                Path = path,
+                FullPage = fullPage
+            }).GetAwaiter().GetResult();
+        }
+
         public void Close()
         {
             if (_page != null && !_page.IsClosed)
@@ -1430,28 +1445,32 @@ namespace F2B.Browser.Chromium.Playwright
         public void Click(
             MouseButton button = MouseButton.Left,
             int count = 1,
-            int interval = 500,
+            int interval = 0,
             string[] modifiers = null,
             bool force = false,
             ClickValidateMode validate = ClickValidateMode.None,
             string validationSelector = null,
+            int waitBeforeValidate = 1000,
             int timeout = 15000)
         {
             ExecuteClickWithValidation(
                 clickAction: () =>
                 {
-                    _locator.ClickAsync(new LocatorClickOptions
-                    {
-                        Button = button,
-                        ClickCount = count,
-                        Modifiers = PlaywrightSyncClient.ParseModifiers(modifiers),
-                        Force = force
-                    }).GetAwaiter().GetResult();
+                    ExecuteRepeatedClicks(
+                        count,
+                        interval,
+                        () => _locator.ClickAsync(new LocatorClickOptions
+                        {
+                            Button = button,
+                            ClickCount = 1,
+                            Modifiers = PlaywrightSyncClient.ParseModifiers(modifiers),
+                            Force = force
+                        }).GetAwaiter().GetResult());
                     return true;
                 },
                 validate: validate,
                 validationSelector: validationSelector,
-                interval: interval,
+                waitBeforeValidate: waitBeforeValidate,
                 timeout: timeout,
                 operationName: "Click");
         }
@@ -1459,11 +1478,12 @@ namespace F2B.Browser.Chromium.Playwright
         public void DoubleClick(
             MouseButton button = MouseButton.Left,
             int count = 1,
-            int interval = 500,
+            int interval = 0,
             string[] modifiers = null,
             bool force = false,
             ClickValidateMode validate = ClickValidateMode.None,
             string validationSelector = null,
+            int waitBeforeValidate = 1000,
             int timeout = 15000)
         {
             if (count <= 0)
@@ -1474,21 +1494,20 @@ namespace F2B.Browser.Chromium.Playwright
             ExecuteClickWithValidation(
                 clickAction: () =>
                 {
-                    for (var i = 0; i < count; i++)
-                    {
-                        _locator.DblClickAsync(new LocatorDblClickOptions
+                    ExecuteRepeatedClicks(
+                        count,
+                        interval,
+                        () => _locator.DblClickAsync(new LocatorDblClickOptions
                         {
                             Button = button,
                             Modifiers = PlaywrightSyncClient.ParseModifiers(modifiers),
                             Force = force
-                        }).GetAwaiter().GetResult();
-                    }
-
+                        }).GetAwaiter().GetResult());
                     return true;
                 },
                 validate: validate,
                 validationSelector: validationSelector,
-                interval: interval,
+                waitBeforeValidate: waitBeforeValidate,
                 timeout: timeout,
                 operationName: "DoubleClick");
         }
@@ -1496,30 +1515,36 @@ namespace F2B.Browser.Chromium.Playwright
         public PwTab ClickForNewTab(
             MouseButton button = MouseButton.Left,
             int count = 1,
-            int interval = 500,
+            int interval = 0,
             string[] modifiers = null,
             bool force = false,
             ClickValidateMode validate = ClickValidateMode.None,
             string validationSelector = null,
+            int waitBeforeValidate = 1000,
             int timeout = 15000)
         {
             _client.EnsureTabAlive(_page);
             return ExecuteClickWithValidation(
                 clickAction: () =>
                 {
-                    var newPage = _page.Context.RunAndWaitForPageAsync(() => _locator.ClickAsync(new LocatorClickOptions
+                    var clickOptions = new LocatorClickOptions
                     {
                         Button = button,
-                        ClickCount = count,
+                        ClickCount = 1,
                         Modifiers = PlaywrightSyncClient.ParseModifiers(modifiers),
                         Force = force
-                    })).GetAwaiter().GetResult();
+                    };
+                    ExecuteRepeatedClicks(
+                        Math.Max(count - 1, 0),
+                        interval,
+                        () => _locator.ClickAsync(clickOptions).GetAwaiter().GetResult());
+                    var newPage = _page.Context.RunAndWaitForPageAsync(() => _locator.ClickAsync(clickOptions)).GetAwaiter().GetResult();
                     _client.RegisterPage(newPage, true);
                     return _client.WrapTab(newPage);
                 },
                 validate: validate,
                 validationSelector: validationSelector,
-                interval: interval,
+                waitBeforeValidate: waitBeforeValidate,
                 timeout: timeout,
                 operationName: "ClickForNewTab");
         }
@@ -1528,24 +1553,30 @@ namespace F2B.Browser.Chromium.Playwright
             string saveAsPath = null,
             MouseButton button = MouseButton.Left,
             int count = 1,
-            int interval = 500,
+            int interval = 0,
             string[] modifiers = null,
             bool force = false,
             ClickValidateMode validate = ClickValidateMode.None,
             string validationSelector = null,
+            int waitBeforeValidate = 1000,
             int timeout = 15000)
         {
             _client.EnsureTabAlive(_page);
             return ExecuteClickWithValidation(
                 clickAction: () =>
                 {
-                    var download = _page.RunAndWaitForDownloadAsync(() => _locator.ClickAsync(new LocatorClickOptions
+                    var clickOptions = new LocatorClickOptions
                     {
                         Button = button,
-                        ClickCount = count,
+                        ClickCount = 1,
                         Modifiers = PlaywrightSyncClient.ParseModifiers(modifiers),
                         Force = force
-                    })).GetAwaiter().GetResult();
+                    };
+                    ExecuteRepeatedClicks(
+                        Math.Max(count - 1, 0),
+                        interval,
+                        () => _locator.ClickAsync(clickOptions).GetAwaiter().GetResult());
+                    var download = _page.RunAndWaitForDownloadAsync(() => _locator.ClickAsync(clickOptions)).GetAwaiter().GetResult();
                     string path;
                     if (!string.IsNullOrWhiteSpace(saveAsPath))
                     {
@@ -1568,7 +1599,7 @@ namespace F2B.Browser.Chromium.Playwright
                 },
                 validate: validate,
                 validationSelector: validationSelector,
-                interval: interval,
+                waitBeforeValidate: waitBeforeValidate,
                 timeout: timeout,
                 operationName: "ClickForDownload");
         }
@@ -1991,20 +2022,24 @@ namespace F2B.Browser.Chromium.Playwright
             Func<T> clickAction,
             ClickValidateMode validate,
             string validationSelector,
-            int interval,
+            int waitBeforeValidate,
             int timeout,
             string operationName)
         {
-            ValidateClickLoopArguments(interval, timeout, validate, validationSelector);
+            ValidateClickLoopArguments(waitBeforeValidate, timeout, validate, validationSelector);
             var startedAt = Stopwatch.StartNew();
             var hasSuccessfulClick = false;
             var latestResult = default(T);
             while (true)
             {
                 // If the last click succeeded, prefer checking validation before clicking again (avoid redundant clicks).
-                if (hasSuccessfulClick && IsClickValidationSatisfied(validate, validationSelector))
+                if (hasSuccessfulClick)
                 {
-                    return latestResult;
+                    WaitBeforeValidate(validate, waitBeforeValidate);
+                    if (IsClickValidationSatisfied(validate, validationSelector))
+                    {
+                        return latestResult;
+                    }
                 }
 
                 try
@@ -2014,6 +2049,7 @@ namespace F2B.Browser.Chromium.Playwright
                 }
                 catch
                 {
+                    WaitBeforeValidate(validate, waitBeforeValidate);
                     // Clicks may throw when the DOM is mid-transition; if validation already passes, treat as success.
                     if (hasSuccessfulClick && IsClickValidationSatisfied(validate, validationSelector))
                     {
@@ -2023,6 +2059,7 @@ namespace F2B.Browser.Chromium.Playwright
                     throw;
                 }
 
+                WaitBeforeValidate(validate, waitBeforeValidate);
                 if (IsClickValidationSatisfied(validate, validationSelector))
                 {
                     return latestResult;
@@ -2032,16 +2069,44 @@ namespace F2B.Browser.Chromium.Playwright
                 {
                     throw new TimeoutException($"{operationName} timeout after {timeout}ms: validation condition not satisfied.");
                 }
-
-                Thread.Sleep(interval);
             }
         }
 
-        private static void ValidateClickLoopArguments(int interval, int timeout, ClickValidateMode validate, string validationSelector)
+        private static void ExecuteRepeatedClicks(int count, int interval, Action clickOnce)
         {
+            if (count <= 0)
+            {
+                return;
+            }
+
             if (interval < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(interval), "interval must not be less than 0.");
+            }
+
+            for (var i = 0; i < count; i++)
+            {
+                clickOnce();
+                if (i < count - 1 && interval > 0)
+                {
+                    Thread.Sleep(interval);
+                }
+            }
+        }
+
+        private static void WaitBeforeValidate(ClickValidateMode validate, int waitBeforeValidate)
+        {
+            if (validate != ClickValidateMode.None && waitBeforeValidate > 0)
+            {
+                Thread.Sleep(waitBeforeValidate);
+            }
+        }
+
+        private static void ValidateClickLoopArguments(int waitBeforeValidate, int timeout, ClickValidateMode validate, string validationSelector)
+        {
+            if (waitBeforeValidate < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(waitBeforeValidate), "waitBeforeValidate must not be less than 0.");
             }
 
             if (timeout <= 0)

@@ -8,6 +8,11 @@ namespace F2B.Terminal.PCOMM
     [Description("Gracefully close all open PCOMM session windows via UI automation.")]
     public sealed class CloseTerminalActivity : CodeActivity
     {
+        public CloseTerminalActivity()
+        {
+            DisplayName = "Close Terminal";
+        }
+
         [DisplayName("Timeout (ms)")]
         [Description("Maximum time to wait while closing all session windows.")]
         [Category("Input")]

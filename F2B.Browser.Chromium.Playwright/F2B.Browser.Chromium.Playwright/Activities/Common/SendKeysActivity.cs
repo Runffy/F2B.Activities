@@ -15,55 +15,60 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class SendkeysActivity : CodeActivity
     {
+        public SendkeysActivity()
+        {
+            DisplayName = "Sendkeys";
+        }
+
         [DisplayName("Base On")]
         [Description("Choose whether to send keys to a tab or element.")]
-        [Category("Input")]
+        [Category("Input.A")]
         [DefaultValue(SendKeysBaseOn.Tab)]
         public SendKeysBaseOn BaseOn { get; set; } = SendKeysBaseOn.Tab;
 
         [DisplayName("Input Tab")]
         [Description("Tab instance used to send keys.")]
-        [Category("Input")]
+        [Category("Input.B")]
         public InArgument<PwTab> InputTab { get; set; }
 
         [DisplayName("Selector")]
         [Description("Selector used when locating the target element.")]
-        [Category("Input")]
+        [Category("Input.D")]
         public InArgument<string> Selector { get; set; }
 
         [DisplayName("Target Type")]
         [Description("Specify whether to target by element or selector.")]
-        [Category("Input")]
+        [Category("Input.C")]
         [DefaultValue(ElementTargetType.Selector)]
         [TypeConverter("F2B.Browser.Chromium.Playwright.ElementTargetTypeConverter, F2B.Browser.Chromium.Playwright")]
         public ElementTargetType TargetType { get; set; } = ElementTargetType.Selector;
 
         [DisplayName("Input Element")]
         [Description("Element object that directly receives keys.")]
-        [Category("Input")]
+        [Category("Input.E")]
         public InArgument<PwElement> InputElement { get; set; }
 
         [DisplayName("Delay Before")]
         [Description("Wait time in milliseconds before locating element.")]
-        [Category("Time")]
+        [Category("Input.Z")]
         [DefaultValue(300)]
         public InArgument<int> DelayBefore { get; set; } = 300;
 
         [DisplayName("Timeout (ms)")]
         [Description("Total timeout in milliseconds for locate + send keys when BaseOn=Element.")]
-        [Category("Time")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
 
         [DisplayName("Keys")]
         [Description("Key content to send.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.F")]
         public InArgument<string> Keys { get; set; }
 
-        [DisplayName("Delay")]
+        [DisplayName("Interval")]
         [Description("Delay in milliseconds between key presses.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         public InArgument<int?> Delay { get; set; }
 
         protected override void Execute(CodeActivityContext context)

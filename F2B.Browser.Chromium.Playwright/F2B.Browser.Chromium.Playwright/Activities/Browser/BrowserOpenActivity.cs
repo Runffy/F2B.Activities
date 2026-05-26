@@ -8,20 +8,26 @@ namespace F2B.Browser.Chromium.Playwright
     [TypeDescriptionProvider(typeof(BrowserOpenTypeDescriptionProvider))]
     public sealed class BrowserOpenActivity : CodeActivity, IBrowserOpenConfig
     {
+        public BrowserOpenActivity()
+        {
+            DisplayName = "Open Browser";
+        }
+
+        [Category("Input.C")]
+        [DefaultValue(@"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")]
+        public InArgument<string> BrowserPath { get; set; } = @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe";
+
+
         [DisplayName("Headless")]
         [Description("Whether to launch the browser in headless mode.")]
-        [Category("Input")]
+        [Category("Input.A")]
         [DefaultValue(false)]
         [TypeConverter("F2B.Browser.Chromium.Playwright.BooleanTypeConverter, F2B.Browser.Chromium.Playwright")]
         public bool Headless { get; set; } = false;
 
-        [Category("Input")]
-        [DefaultValue(@"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")]
-        public InArgument<string> BrowserPath { get; set; } = @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe";
-
         [DisplayName("Start Maximized")]
         [Description("Whether to maximize the window by default.")]
-        [Category("Input")]
+        [Category("Input.A")]
         [DefaultValue(true)]
         [TypeConverter("F2B.Browser.Chromium.Playwright.BooleanTypeConverter, F2B.Browser.Chromium.Playwright")]
         public bool StartMaximized { get; set; } = true;
@@ -30,12 +36,12 @@ namespace F2B.Browser.Chromium.Playwright
         [Description(
             "Optional. Only when set, the browser gets --remote-debugging-port=<value>. When empty, no explicit port argument is added; Playwright still connects DevTools internally (typically --remote-debugging-pipe), which automation requires and cannot be fully disabled." +
             "Some sites (e.g. IE mode) may still warn about remote debugging.")]
-        [Category("Input")]
+        [Category("Input.B")]
         public InArgument<int?> RemoteDebuggingPort { get; set; }
 
         [DisplayName("Use System Dir")]
         [Description("Whether to use the system default user data directory.")]
-        [Category("Input")]
+        [Category("Input.A")]
         [DefaultValue(true)]
         [TypeConverter("F2B.Browser.Chromium.Playwright.BooleanTypeConverter, F2B.Browser.Chromium.Playwright")]
         public bool UseSystemDir
@@ -50,12 +56,12 @@ namespace F2B.Browser.Chromium.Playwright
 
         [DisplayName("User Data Dir")]
         [Description("Custom browser user data directory path.")]
-        [Category("Input")]
+        [Category("Input.C")]
         public InArgument<string> UserDataDir { get; set; }
 
         [DisplayName("Delay After Kill (ms)")]
         [Description("Wait time after soft-closing browser windows and killing leftover browser processes.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         [DefaultValue(2000)]
         public InArgument<int> DelayAfterKill { get; set; } = 2000;
 

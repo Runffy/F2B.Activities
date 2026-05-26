@@ -8,6 +8,8 @@ namespace F2B.Browser.Chromium.Playwright
     [TypeDescriptionProvider(typeof(ElementTargetTypeDescriptionProvider))]
     public sealed class IsCheckedActivity : ElementTargetActivityBase
     {
+        public IsCheckedActivity() : base("IsChecked") {}
+
         [DisplayName("Checked State")]
         [Description("Outputs whether the element is checked.")]
         [Category("Output")]

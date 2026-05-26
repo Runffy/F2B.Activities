@@ -8,6 +8,11 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class ForwardActivity : CodeActivity
     {
+        public ForwardActivity()
+        {
+            DisplayName = "Forward";
+        }
+
         [DisplayName("Input Tab")]
         [Description("Tab instance to move forward.")]
         [RequiredArgument]

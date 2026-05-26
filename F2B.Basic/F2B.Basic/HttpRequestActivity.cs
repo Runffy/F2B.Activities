@@ -28,6 +28,7 @@ namespace F2B.Basic
     {
         public HttpRequestActivity()
         {
+            DisplayName = "HTTP Request";
             Method = "GET";
             Data = new InArgument<string>(string.Empty);
             Timeout = new InArgument<int>(100_000);
@@ -43,59 +44,71 @@ namespace F2B.Basic
         [DisplayName("Method")]
         [TypeConverter(typeof(HttpVerbChoiceConverter))]
         [DefaultValue("GET")]
+        [Category("Input.B")]
         [Description("HTTP verb, e.g. GET, POST, PUT.")]
         public string Method { get; set; }
 
         [RequiredArgument]
         [DisplayName("URL")]
         [Description("Base URL set on the canvas; query string is merged with Params.")]
+        [Category("Input.A")]
         public InArgument<string> Url { get; set; }
 
         [DisplayName("Headers")]
         [Description(
             "String-to-string map of request headers (like requests.headers). Put Content-Type here to set the entity media type; it is read before send and removed from the headers map to avoid duplicating the content header.")]
+        [Category("Input.C")]
         public InArgument<IDictionary<string, string>> Headers { get; set; }
 
         [DisplayName("Cookies")]
         [Description(
             "String-to-string map written to CookieContainer (like requests cookies).")]
+        [Category("Input.D")]
         public InArgument<IDictionary<string, string>> Cookies { get; set; }
 
         [DisplayName("Params")]
         [Description(
             "Query parameters with object values (like requests.params); merged into the URL query string.")]
+        [Category("Input.E")]
         public InArgument<IDictionary<string, object>> Params { get; set; }
 
         [DisplayName("JSON")]
         [Description(
             "JSON body (like requests json= / dict). When non-empty, serialized as the body and Data is ignored; set Content-Type in Headers (often application/json).")]
+        [Category("Input.E")]
         public InArgument<IDictionary<string, object>> Json { get; set; }
 
         [DisplayName("Data")]
         [Description(
             "Raw body as string (UTF-8), like Python requests data=str, e.g. requests.post(..., data=\"RAW\"). Does not build application/x-www-form-urlencoded; encode the form body yourself, set Content-Type in Headers, and put the encoded string here. Ignored when Json is non-empty.")]
+        [Category("Input.E")]
         public InArgument<string> Data { get; set; }
 
         [DisplayName("Timeout (ms)")]
         [Description("Overall request deadline in milliseconds (cancellation token; aligns with Python requests.timeout when expressed in ms). Default 100000 ms = 100 s.")]
+        [Category("Input.Z")]
         public InArgument<int> Timeout { get; set; }
 
         [DisplayName("Allow redirect")]
         [Description("Whether to follow redirects (allow_redirects).")]
+        [Category("Input.F")]
         public InArgument<bool> AllowRedirect { get; set; }
 
         [DisplayName("Raise on HTTP error")]
         [Description("When true, 4xx/5xx responses still populate Response then throw (raise_for_status).")]
+        [Category("Input.F")]
         public InArgument<bool> ThrowOnFailure { get; set; }
 
         [DisplayName("Verify")]
         [Description(
             "HTTPS server certificate verification. True matches requests.verify=True (default); False matches verify=False — insecure, use only in trusted/dev environments.")]
+        [Category("Input.F")]
         public InArgument<bool> Verify { get; set; }
 
         [DisplayName("Response")]
         [Description(
             "Result: Response.Body.Text (like response.text), Response.Body.Json (typed response.json() as JObject/JArray/JValue), StatusCode, ReasonPhrase, Headers.")]
+        [Category("Output")]
         public OutArgument<HttpCallResponse> Response { get; set; }
 
         private static readonly RemoteCertificateValidationCallback InsecureTlsServerCertificateBypass =

@@ -8,6 +8,11 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class TabGetInfoActivity : CodeActivity
     {
+        public TabGetInfoActivity()
+        {
+            DisplayName = "Get Tab Info";
+        }
+
         [DisplayName("Input Tab")]
         [Description("Tab instance to read.")]
         [RequiredArgument]

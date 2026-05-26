@@ -12,6 +12,11 @@ namespace F2B.Basic
     [DisplayName("UnitTest Scope")]
     public sealed class UnitTestScopeActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {
+        public UnitTestScopeActivity()
+        {
+            DisplayName = "UnitTest Scope";
+        }
+
         [Browsable(false)]
         public Activity Body { get; set; }
 

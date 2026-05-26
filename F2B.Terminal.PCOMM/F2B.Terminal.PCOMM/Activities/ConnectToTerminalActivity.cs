@@ -8,6 +8,11 @@ namespace F2B.Terminal.PCOMM
     [Description("Connect to an IBM PCOMM terminal session and output the presentation space object.")]
     public sealed class ConnectToTerminalActivity : CodeActivity
     {
+        public ConnectToTerminalActivity()
+        {
+            DisplayName = "Connect to Terminal";
+        }
+
         [DisplayName("Session Name")]
         [Description("PCOMM session identifier, for example A, B, or C.")]
         [RequiredArgument]

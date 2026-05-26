@@ -9,27 +9,29 @@ namespace F2B.Terminal.PCOMM
     [Description("Wait until the specified text appears on the terminal screen.")]
     public sealed class WaitForTextActivity : PcommDelayActivityBase
     {
+        public WaitForTextActivity() : base("Wait For Text") {}
+
         [DisplayName("Session")]
         [Description("Connected PCOMM presentation space session.")]
         [RequiredArgument]
-        [Category("Input.A.Window")]
+        [Category("Input.A")]
         public InArgument<PcommSession> Session { get; set; }
 
         [DisplayName("Text")]
         [Description("Text to wait for on the terminal screen.")]
         [RequiredArgument]
-        [Category("Input.B.Content")]
+        [Category("Input.B")]
         public InArgument<string> Text { get; set; }
 
         [DisplayName("Timeout (ms)")]
         [Description("Maximum time to wait for the text.")]
-        [Category("Input.Z.Time")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
 
         [DisplayName("Interval (ms)")]
         [Description("Polling interval passed to WaitForString.")]
-        [Category("Input.Z.Time")]
+        [Category("Input.Z")]
         [DefaultValue(500)]
         public InArgument<int> Interval { get; set; } = 500;
 

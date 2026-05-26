@@ -5,9 +5,14 @@ namespace F2B.Terminal.PCOMM
 {
     public abstract class PcommDelayActivityBase : CodeActivity
     {
+        protected PcommDelayActivityBase(string displayName)
+        {
+            DisplayName = displayName;
+        }
+
         [DisplayName("Delay Before")]
         [Description("Wait time in milliseconds before execution.")]
-        [Category("Input.Z.Time")]
+        [Category("Input.Z")]
         [DefaultValue(300)]
         public InArgument<int> DelayBefore { get; set; } = 300;
 

@@ -97,6 +97,7 @@
     <Compile Include="Activities\Common\RunJsActivity.cs" />
     <Compile Include="Activities\Common\SendkeysActivity.cs" />
     <Compile Include="Activities\Common\GetStorageActivity.cs" />
+    <Compile Include="Activities\Common\TakeScreenshotActivity.cs" />
     <Compile Include="Activities\Browser\BrowserCloseActivity.cs" />
     <Compile Include="Activities\Browser\BrowserGetActivatedTabActivity.cs" />
     <Compile Include="Activities\Browser\BrowserGetAllTabActivity.cs" />
@@ -118,6 +119,7 @@
     <Compile Include="Activities\Designers\NullableBooleanTypeConverter.cs" />
     <Compile Include="Activities\Designers\ParentSelectorActivityDesigner.cs" />
     <Compile Include="Activities\Designers\SelectValTypeTypeConverter.cs" />
+    <Compile Include="Activities\Designers\TakeScreenshotTypeDescriptionProvider.cs" />
     <Compile Include="Activities\Element\CheckActivity.cs" />
     <Compile Include="Activities\Element\ClickActivity.cs" />
     <Compile Include="Activities\Element\ClickForDownloadActivity.cs" />
@@ -134,7 +136,6 @@
     <Compile Include="Activities\Element\SelectActivity.cs" />
     <Compile Include="Activities\Element\GetSelectedActivity.cs" />
     <Compile Include="Activities\Element\SetAttributeActivity.cs" />
-    <Compile Include="Activities\Element\TakeScreenshotActivity.cs" />
     <Compile Include="Activities\Element\ElementTargetActivityBase.cs" />
     <Compile Include="Activities\Element\UncheckActivity.cs" />
     <Compile Include="Activities\Tab\BackActivity.cs" />

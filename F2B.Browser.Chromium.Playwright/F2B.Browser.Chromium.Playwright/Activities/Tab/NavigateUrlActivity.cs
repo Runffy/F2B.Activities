@@ -8,21 +8,26 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class NavigateUrlActivity : CodeActivity
     {
+        public NavigateUrlActivity()
+        {
+            DisplayName = "Navigate Url";
+        }
+
         [DisplayName("Input Tab")]
         [Description("Tab instance to navigate.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.A")]
         public InArgument<PwTab> Tab { get; set; }
 
         [DisplayName("Url")]
         [Description("Target URL to visit.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.B")]
         public InArgument<string> Url { get; set; }
 
         [DisplayName("Timeout (ms)")]
         [Description("Navigation timeout in milliseconds.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int?> Timeout { get; set; } = 15000;
 

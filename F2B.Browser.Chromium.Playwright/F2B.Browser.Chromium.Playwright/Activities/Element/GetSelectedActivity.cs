@@ -9,6 +9,8 @@ namespace F2B.Browser.Chromium.Playwright
     [TypeDescriptionProvider(typeof(ElementTargetTypeDescriptionProvider))]
     public sealed class GetSelectedActivity : ElementTargetActivityBase
     {
+        public GetSelectedActivity() : base("Get Selected") {}
+
         [DisplayName("Selected")]
         [Description("Outputs details of selected options.")]
         [Category("Output")]
@@ -16,7 +18,7 @@ namespace F2B.Browser.Chromium.Playwright
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
 

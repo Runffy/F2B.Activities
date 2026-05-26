@@ -9,43 +9,45 @@ namespace F2B.Terminal.PCOMM
     [Description("Wait until the specified text appears in a row within the column range.")]
     public sealed class WaitForTextInRowActivity : PcommDelayActivityBase
     {
+        public WaitForTextInRowActivity() : base("Wait For Text In Row") {}
+
         [DisplayName("Session")]
         [Description("Connected PCOMM presentation space session.")]
         [RequiredArgument]
-        [Category("Input.A.Window")]
+        [Category("Input.A")]
         public InArgument<PcommSession> Session { get; set; }
 
         [DisplayName("Text")]
         [Description("Text to wait for in the specified row.")]
         [RequiredArgument]
-        [Category("Input.B.Content")]
+        [Category("Input.B")]
         public InArgument<string> Text { get; set; }
 
         [DisplayName("Row")]
         [Description("Row number on the terminal screen.")]
         [RequiredArgument]
-        [Category("Input.C.Location")]
+        [Category("Input.C")]
         public InArgument<int> Row { get; set; }
 
         [DisplayName("Start Col")]
         [Description("Start column. When empty, defaults to 1.")]
-        [Category("Input.D.Location")]
+        [Category("Input.D")]
         public InArgument<int?> StartCol { get; set; }
 
         [DisplayName("End Col")]
         [Description("End column. When empty, defaults to the session column count.")]
-        [Category("Input.D.Location")]
+        [Category("Input.D")]
         public InArgument<int?> EndCol { get; set; }
 
         [DisplayName("Timeout (ms)")]
         [Description("Maximum time to wait for the text.")]
-        [Category("Input.Z.Time")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
 
         [DisplayName("Interval (ms)")]
         [Description("Polling interval passed to WaitForStringInRect.")]
-        [Category("Input.Z.Time")]
+        [Category("Input.Z")]
         [DefaultValue(500)]
         public InArgument<int> Interval { get; set; } = 500;
 

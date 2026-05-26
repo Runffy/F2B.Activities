@@ -9,10 +9,12 @@ namespace F2B.Terminal.PCOMM
     [Description("Read all terminal rows and join them with line breaks.")]
     public sealed class ReadAllRowActivity : PcommDelayActivityBase
     {
+        public ReadAllRowActivity() : base("Read All Row") {}
+
         [DisplayName("Session")]
         [Description("Connected PCOMM presentation space session.")]
         [RequiredArgument]
-        [Category("Input.A.Window")]
+        [Category("Input.A")]
         public InArgument<PcommSession> Session { get; set; }
 
         [DisplayName("Content")]

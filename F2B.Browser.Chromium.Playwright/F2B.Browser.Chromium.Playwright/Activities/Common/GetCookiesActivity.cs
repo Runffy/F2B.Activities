@@ -15,6 +15,11 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class GetCookiesActivity : CodeActivity
     {
+        public GetCookiesActivity()
+        {
+            DisplayName = "Get Cookies";
+        }
+
         [DisplayName("Base On")]
         [Description("Choose whether to read cookies from browser or tab.")]
         [Category("Input")]

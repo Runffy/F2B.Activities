@@ -14,19 +14,23 @@ namespace F2B.Basic
     {
         public MessageBoxActivity()
         {
+            DisplayName = "Message Box";
             Title = new InArgument<string>("OpenRPA");
             Timeout = new InArgument<int>(0);
         }
 
         [RequiredArgument]
         [DisplayName("Message")]
+        [Category("Input.A")]
         public InArgument<string> Message { get; set; }
 
         [DisplayName("Title")]
+        [Category("Input.A")]
         public InArgument<string> Title { get; set; }
 
         [DisplayName("Timeout (ms)")]
         [Description("Automatically closes the dialog after this many milliseconds. Use 0 for no auto-close.")]
+        [Category("Input.Z")]
         public InArgument<int> Timeout { get; set; }
 
         public Activity Create(DependencyObject target)

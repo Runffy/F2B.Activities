@@ -8,6 +8,11 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class BrowserGetLatestTabActivity : CodeActivity
     {
+        public BrowserGetLatestTabActivity()
+        {
+            DisplayName = "Get Latest Tab";
+        }
+
         [DisplayName("Input Browser")]
         [Description("Browser instance to read from.")]
         [RequiredArgument]

@@ -9,28 +9,30 @@ namespace F2B.Terminal.PCOMM
     [Description("Move the cursor to the specified position and send text to the terminal.")]
     public sealed class InputTextActivity : PcommDelayActivityBase
     {
+        public InputTextActivity() : base("Input Text") {}
+
         [DisplayName("Session")]
         [Description("Connected PCOMM presentation space session.")]
         [RequiredArgument]
-        [Category("Input.A.Window")]
+        [Category("Input.A")]
         public InArgument<PcommSession> Session { get; set; }
 
         [DisplayName("Text")]
         [Description("Text to send to the terminal.")]
         [RequiredArgument]
-        [Category("Input.C.Content")]
+        [Category("Input.C")]
         public InArgument<string> Text { get; set; }
 
         [DisplayName("X")]
         [Description("Cursor X coordinate.")]
         [RequiredArgument]
-        [Category("Input.B.Location")]
+        [Category("Input.B")]
         public InArgument<int> X { get; set; }
 
         [DisplayName("Y")]
         [Description("Cursor Y coordinate.")]
         [RequiredArgument]
-        [Category("Input.B.Location")]
+        [Category("Input.B")]
         public InArgument<int> Y { get; set; }
 
         protected override void Execute(CodeActivityContext context)

@@ -8,10 +8,12 @@ namespace F2B.Browser.Chromium.Playwright
     [TypeDescriptionProvider(typeof(ElementTargetTypeDescriptionProvider))]
     public sealed class GetAttributeActivity : ElementTargetActivityBase
     {
+        public GetAttributeActivity() : base("Get Attribute") {}
+
         [DisplayName("Name")]
         [Description("Attribute name to read.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.D")]
         public InArgument<string> Name { get; set; }
 
         [DisplayName("Value")]
@@ -21,7 +23,7 @@ namespace F2B.Browser.Chromium.Playwright
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
 

@@ -8,21 +8,26 @@ namespace F2B.Browser.Chromium.Playwright
     [Designer(typeof(CanvasFieldsActivityDesigner))]
     public sealed class ElementExistsActivity : CodeActivity
     {
+        public ElementExistsActivity()
+        {
+            DisplayName = "Element Exists";
+        }
+
         [DisplayName("Input Tab")]
         [Description("Tab instance to check.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.A")]
         public InArgument<PwTab> Tab { get; set; }
 
         [DisplayName("Selector")]
         [Description("Selector used to locate the target element.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.A")]
         public InArgument<string> Selector { get; set; }
 
         [DisplayName("Index")]
         [Description("Index to use when multiple elements match (0-based).")]
-        [Category("Input")]
+        [Category("Input.B")]
         [DefaultValue(0)]
         public InArgument<int> Index { get; set; } = 0;
 

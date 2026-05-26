@@ -9,6 +9,11 @@ namespace F2B.Terminal.PCOMM
     [Description("Launch a PCOMM workstation profile (.ws) using PCSWS.")]
     public sealed class OpenWsActivity : CodeActivity
     {
+        public OpenWsActivity()
+        {
+            DisplayName = "Open WS";
+        }
+
         [DisplayName("WS File Path")]
         [Description("Absolute or relative path to the .ws file.")]
         [RequiredArgument]

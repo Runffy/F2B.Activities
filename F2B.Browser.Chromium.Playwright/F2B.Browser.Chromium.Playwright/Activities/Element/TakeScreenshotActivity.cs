@@ -8,15 +8,17 @@ namespace F2B.Browser.Chromium.Playwright
     [TypeDescriptionProvider(typeof(ElementTargetTypeDescriptionProvider))]
     public sealed class TakeScreenshotActivity : ElementTargetActivityBase
     {
+        public TakeScreenshotActivity() : base("Take Screenshot") {}
+
         [DisplayName("Path")]
         [Description("File path where the screenshot is saved.")]
         [RequiredArgument]
-        [Category("Input")]
+        [Category("Input.D")]
         public InArgument<string> Path { get; set; }
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]
-        [Category("Input")]
+        [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
 
