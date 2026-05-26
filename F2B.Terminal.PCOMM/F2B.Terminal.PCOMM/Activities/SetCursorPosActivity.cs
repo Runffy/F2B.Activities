@@ -17,17 +17,17 @@ namespace F2B.Terminal.PCOMM
         [Category("Input.A")]
         public InArgument<PcommSession> Session { get; set; }
 
-        [DisplayName("X")]
-        [Description("Cursor X coordinate.")]
-        [RequiredArgument]
-        [Category("Input.B")]
-        public InArgument<int> X { get; set; }
-
-        [DisplayName("Y")]
-        [Description("Cursor Y coordinate.")]
+        [DisplayName("Row Index")]
+        [Description("Cursor row index on the terminal screen.")]
         [RequiredArgument]
         [Category("Input.B")]
         public InArgument<int> Y { get; set; }
+
+        [DisplayName("Column Index")]
+        [Description("Cursor column index on the terminal screen.")]
+        [RequiredArgument]
+        [Category("Input.C")]
+        public InArgument<int> X { get; set; }
 
         protected override void Execute(CodeActivityContext context)
         {

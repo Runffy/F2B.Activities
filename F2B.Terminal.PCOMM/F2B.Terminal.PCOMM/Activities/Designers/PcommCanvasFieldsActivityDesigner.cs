@@ -81,8 +81,8 @@ namespace F2B.Terminal.PCOMM
             _sessionRow = CreateRow("Session", _sessionExpressionBox, out _sessionEditorBorder);
             _rowRow = CreateRow("Row", _rowExpressionBox, out _rowEditorBorder, RowSpacing);
             _textRow = CreateRow("Text", _textExpressionBox, out _textEditorBorder, RowSpacing);
-            _xRow = CreateRow("X", _xExpressionBox, out _xEditorBorder, RowSpacing);
-            _yRow = CreateRow("Y", _yExpressionBox, out _yEditorBorder, RowSpacing);
+            _yRow = CreateRow("Row Index", _yExpressionBox, out _yEditorBorder, RowSpacing);
+            _xRow = CreateRow("Column Index", _xExpressionBox, out _xEditorBorder, RowSpacing);
 
             _keyComboBox = BuildPcommKeyComboBox();
             _keyComboBox.SelectionChanged += OnKeySelectionChanged;
@@ -93,8 +93,8 @@ namespace F2B.Terminal.PCOMM
             body.Children.Add(_sessionRow);
             body.Children.Add(_textRow);
             body.Children.Add(_rowRow);
-            body.Children.Add(_xRow);
             body.Children.Add(_yRow);
+            body.Children.Add(_xRow);
             body.Children.Add(_keyRow);
 
             _rootPanel.Child = body;
