@@ -64,15 +64,15 @@ namespace F2B.Terminal.PCOMM
             return string.Join(Environment.NewLine, lines);
         }
 
-        public void SetCursorPos(int x, int y)
+        public void SetCursorPos(int rowIndex, int columnIndex)
         {
             dynamic presentationSpace = PresentationSpace;
-            presentationSpace.SetCursorPos(x, y);
+            presentationSpace.SetCursorPos(rowIndex, columnIndex);
         }
 
-        public void InputText(int x, int y, string text)
+        public void InputText(int rowIndex, int columnIndex, string text)
         {
-            SetCursorPos(x, y);
+            SetCursorPos(rowIndex, columnIndex);
             dynamic presentationSpace = PresentationSpace;
             presentationSpace.SendKeys(text ?? string.Empty);
         }

@@ -21,13 +21,13 @@ namespace F2B.Terminal.PCOMM
         [Description("Cursor row index on the terminal screen.")]
         [RequiredArgument]
         [Category("Input.B")]
-        public InArgument<int> Y { get; set; }
+        public InArgument<int> RowIndex { get; set; }
 
         [DisplayName("Column Index")]
         [Description("Cursor column index on the terminal screen.")]
         [RequiredArgument]
         [Category("Input.C")]
-        public InArgument<int> X { get; set; }
+        public InArgument<int> ColumnIndex { get; set; }
 
         protected override void Execute(CodeActivityContext context)
         {
@@ -39,7 +39,7 @@ namespace F2B.Terminal.PCOMM
                 throw new ArgumentNullException(nameof(Session), "Session is required.");
             }
 
-            session.SetCursorPos(X.Get(context), Y.Get(context));
+            session.SetCursorPos(RowIndex.Get(context), ColumnIndex.Get(context));
         }
     }
 }

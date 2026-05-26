@@ -21,13 +21,13 @@ namespace F2B.Terminal.PCOMM
         [Description("Cursor row index on the terminal screen.")]
         [RequiredArgument]
         [Category("Input.B")]
-        public InArgument<int> Y { get; set; }
+        public InArgument<int> RowIndex { get; set; }
 
         [DisplayName("Column Index")]
         [Description("Cursor column index on the terminal screen.")]
         [RequiredArgument]
         [Category("Input.C")]
-        public InArgument<int> X { get; set; }
+        public InArgument<int> ColumnIndex { get; set; }
 
         [DisplayName("Text")]
         [Description("Text to send to the terminal.")]
@@ -46,7 +46,7 @@ namespace F2B.Terminal.PCOMM
             }
 
             var text = Text.Get(context);
-            session.InputText(X.Get(context), Y.Get(context), text);
+            session.InputText(RowIndex.Get(context), ColumnIndex.Get(context), text);
         }
     }
 }

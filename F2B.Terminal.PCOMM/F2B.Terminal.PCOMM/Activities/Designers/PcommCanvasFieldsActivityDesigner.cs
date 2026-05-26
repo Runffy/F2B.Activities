@@ -25,15 +25,15 @@ namespace F2B.Terminal.PCOMM
         private readonly ExpressionTextBox _wsFilePathExpressionBox;
         private readonly ExpressionTextBox _rowExpressionBox;
         private readonly ExpressionTextBox _textExpressionBox;
-        private readonly ExpressionTextBox _xExpressionBox;
-        private readonly ExpressionTextBox _yExpressionBox;
+        private readonly ExpressionTextBox _rowIndexExpressionBox;
+        private readonly ExpressionTextBox _columnIndexExpressionBox;
         private readonly FrameworkElement _sessionRow;
         private readonly FrameworkElement _sessionNameRow;
         private readonly FrameworkElement _wsFilePathRow;
         private readonly FrameworkElement _rowRow;
         private readonly FrameworkElement _textRow;
-        private readonly FrameworkElement _xRow;
-        private readonly FrameworkElement _yRow;
+        private readonly FrameworkElement _rowIndexRow;
+        private readonly FrameworkElement _columnIndexRow;
         private readonly FrameworkElement _keyRow;
         private readonly ComboBox _keyComboBox;
         private readonly Border _sessionEditorBorder;
@@ -41,8 +41,8 @@ namespace F2B.Terminal.PCOMM
         private readonly Border _wsFilePathEditorBorder;
         private readonly Border _rowEditorBorder;
         private readonly Border _textEditorBorder;
-        private readonly Border _xEditorBorder;
-        private readonly Border _yEditorBorder;
+        private readonly Border _rowIndexEditorBorder;
+        private readonly Border _columnIndexEditorBorder;
 
         private DesignerMode _designerMode = DesignerMode.None;
         private bool _isSyncingKey;
@@ -73,16 +73,16 @@ namespace F2B.Terminal.PCOMM
             _wsFilePathExpressionBox = CreateExpressionTextBox("WsFilePath", typeof(string));
             _rowExpressionBox = CreateExpressionTextBox("Row", typeof(int));
             _textExpressionBox = CreateExpressionTextBox("Text", typeof(string));
-            _xExpressionBox = CreateExpressionTextBox("X", typeof(int));
-            _yExpressionBox = CreateExpressionTextBox("Y", typeof(int));
+            _rowIndexExpressionBox = CreateExpressionTextBox("RowIndex", typeof(int));
+            _columnIndexExpressionBox = CreateExpressionTextBox("ColumnIndex", typeof(int));
 
             _sessionNameRow = CreateRow("Session Name", _sessionNameExpressionBox, out _sessionNameEditorBorder);
             _wsFilePathRow = CreateRow("WS File Path", _wsFilePathExpressionBox, out _wsFilePathEditorBorder);
             _sessionRow = CreateRow("Session", _sessionExpressionBox, out _sessionEditorBorder);
             _rowRow = CreateRow("Row", _rowExpressionBox, out _rowEditorBorder, RowSpacing);
             _textRow = CreateRow("Text", _textExpressionBox, out _textEditorBorder, RowSpacing);
-            _yRow = CreateRow("Row Index", _yExpressionBox, out _yEditorBorder, RowSpacing);
-            _xRow = CreateRow("Column Index", _xExpressionBox, out _xEditorBorder, RowSpacing);
+            _rowIndexRow = CreateRow("Row Index", _rowIndexExpressionBox, out _rowIndexEditorBorder, RowSpacing);
+            _columnIndexRow = CreateRow("Column Index", _columnIndexExpressionBox, out _columnIndexEditorBorder, RowSpacing);
 
             _keyComboBox = BuildPcommKeyComboBox();
             _keyComboBox.SelectionChanged += OnKeySelectionChanged;
@@ -93,8 +93,8 @@ namespace F2B.Terminal.PCOMM
             body.Children.Add(_sessionRow);
             body.Children.Add(_textRow);
             body.Children.Add(_rowRow);
-            body.Children.Add(_yRow);
-            body.Children.Add(_xRow);
+            body.Children.Add(_rowIndexRow);
+            body.Children.Add(_columnIndexRow);
             body.Children.Add(_keyRow);
 
             _rootPanel.Child = body;
@@ -131,8 +131,8 @@ namespace F2B.Terminal.PCOMM
             _sessionRow.Visibility = IsSessionMode(_designerMode) ? Visibility.Visible : Visibility.Collapsed;
             _textRow.Visibility = IsTextMode(_designerMode) ? Visibility.Visible : Visibility.Collapsed;
             _rowRow.Visibility = IsRowMode(_designerMode) ? Visibility.Visible : Visibility.Collapsed;
-            _xRow.Visibility = IsCoordinateMode(_designerMode) ? Visibility.Visible : Visibility.Collapsed;
-            _yRow.Visibility = IsCoordinateMode(_designerMode) ? Visibility.Visible : Visibility.Collapsed;
+            _rowIndexRow.Visibility = IsCoordinateMode(_designerMode) ? Visibility.Visible : Visibility.Collapsed;
+            _columnIndexRow.Visibility = IsCoordinateMode(_designerMode) ? Visibility.Visible : Visibility.Collapsed;
             _keyRow.Visibility = _designerMode == DesignerMode.SendKey ? Visibility.Visible : Visibility.Collapsed;
             RefreshCanvasBodyVisibility();
         }
@@ -158,8 +158,8 @@ namespace F2B.Terminal.PCOMM
                 _sessionRow.Visibility == Visibility.Visible ||
                 _textRow.Visibility == Visibility.Visible ||
                 _rowRow.Visibility == Visibility.Visible ||
-                _xRow.Visibility == Visibility.Visible ||
-                _yRow.Visibility == Visibility.Visible ||
+                _rowIndexRow.Visibility == Visibility.Visible ||
+                _columnIndexRow.Visibility == Visibility.Visible ||
                 _keyRow.Visibility == Visibility.Visible;
 
             _rootPanel.Visibility = hasVisibleRows ? Visibility.Visible : Visibility.Collapsed;
@@ -209,13 +209,13 @@ namespace F2B.Terminal.PCOMM
                 IsRowMode(_designerMode),
                 IsArgumentFilled(ModelItem, "Row", _rowExpressionBox));
             SetRequiredBorder(
-                _xEditorBorder,
+                _rowIndexEditorBorder,
                 IsCoordinateMode(_designerMode),
-                IsArgumentFilled(ModelItem, "X", _xExpressionBox));
+                IsArgumentFilled(ModelItem, "RowIndex", _rowIndexExpressionBox));
             SetRequiredBorder(
-                _yEditorBorder,
+                _columnIndexEditorBorder,
                 IsCoordinateMode(_designerMode),
-                IsArgumentFilled(ModelItem, "Y", _yExpressionBox));
+                IsArgumentFilled(ModelItem, "ColumnIndex", _columnIndexExpressionBox));
         }
 
         private static FrameworkElement CreateRow(string label, FrameworkElement editor, out Border editorBorder, double top = 0)
@@ -468,8 +468,8 @@ namespace F2B.Terminal.PCOMM
             _wsFilePathExpressionBox.OwnerActivity = owner;
             _rowExpressionBox.OwnerActivity = owner;
             _textExpressionBox.OwnerActivity = owner;
-            _xExpressionBox.OwnerActivity = owner;
-            _yExpressionBox.OwnerActivity = owner;
+            _rowIndexExpressionBox.OwnerActivity = owner;
+            _columnIndexExpressionBox.OwnerActivity = owner;
         }
 
         private static bool IsArgumentFilled(ModelItem modelItem, string propertyName, ExpressionTextBox editor)
