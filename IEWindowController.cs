@@ -16,7 +16,7 @@ namespace F2B.Browser.IExplore.COM
         private const string EmbeddedFullName = "embedded-mshtml";
         private const string IeServerClassName = "Internet Explorer_Server";
         private const bool EnableDebugLog = false;
-        private static readonly Guid IHTMLDocument2Guid = new Guid("332C4425-26CB-11D0-B483-00C04FD90119");
+        private static readonly Guid IHtmlDocument2Guid = new Guid("332C4425-26CB-11D0-B483-00C04FD90119");
         private static readonly Guid IDispatchGuid = new Guid("00020400-0000-0000-C000-000000000046");
         private static readonly uint WmHtmlGetObject = NativeMethods.RegisterWindowMessage("WM_HTML_GETOBJECT");
 
@@ -37,7 +37,7 @@ namespace F2B.Browser.IExplore.COM
 
         public long? hwnd
         {
-            get { return _window.HWnd == IntPtr.Zero ? (long?)null : _window.HWnd.ToInt64(); }
+            get { return _window.HWND == IntPtr.Zero ? (long?)null : _window.HWND.ToInt64(); }
         }
 
         public long? doc_hwnd
@@ -114,7 +114,7 @@ namespace F2B.Browser.IExplore.COM
             string input_name = "userID",
             string input_tag = "input")
         {
-            Console.WriteLine("========= IE Diagnose Start =========");
+            Console.WriteLine("========== IE Diagnose Start ==========");
             Console.WriteLine("Filter: title=" + FormatValue(title)
                 + ", title_re=" + FormatValue(title_re)
                 + ", hwnd=" + (hwnd.HasValue ? hwnd.Value.ToString() : "null")
@@ -134,12 +134,12 @@ namespace F2B.Browser.IExplore.COM
             for (var i = 0; i < tops.Count; i++)
             {
                 var top = tops[i];
-                Console.WriteLine("- Top[" + i + "] HWnd=0x" + top.ToInt64().ToString("x")
+                Console.WriteLine("- Top[" + i + "] HWND=0x" + top.ToInt64().ToString("X")
                     + " title=" + SafeGetWindowText(top)
                     + " class=" + SafeGetClassName(top));
 
                 var docs = new List<IntPtr>(IterEmbeddedIeDocuments(top));
-                Console.WriteLine("  IE_Server docs: " + docs.Count);
+                Console.WriteLine("   IE_Server docs: " + docs.Count);
 
                 for (var j = 0; j < docs.Count; j++)
                 {
@@ -147,14 +147,14 @@ namespace F2B.Browser.IExplore.COM
                     var window = CreateEmbeddedWindow(top, docHwnd);
                     if (window == null)
                     {
-                        Console.WriteLine("    - Doc[" + j + "] HWnd=0x" + docHwnd.ToInt64().ToString("x") + " create window failed");
+                        Console.WriteLine("   - Doc[" + j + "] HWND=0x" + docHwnd.ToInt64().ToString("X") + " create window failed");
                         continue;
                     }
 
                     var rawDoc = ReadDynamicProperty(window, "Document") ?? window.refresh_document();
                     if (rawDoc == null)
                     {
-                        Console.WriteLine("    - Doc[" + j + "] HWnd=0x" + docHwnd.ToInt64().ToString("x") + " document=null");
+                        Console.WriteLine("   - Doc[" + j + "] HWND=0x" + docHwnd.ToInt64().ToString("X") + " document=null");
                         continue;
                     }
 
@@ -162,16 +162,16 @@ namespace F2B.Browser.IExplore.COM
                     var url = SafeToString(ReadDynamicProperty(topDoc, "url"));
                     var ready = SafeToString(ReadDynamicProperty(topDoc, "readyState"));
                     var titleText = SafeToString(ReadDynamicProperty(topDoc, "title"));
-                    Console.WriteLine("    - Doc[" + j + "] HWnd=0x" + docHwnd.ToInt64().ToString("x")
-                        + " ready=\"" + ready + "\""
-                        + " title=\"" + titleText + "\""
-                        + " url=\"" + url + "\"");
+                    Console.WriteLine("   - Doc[" + j + "] HWND=0x" + docHwnd.ToInt64().ToString("X")
+                        + " ready=" + ready
+                        + " title=" + titleText
+                        + " url=" + url);
 
                     var frameNames = ListFrameNames(topDoc);
-                    Console.WriteLine("    frames(" + frameNames.Count + ")=" + string.Join(", ", frameNames));
+                    Console.WriteLine("     frames(" + frameNames.Count + ")=" + string.Join(", ", frameNames));
 
                     var topMatches = new List<object>(LocateElements(topDoc, elementLocator)).Count;
-                    Console.WriteLine("    topDoc locate(name=\"" + input_name + "\", tag=\"" + SafeToString(elementLocator["tag"]) + "\") => " + topMatches);
+                    Console.WriteLine("     topDoc locate(name=" + input_name + ",tag=" + SafeToString(elementLocator["tag"]) + ") => " + topMatches);
 
                     if (!string.IsNullOrWhiteSpace(frame_name))
                     {
@@ -179,17 +179,17 @@ namespace F2B.Browser.IExplore.COM
                         {
                             var frameDoc = ResolveFrameDocument(topDoc, new object[] { frame_name });
                             var frameMatches = new List<object>(LocateElements(frameDoc, elementLocator)).Count;
-                            Console.WriteLine("    frame \"" + frame_name + "\" resolve=OK, locate => " + frameMatches);
+                            Console.WriteLine("     frame '" + frame_name + "' resolve=OK, locate => " + frameMatches);
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine("    frame \"" + frame_name + "\" resolve=FAIL: " + ex.Message);
+                            Console.WriteLine("     frame '" + frame_name + "' resolve=FAIL: " + ex.Message);
                         }
                     }
                 }
             }
 
-            Console.WriteLine("========= IE Diagnose End =========");
+            Console.WriteLine("========== IE Diagnose End ==========");
         }
 
         public IEWindowController wait_ready(int timeout = 60000, int interval = 200)
@@ -279,7 +279,7 @@ namespace F2B.Browser.IExplore.COM
         private bool TrySwitchToDocumentForFramePath(IEnumerable<object> framePath, out object resolved)
         {
             resolved = null;
-            var top = _window.HWnd;
+            var top = _window.HWND;
             if (top == IntPtr.Zero)
                 return false;
 
@@ -313,7 +313,7 @@ namespace F2B.Browser.IExplore.COM
         private bool TrySwitchToDocumentForLocator(IDictionary<string, object> locator, out object resolved)
         {
             resolved = null;
-            var top = _window.HWnd;
+            var top = _window.HWND;
             if (top == IntPtr.Zero)
                 return false;
 
@@ -352,7 +352,7 @@ namespace F2B.Browser.IExplore.COM
         {
             resolved = null;
 
-            var top = _window.HWnd;
+            var top = _window.HWND;
             var doc = _window.DocHWND;
             if (top == IntPtr.Zero || doc == IntPtr.Zero)
                 return false;
@@ -504,7 +504,7 @@ namespace F2B.Browser.IExplore.COM
                             "find_elements",
                             "switched embedded document by locator={0}, new_doc_hwnd=0x{1}",
                             DescribeLocator(locator),
-                            _window.DocHWND.ToInt64().ToString("x"));
+                            _window.DocHWND.ToInt64().ToString("X"));
                     }
                 }
 
@@ -807,7 +807,7 @@ namespace F2B.Browser.IExplore.COM
             return run_js(script, frame_path, null);
         }
 
-        public object run_js(string script, IEnumerable<object> frame_path = null, IList<object> args = null)
+        public object run_js(string script, IEnumerable<object> frame_path = null, IList<object> args=null)
         {
             return ExecuteOnStaIfNeeded(() =>
             {
@@ -827,7 +827,7 @@ namespace F2B.Browser.IExplore.COM
                     var argsLiteral = ToJavaScriptLiteral(args);
                     var functionCallScript = "(function(){var __fn=(" + script + ");"
                         + "if(typeof __fn!=='function'){throw new Error('run_js: script must evaluate to a function when args is provided');}"
-                        + "return __fn.apply(window," + argsLiteral + ");})();";
+                        + "return __fn.apply(window," + argsLiteral + ");})()";
 
                     try
                     {
@@ -961,12 +961,11 @@ namespace F2B.Browser.IExplore.COM
                 thread.SetApartmentState(ApartmentState.STA);
                 thread.Start();
                 done.WaitOne();
-
-                if (error != null)
-                    ExceptionDispatchInfo.Capture(error).Throw();
-
-                return result;
             }
+            if (error != null)
+                ExceptionDispatchInfo.Capture(error).Throw();
+
+            return result;
         }
 
         private static object ResolveFrameDocument(object document, IEnumerable<object> framePath)
@@ -1450,7 +1449,7 @@ namespace F2B.Browser.IExplore.COM
             if (sent == IntPtr.Zero || lResult == IntPtr.Zero)
                 return false;
 
-            var iid = IHTMLDocument2Guid;
+            var iid = IHtmlDocument2Guid;
             object docObject;
             var hr = NativeMethods.ObjectFromLresult(lResult, ref iid, 0, out docObject);
             if (hr != 0 || docObject == null)
@@ -1611,12 +1610,12 @@ namespace F2B.Browser.IExplore.COM
 
         private static string FormatValue(string value)
         {
-            return value == null ? "null" : "\"" + value + "\"";
+            return value == null ? "null" : "'" + value + "'";
         }
 
         private static string FormatAny(object value)
         {
-            return value == null ? "null" : "\"" + SafeToString(value) + "\"";
+            return value == null ? "null" : "'" + SafeToString(value) + "'";
         }
 
         private static bool IsRetryableFrameError(Exception ex)
@@ -1692,7 +1691,7 @@ namespace F2B.Browser.IExplore.COM
 
         private string DiagnoseAcrossEmbeddedDocuments(IDictionary<string, object> locator, IDictionary<string, object> probe)
         {
-            var top = _window.HWnd;
+            var top = _window.HWND;
             if (top == IntPtr.Zero)
                 return string.Empty;
 
@@ -1720,7 +1719,7 @@ namespace F2B.Browser.IExplore.COM
 
                     stats.Add(string.Format(
                         "doc=0x{0}, locator={1}, probe={2}, title={3}, url={4}{5}",
-                        candidateDocHwnd.ToInt64().ToString("x"),
+                        candidateDocHwnd.ToInt64().ToString("X"),
                         locatorMatches,
                         probeMatches,
                         FormatAny(TruncateDebug(title, 36)),
@@ -1731,7 +1730,7 @@ namespace F2B.Browser.IExplore.COM
                 {
                     stats.Add(string.Format(
                         "doc=0x{0}, error={1}",
-                        candidateDocHwnd.ToInt64().ToString("x"),
+                        candidateDocHwnd.ToInt64().ToString("X"),
                         FormatAny(TruncateDebug(ex.Message, 48))));
                 }
             }
@@ -1791,7 +1790,7 @@ namespace F2B.Browser.IExplore.COM
                 text = NormalizeText(SafeToString(ReadDynamicProperty(element, "textContent")));
 
             return string.Format(
-                "#{0}{{tag={1},type={2},id={3},name={4},value={5},text={6},interactable={7}}}",
+                "#{0}(tag={1},type={2},id={3},name={4},value={5},text={6},interactable={7})",
                 index,
                 FormatAny(tag),
                 FormatAny(type),
@@ -1858,12 +1857,12 @@ namespace F2B.Browser.IExplore.COM
             var text = value as string;
             if (text != null)
             {
-                return "\"" + text
+                return "'" + text
                     .Replace("\\", "\\\\")
-                    .Replace("\"", "\\\"")
+                    .Replace("'", "\\'")
                     .Replace("\r", "\\r")
                     .Replace("\n", "\\n")
-                    .Replace("\t", "\\t") + "\"";
+                    .Replace("\t", "\\t") + "'";
             }
 
             if (value is bool)
@@ -1877,7 +1876,7 @@ namespace F2B.Browser.IExplore.COM
             if (value is DateTime)
             {
                 var date = (DateTime)value;
-                return "new Date(\"" + date.ToString("o", CultureInfo.InvariantCulture) + "\")";
+                return "new Date('" + date.ToString("o", CultureInfo.InvariantCulture) + "')";
             }
 
             var dictionary = value as IDictionary;
@@ -1900,9 +1899,7 @@ namespace F2B.Browser.IExplore.COM
                 {
                     var items = new List<string>();
                     foreach (var item in enumerable)
-                    {
                         items.Add(ToJavaScriptLiteral(item));
-                    }
                     return "[" + string.Join(",", items) + "]";
                 }
             }
@@ -1913,7 +1910,7 @@ namespace F2B.Browser.IExplore.COM
         private static string ToJavaScriptObjectKey(string key)
         {
             if (string.IsNullOrWhiteSpace(key))
-                return "\"\"";
+                return "''";
 
             if (Regex.IsMatch(key, "^[A-Za-z_$][A-Za-z0-9_$]*$"))
                 return key;
@@ -1926,7 +1923,7 @@ namespace F2B.Browser.IExplore.COM
         {
             internal EmbeddedIEComWindow(IntPtr topHwnd, string topTitle, string topClassName, IntPtr docHwnd, object document)
             {
-                HWnd = topHwnd;
+                HWND = topHwnd;
                 Document = document;
                 TopTitle = topTitle ?? string.Empty;
                 TopClassName = topClassName ?? string.Empty;
@@ -1935,7 +1932,7 @@ namespace F2B.Browser.IExplore.COM
                 LocationURL = ReadDocumentUrl(document);
             }
 
-            public IntPtr HWnd { get; private set; }
+            public IntPtr HWND { get; private set; }
             public object Document { get; private set; }
             public string TopTitle { get; private set; }
             public string TopClassName { get; private set; }
@@ -1952,7 +1949,7 @@ namespace F2B.Browser.IExplore.COM
                     return document;
                 }
 
-                foreach (var candidateDocHwnd in IterEmbeddedIeDocuments(HWnd))
+                foreach (var candidateDocHwnd in IterEmbeddedIeDocuments(HWND))
                 {
                     if (!TryGetHtmlDocumentFromHwnd(candidateDocHwnd, out document))
                         continue;
@@ -1968,8 +1965,8 @@ namespace F2B.Browser.IExplore.COM
             private void Update(object document)
             {
                 Document = document;
-                TopTitle = SafeGetWindowText(HWnd);
-                TopClassName = SafeGetClassName(HWnd);
+                TopTitle = SafeGetWindowText(HWND);
+                TopClassName = SafeGetClassName(HWND);
                 LocationURL = ReadDocumentUrl(document);
             }
         }
@@ -2020,7 +2017,7 @@ namespace F2B.Browser.IExplore.COM
                         DebugLog("set_value", "verify failed element={0}, actual.value={1}, actual.attr={2}", DescribeSelf(), FormatAny(actualValue), FormatAny(attrValue));
                         throw new InvalidOperationException(
                             string.Format(
-                                "set_value 未生效: expected={0}, actual.value={1}, actual.attr={2}, element={3}",
+                                "set_value 未生效: expected={0}, actual.value={1}, actual.attr.value={2}, element={3}",
                                 FormatAny(text),
                                 FormatAny(actualValue),
                                 FormatAny(attrValue),
@@ -2089,7 +2086,7 @@ namespace F2B.Browser.IExplore.COM
                     options.Add(option);
 
                 if (options.Count == 0)
-                    throw new InvalidOperationException("当前元素不是可选下拉框，或未找到可用 options");
+                    throw new InvalidOperationException("当前元素不是可选择下拉框，或未找到可用 options");
 
                 var targetIndex = ResolveOptionIndex(options, text, value, index, text_contains, text_re);
                 if (!targetIndex.HasValue)
@@ -2113,7 +2110,7 @@ namespace F2B.Browser.IExplore.COM
                 {
                     throw new InvalidOperationException(
                         string.Format(
-                            "select_option未生效: expected.selectedIndex={0}, actual.selectedIndex={1}, element={2}",
+                            "select_option 未生效: expected.selectedIndex={0}, actual.selectedIndex={1}, element={2}",
                             targetIndex.Value,
                             actualIndex.HasValue ? actualIndex.Value.ToString() : "null",
                             DescribeSelf()));
@@ -2181,7 +2178,7 @@ namespace F2B.Browser.IExplore.COM
                 {
                     throw new InvalidOperationException(
                         string.Format(
-                            "{0}未生效: expected.checked={1}, actual.checked={2}, element={3}",
+                            "{0} 未生效: expected.checked={1}, actual.checked={2}, element={3}",
                             targetChecked ? "check" : "uncheck",
                             targetChecked,
                             checkedAfter,
