@@ -106,6 +106,7 @@ namespace F2B.Browser.IExplore.COM
                     FormatValue(title_re),
                     hwnd.HasValue ? hwnd.Value.ToString() : "null"));
         }
+
         public static void diagnose_embedded_ie_window(
             string title = null,
             string title_re = null,
@@ -134,7 +135,7 @@ namespace F2B.Browser.IExplore.COM
             for (var i = 0; i < tops.Count; i++)
             {
                 var top = tops[i];
-                Console.WriteLine("- Top[" + i + "] HWND=0x" + top.ToInt64().ToString("X")
+                Console.WriteLine("-- Top[" + i + "] HWND=0x" + top.ToInt64().ToString("X")
                     + " title=" + SafeGetWindowText(top)
                     + " class=" + SafeGetClassName(top));
 
@@ -451,6 +452,7 @@ namespace F2B.Browser.IExplore.COM
                     string.Format("等待 frame 超时: frame_path={0}", DescribeFramePath(targetFramePath)));
             });
         }
+
         public IEDomElement[] find_elements(IDictionary<string, object> locator, IEnumerable<object> frame_path = null)
         {
             return ExecuteOnStaIfNeeded(() =>
@@ -929,6 +931,7 @@ namespace F2B.Browser.IExplore.COM
         {
             return ExecuteOnStaIfNeeded(() => _window.refresh_document());
         }
+
         private static T ExecuteOnStaIfNeeded<T>(Func<T> operation)
         {
             if (operation == null)
@@ -962,6 +965,7 @@ namespace F2B.Browser.IExplore.COM
                 thread.Start();
                 done.WaitOne();
             }
+
             if (error != null)
                 ExceptionDispatchInfo.Capture(error).Throw();
 
@@ -1268,6 +1272,7 @@ namespace F2B.Browser.IExplore.COM
                 return true;
 
             var attrValue = NormalizeText(SafeToString(SafeRead(() => InvokeDynamicMethod(element, "getAttribute", "value"))));
+            
             if (string.Equals(attrValue, expectedNormalized, StringComparison.OrdinalIgnoreCase))
                 return true;
 
@@ -1648,6 +1653,7 @@ namespace F2B.Browser.IExplore.COM
                 parts.Add(pair.Key + "=" + FormatAny(pair.Value));
             return "{" + string.Join(", ", parts) + "}";
         }
+
         private string BuildNotFoundDiagnostics(IDictionary<string, object> locator, IEnumerable<object> framePath)
         {
             try
@@ -1687,7 +1693,6 @@ namespace F2B.Browser.IExplore.COM
                 return "diagnose failed: " + ex.Message;
             }
         }
-
 
         private string DiagnoseAcrossEmbeddedDocuments(IDictionary<string, object> locator, IDictionary<string, object> probe)
         {
@@ -1918,10 +1923,10 @@ namespace F2B.Browser.IExplore.COM
             return ToJavaScriptLiteral(key);
         }
 
-
         public sealed class EmbeddedIEComWindow
         {
             internal EmbeddedIEComWindow(IntPtr topHwnd, string topTitle, string topClassName, IntPtr docHwnd, object document)
+            
             {
                 HWND = topHwnd;
                 Document = document;
@@ -2696,7 +2701,6 @@ namespace F2B.Browser.IExplore.COM
                 return null;
             }
 
-
             private void TriggerSelectEvents(bool triggerDblclick)
             {
                 FireLegacyEvent("onchange");
@@ -2794,3 +2798,4 @@ namespace F2B.Browser.IExplore.COM
         }
     }
 }
+

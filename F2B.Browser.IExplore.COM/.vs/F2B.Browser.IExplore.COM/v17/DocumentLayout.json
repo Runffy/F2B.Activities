@@ -1,0 +1,53 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\Projects\\CSharp Projects\\HSBC.F2B\\F2B.Browser.IExplore.COM\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{F15F5DF9-2C79-43BE-8B90-ABE58AE61E59}|F2B.Browser.IExplore.COM\\F2B.Browser.IExplore.COM.csproj|d:\\projects\\csharp projects\\hsbc.f2b\\f2b.browser.iexplore.com\\f2b.browser.iexplore.com\\activities\\activityargumenthelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F15F5DF9-2C79-43BE-8B90-ABE58AE61E59}|F2B.Browser.IExplore.COM\\F2B.Browser.IExplore.COM.csproj|solutionrelative:f2b.browser.iexplore.com\\activities\\activityargumenthelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F15F5DF9-2C79-43BE-8B90-ABE58AE61E59}|F2B.Browser.IExplore.COM\\F2B.Browser.IExplore.COM.csproj|D:\\Projects\\CSharp Projects\\HSBC.F2B\\F2B.Browser.IExplore.COM\\f2b.browser.iexplore.com\\iewindowcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F15F5DF9-2C79-43BE-8B90-ABE58AE61E59}|F2B.Browser.IExplore.COM\\F2B.Browser.IExplore.COM.csproj|solutionrelative:f2b.browser.iexplore.com\\iewindowcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "ActivityArgumentHelper.cs",
+              "DocumentMoniker": "D:\\Projects\\CSharp Projects\\HSBC.F2B\\F2B.Browser.IExplore.COM\\F2B.Browser.IExplore.COM\\Activities\\ActivityArgumentHelper.cs",
+              "RelativeDocumentMoniker": "F2B.Browser.IExplore.COM\\Activities\\ActivityArgumentHelper.cs",
+              "ToolTip": "D:\\Projects\\CSharp Projects\\HSBC.F2B\\F2B.Browser.IExplore.COM\\F2B.Browser.IExplore.COM\\Activities\\ActivityArgumentHelper.cs",
+              "RelativeToolTip": "F2B.Browser.IExplore.COM\\Activities\\ActivityArgumentHelper.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-05-27T02:30:31.104Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "IEWindowController.cs",
+              "DocumentMoniker": "D:\\Projects\\CSharp Projects\\HSBC.F2B\\F2B.Browser.IExplore.COM\\F2B.Browser.IExplore.COM\\IEWindowController.cs",
+              "RelativeDocumentMoniker": "F2B.Browser.IExplore.COM\\IEWindowController.cs",
+              "ToolTip": "D:\\Projects\\CSharp Projects\\HSBC.F2B\\F2B.Browser.IExplore.COM\\F2B.Browser.IExplore.COM\\IEWindowController.cs",
+              "RelativeToolTip": "F2B.Browser.IExplore.COM\\IEWindowController.cs",
+              "ViewState": "AgIAAOIKAAAAAAAAAAAuwPEKAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-05-26T22:54:12.476Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
