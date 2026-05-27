@@ -8,35 +8,35 @@ namespace F2B.Browser.IExplore.COM
     [Designer(typeof(RequiredFieldsActivityDesigner))]
     public sealed class ConnectEmbeddedIeWindowActivity : CodeActivity
     {
-        [DisplayName("Title")]
         [Category("Filter")]
+        [DisplayName("Title")]
         public InArgument<string> Title { get; set; }
 
+        [Category("Filter")]
         [DisplayName("Title Regex")]
-        [Category("Filter")]
         public InArgument<string> TitleRegex { get; set; }
-
-        [DisplayName("HWND")]
+        
         [Category("Filter")]
+        [DisplayName("HWND")]
         public InArgument<long?> Hwnd { get; set; }
 
-        [DisplayName("Delay Before")]
         [Category("Time")]
+        [DisplayName("Delay Before")]
         [DefaultValue(300)]
         public InArgument<int> DelayBefore { get; set; } = 300;
 
-        [DisplayName("Timeout")]
         [Category("Time")]
+        [DisplayName("Timeout")]
         [DefaultValue(60000)]
         public InArgument<int> Timeout { get; set; } = 60000;
 
-        [DisplayName("Interval")]
         [Category("Time")]
+        [DisplayName("Interval")]
         [DefaultValue(500)]
         public InArgument<int> Interval { get; set; } = 500;
-
-        [DisplayName("Window")]
+        
         [Category("Output")]
+        [DisplayName("Window")]
         public OutArgument<IEWindowController> Window { get; set; }
 
         protected override void Execute(CodeActivityContext context)

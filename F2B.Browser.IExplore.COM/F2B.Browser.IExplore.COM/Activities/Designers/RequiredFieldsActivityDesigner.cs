@@ -84,7 +84,6 @@ namespace F2B.Browser.IExplore.COM
                 "TriggerDoubleClick"
             }
         };
-
         private bool _initialized;
 
         public RequiredFieldsActivityDesigner()
@@ -143,17 +142,16 @@ namespace F2B.Browser.IExplore.COM
             var activityType = modelItem.ItemType;
             var argumentProperties = ResolveInArgumentProperties(activityType)
                 .Where(property => ShouldDisplayProperty(activityType, property))
-                .ToArray();
+                .ToList();
 
             var rowIndex = 0;
-            for (var i = 0; i < argumentProperties.Length; i++)
+            for (var i = 0; i < argumentProperties.Count; i++)
             {
                 var property = argumentProperties[i];
                 var propertyName = property.Name;
                 var expressionType = property.PropertyType.GetGenericArguments()[0];
                 var displayName = ResolveDisplayName(property);
-                var isRequired = property.GetCustomAttribute<RequiredArgumentAttribute>() != null
-                    || IsCustomRequired(activityType, propertyName);
+                var isRequired = property.GetCustomAttribute<RequiredArgumentAttribute>() != null || IsCustomRequired(activityType, propertyName);
 
                 var editor = CreateExpressionTextBox(propertyName, expressionType);
                 var row = CreateRow(displayName, editor, out var editorBorder, rowIndex == 0 ? 0 : RowSpacing);
@@ -172,19 +170,20 @@ namespace F2B.Browser.IExplore.COM
 
         private static bool ShouldDisplayProperty(Type activityType, PropertyInfo property)
         {
-            if (GlobalHiddenProperties.Contains(property.Name))
+            var propertyName = property.Name;
+            if (GlobalHiddenProperties.Contains(propertyName))
             {
                 return false;
             }
 
-            if (string.Equals(property.Name, "FramePath", StringComparison.OrdinalIgnoreCase)
+            if (string.Equals(propertyName, "FramePath", StringComparison.OrdinalIgnoreCase)
                 && !FramePathVisibleActivities.Contains(activityType.Name))
             {
                 return false;
             }
 
             if (ActivityHiddenProperties.TryGetValue(activityType.Name, out var hiddenProperties)
-                && hiddenProperties.Contains(property.Name))
+                && hiddenProperties.Contains(propertyName))
             {
                 return false;
             }
@@ -201,11 +200,10 @@ namespace F2B.Browser.IExplore.COM
         private static IEnumerable<PropertyInfo> ResolveInArgumentProperties(Type activityType)
         {
             return activityType
-                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(property => property.CanRead && property.PropertyType.IsGenericType
-                    && property.PropertyType.GetGenericTypeDefinition() == typeof(InArgument<>))
-                .OrderBy(ResolveCategoryOrder)
-                .ThenBy(property => property.MetadataToken);
+                .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                .Where(p => p.CanRead && p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(InArgument<>))
+                .OrderBy(p => ResolveCategoryOrder(p))
+                .ThenBy(p => p.MetadataToken);
         }
 
         private static int ResolveCategoryOrder(PropertyInfo property)
@@ -216,16 +214,11 @@ namespace F2B.Browser.IExplore.COM
                 return 99;
             }
 
-            if (string.Equals(category.Category, "Target", StringComparison.OrdinalIgnoreCase))
-                return 1;
-            if (string.Equals(category.Category, "Input", StringComparison.OrdinalIgnoreCase))
-                return 2;
-            if (string.Equals(category.Category, "Filter", StringComparison.OrdinalIgnoreCase))
-                return 3;
-            if (string.Equals(category.Category, "Select", StringComparison.OrdinalIgnoreCase))
-                return 4;
-            if (string.Equals(category.Category, "Time", StringComparison.OrdinalIgnoreCase))
-                return 5;
+            if (string.Equals(category.Category, "Target", StringComparison.OrdinalIgnoreCase)) return 1;
+            if (string.Equals(category.Category, "Input", StringComparison.OrdinalIgnoreCase)) return 2;
+            if (string.Equals(category.Category, "Filter", StringComparison.OrdinalIgnoreCase)) return 3;
+            if (string.Equals(category.Category, "Select", StringComparison.OrdinalIgnoreCase)) return 4;
+            if (string.Equals(category.Category, "Time", StringComparison.OrdinalIgnoreCase)) return 5;
             return 10;
         }
 
@@ -439,10 +432,10 @@ namespace F2B.Browser.IExplore.COM
                 expressionTextBox.OwnerActivity = owner;
             }
 
-            var childrenCount = VisualTreeHelper.GetChildrenCount(current);
+            var childrenCount = System.Windows.Media.VisualTreeHelper.GetChildrenCount(current);
             for (var i = 0; i < childrenCount; i++)
             {
-                BindExpressionOwner(VisualTreeHelper.GetChild(current, i), owner);
+                BindExpressionOwner(System.Windows.Media.VisualTreeHelper.GetChild(current, i), owner);
             }
         }
     }

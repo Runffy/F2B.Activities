@@ -17,7 +17,7 @@ namespace F2B.Browser.IExplore.COM
 
         [Category("Input")]
         [DisplayName("IExplore Path")]
-        [DefaultValue(@"C:\Program Files\Internet Explorer\iexplore.exe")]
+        [DefaultValue(@"C:\\Program Files\\Internet Explorer\\iexplore.exe")]
         public InArgument<string> IExplorePath { get; set; } = @"C:\Program Files\Internet Explorer\iexplore.exe";
 
         [Category("Time")]

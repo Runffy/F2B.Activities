@@ -39,9 +39,8 @@ namespace F2B.Browser.IExplore.COM
 
             var window = InputWindow == null ? null : InputWindow.Get(context);
             if (window == null)
-            {
                 throw new ArgumentException("InputWindow is required.");
-            }
+
 
             var result = window.refresh(
                 timeout: ActivityArgumentHelper.GetOrDefault(Timeout, context, 60000),
