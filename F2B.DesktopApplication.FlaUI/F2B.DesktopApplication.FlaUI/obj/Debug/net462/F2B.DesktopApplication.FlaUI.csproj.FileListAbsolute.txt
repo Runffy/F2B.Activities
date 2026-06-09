@@ -1,0 +1,11 @@
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net462\F2B.DesktopApplication.FlaUI.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net462\F2B.DesktopApplication.FlaUI.pdb
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net462\FlaUI.Core.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net462\FlaUI.UIA3.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net462\Interop.UIAutomationClient.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\obj\Debug\net462\F2B.DesktopApplication.FlaUI.csproj.AssemblyReference.cache
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\obj\Debug\net462\F2B.DesktopApplication.FlaUI.GeneratedMSBuildEditorConfig.editorconfig
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\obj\Debug\net462\F2B.DesktopApplication.FlaUI.csproj.CoreCompileInputs.cache
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\obj\Debug\net462\F2B.Desk.737F5AC5.Up2Date
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\obj\Debug\net462\F2B.DesktopApplication.FlaUI.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\obj\Debug\net462\F2B.DesktopApplication.FlaUI.pdb

@@ -1,0 +1,8 @@
+is_global = true
+build_property.RootNamespace = F2B.DesktopApplication.FlaUI
+build_property.ProjectDir = D:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.CsWinRTUseWindowsUIXamlProjections = false
+build_property.EffectiveAnalysisLevelStyle = 
+build_property.EnableCodeStyleSeverity = 

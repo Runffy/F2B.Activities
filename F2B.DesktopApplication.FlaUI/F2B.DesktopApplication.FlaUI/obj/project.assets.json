@@ -1,0 +1,253 @@
+{
+  "version": 3,
+  "targets": {
+    ".NETFramework,Version=v4.6.2": {
+      "FlaUI.Core/3.2.0": {
+        "type": "package",
+        "dependencies": {
+          "System.Management": "4.7.0"
+        },
+        "frameworkAssemblies": [
+          "Accessibility",
+          "PresentationCore",
+          "PresentationFramework",
+          "System.IO.Compression",
+          "System.Management",
+          "System.Windows.Forms",
+          "WindowsBase"
+        ],
+        "compile": {
+          "lib/net45/FlaUI.Core.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net45/FlaUI.Core.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "FlaUI.UIA3/3.2.0": {
+        "type": "package",
+        "dependencies": {
+          "FlaUI.Core": "3.2.0",
+          "Interop.UIAutomationClient": "10.18362.0"
+        },
+        "frameworkAssemblies": [
+          "Accessibility",
+          "WindowsBase"
+        ],
+        "compile": {
+          "lib/net45/FlaUI.UIA3.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net45/FlaUI.UIA3.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Interop.UIAutomationClient/10.18362.0": {
+        "type": "package",
+        "compile": {
+          "lib/net45/Interop.UIAutomationClient.dll": {}
+        },
+        "runtime": {
+          "lib/net45/Interop.UIAutomationClient.dll": {}
+        },
+        "build": {
+          "build/_._": {}
+        }
+      },
+      "System.Management/4.7.0": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "System.Management"
+        ],
+        "compile": {
+          "ref/net45/_._": {}
+        },
+        "runtime": {
+          "lib/net45/_._": {}
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net45/_._": {
+            "assetType": "runtime",
+            "rid": "win"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "FlaUI.Core/3.2.0": {
+      "sha512": "vXS5Hsr4qWz0GcfJga/FCHwLpks9jEvTDmu7G7bA10ErybH/Bus98RT0dYdUVfTtqFKZ33IzwBQ+4M24eGjPHQ==",
+      "type": "package",
+      "path": "flaui.core/3.2.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "CHANGELOG.md",
+        "FlaUI.png",
+        "LICENSE.txt",
+        "flaui.core.3.2.0.nupkg.sha512",
+        "flaui.core.nuspec",
+        "lib/net35/FlaUI.Core.dll",
+        "lib/net35/FlaUI.Core.xml",
+        "lib/net40/FlaUI.Core.dll",
+        "lib/net40/FlaUI.Core.xml",
+        "lib/net45/FlaUI.Core.dll",
+        "lib/net45/FlaUI.Core.xml",
+        "lib/netcoreapp3.0/FlaUI.Core.dll",
+        "lib/netcoreapp3.0/FlaUI.Core.xml",
+        "lib/netcoreapp3.1/FlaUI.Core.dll",
+        "lib/netcoreapp3.1/FlaUI.Core.xml",
+        "lib/netstandard2.0/FlaUI.Core.dll",
+        "lib/netstandard2.0/FlaUI.Core.xml"
+      ]
+    },
+    "FlaUI.UIA3/3.2.0": {
+      "sha512": "NenTUym6B3JFBXKlSv4MA1IT/iZD1c/Z2z6ldwIY4Hx7d68Q10NfCwX0kNQElkfgl6g7vbZXNXKliQTEX8VoHg==",
+      "type": "package",
+      "path": "flaui.uia3/3.2.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "CHANGELOG.md",
+        "FlaUI.png",
+        "LICENSE.txt",
+        "flaui.uia3.3.2.0.nupkg.sha512",
+        "flaui.uia3.nuspec",
+        "lib/net35/FlaUI.UIA3.dll",
+        "lib/net35/FlaUI.UIA3.xml",
+        "lib/net40/FlaUI.UIA3.dll",
+        "lib/net40/FlaUI.UIA3.xml",
+        "lib/net45/FlaUI.UIA3.dll",
+        "lib/net45/FlaUI.UIA3.xml",
+        "lib/netcoreapp3.0/FlaUI.UIA3.dll",
+        "lib/netcoreapp3.0/FlaUI.UIA3.xml",
+        "lib/netcoreapp3.1/FlaUI.UIA3.dll",
+        "lib/netcoreapp3.1/FlaUI.UIA3.xml",
+        "lib/netstandard2.0/FlaUI.UIA3.dll",
+        "lib/netstandard2.0/FlaUI.UIA3.xml"
+      ]
+    },
+    "Interop.UIAutomationClient/10.18362.0": {
+      "sha512": "04PLTAyrU7TU/i0ak3HFLkMU0Sk/K9qSE2lsQwVms8NtF8o/EV1C7ANODIwuVxi473lRoWODVyZqGafnzKDucQ==",
+      "type": "package",
+      "path": "interop.uiautomationclient/10.18362.0",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.txt",
+        "build/Interop.UIAutomationClient.targets",
+        "interop.uiautomationclient.10.18362.0.nupkg.sha512",
+        "interop.uiautomationclient.nuspec",
+        "lib/net35/Interop.UIAutomationClient.dll",
+        "lib/net40/Interop.UIAutomationClient.dll",
+        "lib/net45/Interop.UIAutomationClient.dll",
+        "lib/netcoreapp3.0/Interop.UIAutomationClient.dll",
+        "lib/netstandard2.0/Interop.UIAutomationClient.dll",
+        "tools/install.ps1"
+      ]
+    },
+    "System.Management/4.7.0": {
+      "sha512": "IY+uuGhgzWiCg21i8IvQeY/Z7m1tX8VuPF+ludfn7iTCaccTtJo5HkjZbBEL8kbBubKhAKKtNXr7uMtmAc28Pw==",
+      "type": "package",
+      "path": "system.management/4.7.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/net45/_._",
+        "lib/netstandard2.0/System.Management.dll",
+        "lib/netstandard2.0/System.Management.xml",
+        "ref/net45/_._",
+        "ref/netstandard2.0/System.Management.dll",
+        "ref/netstandard2.0/System.Management.xml",
+        "runtimes/win/lib/net45/_._",
+        "runtimes/win/lib/netcoreapp2.0/System.Management.dll",
+        "runtimes/win/lib/netcoreapp2.0/System.Management.xml",
+        "system.management.4.7.0.nupkg.sha512",
+        "system.management.nuspec",
+        "useSharedDesignerContext.txt",
+        "version.txt"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    ".NETFramework,Version=v4.6.2": [
+      "FlaUI.Core >= 3.2.0",
+      "FlaUI.UIA3 >= 3.2.0"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\zc\\.nuget\\packages\\": {},
+    "D:\\ProgramData\\VS2022\\Shared\\NuGetPackages": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "D:\\Projects\\CSharp Projects\\HSBC.F2B\\F2B.DesktopApplication.FlaUI\\F2B.DesktopApplication.FlaUI\\F2B.DesktopApplication.FlaUI.csproj",
+      "projectName": "F2B.DesktopApplication.FlaUI",
+      "projectPath": "D:\\Projects\\CSharp Projects\\HSBC.F2B\\F2B.DesktopApplication.FlaUI\\F2B.DesktopApplication.FlaUI\\F2B.DesktopApplication.FlaUI.csproj",
+      "packagesPath": "C:\\Users\\zc\\.nuget\\packages\\",
+      "outputPath": "D:\\Projects\\CSharp Projects\\HSBC.F2B\\F2B.DesktopApplication.FlaUI\\F2B.DesktopApplication.FlaUI\\obj\\",
+      "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "D:\\ProgramData\\VS2022\\Shared\\NuGetPackages"
+      ],
+      "configFilePaths": [
+        "C:\\Users\\zc\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net462"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
+        "D:\\Projects\\UiPath Projects\\CustomLibraries": {},
+        "https://api.nuget.org/v3/index.json": {},
+        "https://pkgs.dev.azure.com/uipath/Public.Feeds/_packaging/UiPath-Official/nuget/v3/index.json": {}
+      },
+      "frameworks": {
+        "net462": {
+          "targetAlias": "net462",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.300"
+    },
+    "frameworks": {
+      "net462": {
+        "targetAlias": "net462",
+        "dependencies": {
+          "FlaUI.Core": {
+            "target": "Package",
+            "version": "[3.2.0, )"
+          },
+          "FlaUI.UIA3": {
+            "target": "Package",
+            "version": "[3.2.0, )"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.301\\RuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

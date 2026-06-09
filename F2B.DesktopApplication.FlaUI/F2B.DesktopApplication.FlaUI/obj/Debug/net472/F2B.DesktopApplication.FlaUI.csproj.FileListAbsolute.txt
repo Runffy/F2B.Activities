@@ -1,0 +1,17 @@
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\obj\Debug\net472\F2B.DesktopApplication.FlaUI.csproj.AssemblyReference.cache
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\obj\Debug\net472\F2B.DesktopApplication.FlaUI.GeneratedMSBuildEditorConfig.editorconfig
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\obj\Debug\net472\F2B.DesktopApplication.FlaUI.csproj.CoreCompileInputs.cache
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net472\F2B.DesktopApplication.FlaUI.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net472\F2B.DesktopApplication.FlaUI.pdb
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net472\FlaUI.Core.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net472\FlaUI.UIA3.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net472\Interop.UIAutomationClient.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net472\Microsoft.Win32.Registry.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net472\System.Diagnostics.PerformanceCounter.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net472\System.Drawing.Common.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net472\System.Security.AccessControl.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net472\System.Security.Permissions.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\bin\Debug\net472\System.Security.Principal.Windows.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\obj\Debug\net472\F2B.Desk.737F5AC5.Up2Date
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\obj\Debug\net472\F2B.DesktopApplication.FlaUI.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI\obj\Debug\net472\F2B.DesktopApplication.FlaUI.pdb

@@ -1,0 +1,125 @@
+<Activity mc:Ignorable="sap sap2010 sads" x:Class="FlaUI_Activities_Test" mva:VisualBasic.Settings="{x:Null}" sap2010:WorkflowViewState.IdRef="FlaUI_Activities_Test_1"
+ xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+ xmlns:fdf="clr-namespace:F2B.DesktopApplication.FlaUI;assembly=F2B.DesktopApplication.FlaUI"
+ xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+ xmlns:mva="clr-namespace:Microsoft.VisualBasic.Activities;assembly=System.Activities"
+ xmlns:sads="http://schemas.microsoft.com/netfx/2010/xaml/activities/debugger"
+ xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation"
+ xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation"
+ xmlns:scg="clr-namespace:System.Collections.Generic;assembly=mscorlib"
+ xmlns:sco="clr-namespace:System.Collections.ObjectModel;assembly=mscorlib"
+ xmlns:s="clr-namespace:System;assembly=mscorlib"
+ xmlns:sd="clr-namespace:System.Drawing;assembly=System.Drawing"
+ xmlns:sd1="clr-namespace:System.Diagnostics;assembly=System"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <TextExpression.NamespacesForImplementation>
+    <sco:Collection x:TypeArguments="x:String">
+      <x:String>System</x:String>
+      <x:String>System.Xml</x:String>
+      <x:String>OpenRPA</x:String>
+      <x:String>System.Data</x:String>
+      <x:String>System.Linq</x:String>
+      <x:String>Microsoft.VisualBasic</x:String>
+      <x:String>System.Diagnostics</x:String>
+      <x:String>System.Drawing</x:String>
+      <x:String>F2B.DesktopApplication.FlaUI</x:String>
+    </sco:Collection>
+  </TextExpression.NamespacesForImplementation>
+  <TextExpression.ReferencesForImplementation>
+    <sco:Collection x:TypeArguments="AssemblyReference">
+      <AssemblyReference>mscorlib</AssemblyReference>
+      <AssemblyReference>System.Xml</AssemblyReference>
+      <AssemblyReference>OpenRPA</AssemblyReference>
+      <AssemblyReference>OpenRPA.Interfaces</AssemblyReference>
+      <AssemblyReference>System.Data</AssemblyReference>
+      <AssemblyReference>System.Core</AssemblyReference>
+      <AssemblyReference>Microsoft.VisualBasic</AssemblyReference>
+      <AssemblyReference>System.Activities</AssemblyReference>
+      <AssemblyReference>System.Drawing</AssemblyReference>
+      <AssemblyReference>System</AssemblyReference>
+      <AssemblyReference>F2B.DesktopApplication.FlaUI</AssemblyReference>
+    </sco:Collection>
+  </TextExpression.ReferencesForImplementation>
+  <Sequence DisplayName="FlaUI Activities Test" sap2010:WorkflowViewState.IdRef="Sequence_Root">
+    <Sequence.Variables>
+      <Variable x:TypeArguments="x:String" Name="DemoExePath" Default="d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\FlaUI.Demo.App\bin\Debug\net462\FlaUI.Demo.App.exe" />
+      <Variable x:TypeArguments="x:String" Name="ScreenshotPath" Default="d:\Projects\CSharp Projects\HSBC.F2B\F2B.DesktopApplication.FlaUI\test_output\demo_btn.png" />
+      <Variable x:TypeArguments="fdf:UiWindow" Name="win" />
+      <Variable x:TypeArguments="fdf:UiElement" Name="btnClick" />
+      <Variable x:TypeArguments="fdf:UiElement" Name="elmScoped" />
+      <Variable x:TypeArguments="x:Boolean" Name="exists" />
+      <Variable x:TypeArguments="x:String" Name="statusText" />
+      <Variable x:TypeArguments="x:String" Name="propValue" />
+      <Variable x:TypeArguments="x:Boolean" Name="isChecked" />
+      <Variable x:TypeArguments="x:Boolean" Name="isEnabled" />
+      <Variable x:TypeArguments="sd:Rectangle" Name="bounds" />
+      <Variable x:TypeArguments="fdf:UiElement[]" Name="children" />
+      <Variable x:TypeArguments="fdf:UiElement" Name="parentElm" />
+      <Variable x:TypeArguments="s:String[]" Name="selectedOptions" />
+      <Variable x:TypeArguments="fdf:UiWindow[]" Name="windows" />
+      <Variable x:TypeArguments="fdf:UiElement[]" Name="elements" />
+    </Sequence.Variables>
+
+    <InvokeMethod DisplayName="Launch FlaUI Demo App" sap2010:WorkflowViewState.IdRef="InvokeMethod_StartDemo">
+      <InvokeMethod.MethodName>Start</InvokeMethod.MethodName>
+      <InvokeMethod.TargetType>
+        <x:Type Type="sd1:Process" />
+      </InvokeMethod.TargetType>
+      <InvokeMethod.Parameters>
+        <InArgument x:TypeArguments="x:String">[DemoExePath]</InArgument>
+      </InvokeMethod.Parameters>
+    </InvokeMethod>
+    <Delay DisplayName="Wait for demo app" Duration="00:00:03" sap2010:WorkflowViewState.IdRef="Delay_Startup" />
+
+    <fdf:WindowExistsActivity DisplayName="[Window] WindowExists" Exists="[exists]" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;" Timeout="0" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_WindowExists" />
+    <fdf:FindWindowsActivity DisplayName="[Window] FindWindows" Windows="[windows]" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;" Timeout="0" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_FindWindows" />
+    <fdf:FindWindowActivity DisplayName="[Window] FindWindow" Window="[win]" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;" Timeout="10000" Interval="250" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_FindWindow" />
+    <fdf:ActivateWindowActivity DisplayName="[Window] ActivateWindow by Selector" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_ActivateWindow_Selector" />
+    <fdf:ActivateWindowActivity DisplayName="[Window] ActivateWindow by Window object" TargetType="Window" InputWindow="[win]" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_ActivateWindow_Object" />
+
+    <fdf:ElementExistsActivity DisplayName="[Find] ElementExists btnClick" Exists="[exists]" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='button' automationid='btnClick' name='Click Me' /&gt;" Timeout="0" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_ElementExists" />
+    <fdf:FindElementActivity DisplayName="[Find] FindElement full selector" Element="[btnClick]" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='button' automationid='btnClick' name='Click Me' /&gt;" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_FindElement_Full" />
+    <fdf:FindElementActivity DisplayName="[Find] FindElement scoped (InputWindow+ctrl)" Element="[elmScoped]" InputWindow="[win]" Selector="&lt;ctrl role='button' automationid='btnClick' name='Click Me' /&gt;" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_FindElement_Scoped" />
+    <fdf:FindElementsActivity DisplayName="[Find] FindElements scroll pane" Elements="[elements]" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='pane' automationid='scrollMain' /&gt;" Timeout="0" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_FindElements" />
+
+    <fdf:ClickActivity DisplayName="[Action] Click by Selector" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='button' automationid='btnClick' name='Click Me' /&gt;" Timeout="10000" DelayBefore="200" sap2010:WorkflowViewState.IdRef="Test_Click_Selector" />
+    <fdf:GetTextActivity DisplayName="[Action] GetText status after click" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='text' automationid='lblStatus' name='Status' /&gt;" Text="[statusText]" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_GetText_AfterClick" />
+    <fdf:DoubleClickActivity DisplayName="[Action] DoubleClick by Selector" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='button' automationid='btnDoubleClick' name='Double Click Me' /&gt;" Timeout="10000" DelayBefore="200" sap2010:WorkflowViewState.IdRef="Test_DoubleClick" />
+    <fdf:UncheckActivity DisplayName="[Action] Uncheck checkbox" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='check box' automationid='chkAgree' name='I agree to the terms' /&gt;" Timeout="10000" DelayBefore="200" sap2010:WorkflowViewState.IdRef="Test_Uncheck" />
+    <fdf:CheckActivity DisplayName="[Action] Check checkbox" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='check box' automationid='chkAgree' name='I agree to the terms' /&gt;" Timeout="10000" DelayBefore="200" sap2010:WorkflowViewState.IdRef="Test_Check" />
+    <fdf:IsCheckedActivity DisplayName="[Action] IsChecked expect True" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='check box' automationid='chkAgree' name='I agree to the terms' /&gt;" Checked="[isChecked]" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_IsChecked" />
+    <fdf:InputTextActivity DisplayName="[Action] InputText Name field" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='edit' automationid='txtName' name='Name' /&gt;" Text="Automated Input" ClearFirst="True" Timeout="10000" DelayBefore="200" sap2010:WorkflowViewState.IdRef="Test_InputText" />
+    <fdf:SelectActivity DisplayName="[Action] Select city Shanghai" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='combo box' automationid='cboCity' name='City' /&gt;" Text="Shanghai" Timeout="10000" DelayBefore="200" sap2010:WorkflowViewState.IdRef="Test_Select" />
+    <fdf:GetSelectedOptionsActivity DisplayName="[Action] GetSelectedOptions" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='combo box' automationid='cboCity' name='City' /&gt;" Options="[selectedOptions]" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_GetSelectedOptions" />
+    <fdf:IsEnabledActivity DisplayName="[Action] IsEnabled disabled btn False" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='button' automationid='btnDisabled' name='Disabled Button' /&gt;" Enabled="[isEnabled]" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_IsEnabled_False" />
+    <fdf:IsEnabledActivity DisplayName="[Action] IsEnabled click btn True" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='button' automationid='btnClick' name='Click Me' /&gt;" Enabled="[isEnabled]" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_IsEnabled_True" />
+    <fdf:SetFocusActivity DisplayName="[Action] SetFocus Name field" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='edit' automationid='txtName' name='Name' /&gt;" Timeout="10000" DelayBefore="200" sap2010:WorkflowViewState.IdRef="Test_SetFocus" />
+    <fdf:PressKeysActivity DisplayName="[Action] PressKeys append text" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='edit' automationid='txtName' name='Name' /&gt;" Keys="!" Timeout="10000" DelayBefore="200" sap2010:WorkflowViewState.IdRef="Test_PressKeys" />
+    <fdf:ScrollIntoViewActivity DisplayName="[Action] ScrollIntoView scroll target" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='button' automationid='btnScrollTarget' name='Scroll Target Button' /&gt;" Timeout="10000" DelayBefore="200" sap2010:WorkflowViewState.IdRef="Test_ScrollIntoView" />
+    <fdf:ClickActivity DisplayName="[Action] Click scroll target" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='button' automationid='btnScrollTarget' name='Scroll Target Button' /&gt;" Timeout="10000" DelayBefore="200" sap2010:WorkflowViewState.IdRef="Test_Click_ScrollTarget" />
+
+    <fdf:ClickActivity DisplayName="[Action] Click by Element object" TargetType="Element" Element="[btnClick]" Timeout="10000" DelayBefore="200" sap2010:WorkflowViewState.IdRef="Test_Click_Element" />
+    <fdf:GetChildrenActivity DisplayName="[Query] GetChildren scroll pane" TargetType="Selector" Selector="&lt;wnd role='window' title='FlaUI Demo App' app='FlaUI.Demo.App' /&gt;&#xA;&lt;ctrl role='pane' automationid='scrollMain' /&gt;" Elements="[children]" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_GetChildren" />
+    <fdf:GetParentActivity DisplayName="[Query] GetParent of btnClick" TargetType="Element" Element="[btnClick]" Parent="[parentElm]" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_GetParent" />
+    <fdf:GetBoundingRectangleActivity DisplayName="[Query] GetBoundingRectangle btnClick" TargetType="Element" Element="[btnClick]" Rectangle="[bounds]" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_GetBoundingRectangle" />
+    <fdf:GetPropertyActivity DisplayName="[Query] GetProperty AutomationId" TargetType="Element" Element="[btnClick]" PropertyName="AutomationId" Value="[propValue]" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_GetProperty" />
+    <fdf:TakeScreenshotActivity DisplayName="[Action] TakeScreenshot btnClick" TargetType="Element" Element="[btnClick]" OutputPath="[ScreenshotPath]" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_TakeScreenshot" />
+
+    <Delay DisplayName="Pause before close" Duration="00:00:02" sap2010:WorkflowViewState.IdRef="Delay_BeforeClose" />
+    <fdf:CloseWindowActivity DisplayName="[Window] CloseWindow by Window object" TargetType="Window" InputWindow="[win]" Timeout="10000" DelayBefore="0" sap2010:WorkflowViewState.IdRef="Test_CloseWindow" />
+
+    <sads:DebugSymbol.Symbol>dw1DOlxRmxhVUlBY3Rpdml0aWVzX1Rlc3QueGFtbA==</sads:DebugSymbol.Symbol>
+  </Sequence>
+  <sap2010:WorkflowViewState.ViewStateManager>
+    <sap2010:ViewStateManager>
+      <sap2010:ViewStateData Id="Sequence_Root" sap:VirtualizedContainerService.HintSize="600,4800">
+        <sap:WorkflowViewStateService.ViewState>
+          <scg:Dictionary x:TypeArguments="x:String, x:Object">
+            <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+          </scg:Dictionary>
+        </sap:WorkflowViewStateService.ViewState>
+      </sap2010:ViewStateData>
+      <sap2010:ViewStateData Id="FlaUI_Activities_Test_1" sap:VirtualizedContainerService.HintSize="620,4880" />
+    </sap2010:ViewStateManager>
+  </sap2010:WorkflowViewState.ViewStateManager>
+</Activity>
