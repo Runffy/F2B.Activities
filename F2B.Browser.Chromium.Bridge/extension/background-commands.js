@@ -887,20 +887,11 @@ async function executeBridgeCommand(message) {
               continue;
             }
 
-            const tabs = await chrome.tabs.query({ windowId: windowId });
-            if (tabs.length === 0) {
-              continue;
+            const tab = await pickActiveTabInWindow(windowId);
+            if (tab) {
+              pendingKnown.delete(windowId);
+              return tabToResolveResult(tab);
             }
-
-            pendingKnown.delete(windowId);
-            const tab = tabs.find((item) => item.active) || tabs[tabs.length - 1];
-            return {
-              windowId: tab.windowId,
-              tabId: tab.id,
-              url: tab.url,
-              title: tab.title,
-              active: tab.active
-            };
           }
         }
 
@@ -912,14 +903,17 @@ async function executeBridgeCommand(message) {
               pendingKnown.delete(tab.windowId);
             }
 
-            return {
-              windowId: tab.windowId,
-              tabId: tab.id,
-              url: tab.url,
-              title: tab.title,
-              active: tab.active
-            };
+            return tabToResolveResult(tab);
           }
+        }
+
+        const foreignTab = await pickNewestForeignWindowTab(clientKnown);
+        if (foreignTab) {
+          if (pendingKnown) {
+            pendingKnown.delete(foreignTab.windowId);
+          }
+
+          return tabToResolveResult(foreignTab);
         }
 
         await sleep(100);
@@ -1151,6 +1145,43 @@ async function waitForTabComplete(tabId, timeout) {
 
     await sleep(100);
   }
+}
+
+function tabToResolveResult(tab) {
+  return {
+    windowId: tab.windowId,
+    tabId: tab.id,
+    url: tab.url,
+    title: tab.title,
+    active: tab.active
+  };
+}
+
+async function pickActiveTabInWindow(windowId) {
+  const tabs = await chrome.tabs.query({ windowId: windowId });
+  if (tabs.length === 0) {
+    return null;
+  }
+
+  return tabs.find((tab) => tab.active) || tabs[tabs.length - 1];
+}
+
+async function pickNewestForeignWindowTab(clientKnown) {
+  const windows = await chrome.windows.getAll();
+  let candidates = windows.filter((window) => window.id > 0 && !clientKnown.has(window.id));
+
+  if (candidates.length === 0 && clientKnown.size === 0) {
+    candidates = windows.filter((window) => window.id > 0);
+  }
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const targetWindow = candidates.reduce((best, current) =>
+    (current.id > best.id ? current : best));
+
+  return pickActiveTabInWindow(targetWindow.id);
 }
 
 function pickNewWindowTab(tabs, knownWindowIds) {

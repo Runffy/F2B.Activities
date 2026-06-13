@@ -383,7 +383,27 @@ namespace F2B.Browser.Chromium.Bridge
                 CloseSessionSocket(previousSession);
 
             ClientsChanged?.Invoke(this, EventArgs.Empty);
+            NotifyAttachedControllersClientsChanged();
             return true;
+        }
+
+        private void NotifyAttachedControllersClientsChanged()
+        {
+            List<ClientSession> controllers;
+            lock (_sync)
+            {
+                controllers = _controllersById.Values.ToList();
+            }
+
+            if (controllers.Count == 0)
+                return;
+
+            const string payload = "{\"type\":\"clientsChanged\"}";
+            foreach (var controller in controllers)
+            {
+                if (controller.Socket != null && controller.Socket.State == WebSocketState.Open)
+                    _ = SendTextAsync(controller.Socket, payload, CancellationToken.None);
+            }
         }
 
         private bool HandleInternalMessage(ClientSession session, string payload)
@@ -509,7 +529,10 @@ namespace F2B.Browser.Chromium.Bridge
             CloseSessionSocket(session);
 
             if (notify && removedRegisteredClient)
+            {
                 ClientsChanged?.Invoke(this, EventArgs.Empty);
+                NotifyAttachedControllersClientsChanged();
+            }
         }
 
         private void CloseSessionSocket(ClientSession session)

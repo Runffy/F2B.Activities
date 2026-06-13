@@ -56,6 +56,40 @@ namespace F2B.Browser.Chromium.Inspector.Services
             _session.ClientsChanged += OnClientsChanged;
         }
 
+        public void Reconnect()
+        {
+            if (_session != null)
+                _session.ClientsChanged -= OnClientsChanged;
+
+            _client?.Dispose();
+            _client = null;
+            _instanceId = null;
+            _session?.Dispose();
+            _session = null;
+
+            Start();
+        }
+
+        public BwTab RefreshTargetTab(BwTab tab)
+        {
+            if (tab == null)
+                return GetTargetTab();
+
+            try
+            {
+                var info = tab.GetInfo();
+                if (info.IsClosed)
+                    return GetTargetTab();
+
+                tab.Activate();
+                return tab;
+            }
+            catch
+            {
+                return GetTargetTab();
+            }
+        }
+
         public BwTab GetTargetTab()
         {
             var client = GetClient();

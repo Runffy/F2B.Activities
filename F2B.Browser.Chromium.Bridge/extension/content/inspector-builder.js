@@ -328,10 +328,10 @@
   }
 
   function populateWndProperties(level, tabTitle, tabUrl) {
-    level.properties.push(createProperty('title', tabTitle || document.title || '', true, true));
+    level.properties.push(createProperty('title', tabTitle || document.title || '', true, false));
 
     if (tabUrl || location.href) {
-      level.properties.push(createProperty('url', tabUrl || location.href, false, true));
+      level.properties.push(createProperty('url', tabUrl || location.href, false, false));
     }
   }
 

@@ -12,24 +12,28 @@ namespace F2B.Browser.Chromium.Inspector.Services
 {
     internal sealed class BrowserIndicateSession : IDisposable
     {
-        private const int DwellMilliseconds = 100;
+        private const int HoverDebounceMs = 120;
+        private const int MinHoverRpcIntervalMs = 90;
         private const int PauseSeconds = 3;
-        private const int ContextMonitorIntervalMs = 300;
+        private const int ContextMonitorIntervalMs = 1000;
 
         private readonly GlobalInputHook _inputHook = new GlobalInputHook();
         private readonly SemaphoreSlim _rebindLock = new SemaphoreSlim(1, 1);
+        private readonly object _hoverPointSync = new object();
         private readonly Dispatcher _dispatcher;
 
         private BridgeInspectorSession _session;
         private BwTab _tab;
         private IndicateHotKeyHandler _hotKeyHandler;
-        private IndicateOverlay _indicateOverlay;
         private CountdownOverlay _countdownOverlay;
         private CancellationTokenSource _monitorCts;
         private CancellationTokenSource _pauseCts;
+        private CancellationTokenSource _hoverDebounceCts;
         private TaskCompletionSource<BridgeInspectorPickResult> _pickTcs;
         private DateTime _lastMoveTime = DateTime.MinValue;
+        private DateTime _lastHoverRpcUtc = DateTime.MinValue;
         private System.Drawing.Point _lastPoint = System.Drawing.Point.Empty;
+        private int _hoverInFlight;
         private bool _isActive;
         private bool _isPaused;
         private bool _completed;
@@ -60,13 +64,13 @@ namespace F2B.Browser.Chromium.Inspector.Services
             _isActive = true;
             _isPaused = false;
             _lastMoveTime = DateTime.MinValue;
+            _lastHoverRpcUtc = DateTime.MinValue;
 
             await Task.Run(() => BootstrapPickAssist(tab, paused: false)).ConfigureAwait(true);
 
             StartContextMonitor();
             _dispatcher.Invoke(() =>
             {
-                _indicateOverlay = new IndicateOverlay();
                 _hotKeyHandler = new IndicateHotKeyHandler(ownerWindow);
                 _hotKeyHandler.F2Pressed += OnF2Pressed;
                 _hotKeyHandler.EscapePressed += OnEscapePressed;
@@ -257,7 +261,6 @@ namespace F2B.Browser.Chromium.Inspector.Services
                     return;
 
                 _lastMoveTime = DateTime.MinValue;
-                _dispatcher.Invoke(() => _indicateOverlay?.HideHighlight());
 
                 if (change == ContextChange.TabSwitched)
                     TargetTabRebound?.Invoke(reboundTab);
@@ -317,51 +320,79 @@ namespace F2B.Browser.Chromium.Inspector.Services
             if (!_isActive || _isPaused)
                 return;
 
-            _lastPoint = new System.Drawing.Point(x, y);
-            _lastMoveTime = DateTime.UtcNow;
+            lock (_hoverPointSync)
+            {
+                _lastPoint = new System.Drawing.Point(x, y);
+                _lastMoveTime = DateTime.UtcNow;
+            }
+
+            ScheduleHoverRpc();
+        }
+
+        private void ScheduleHoverRpc()
+        {
+            _hoverDebounceCts?.Cancel();
+            _hoverDebounceCts?.Dispose();
+            _hoverDebounceCts = new CancellationTokenSource();
+            var token = _hoverDebounceCts.Token;
 
             Task.Run(async () =>
             {
-                var capturedPoint = _lastPoint;
-                var capturedTime = _lastMoveTime;
-                await Task.Delay(DwellMilliseconds).ConfigureAwait(false);
+                try
+                {
+                    await Task.Delay(HoverDebounceMs, token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
 
                 if (!_isActive || _isPaused)
                     return;
-                if (_lastPoint != capturedPoint || _lastMoveTime != capturedTime)
-                    return;
 
-                var tab = _tab;
-                if (tab == null)
+                if (Interlocked.CompareExchange(ref _hoverInFlight, 1, 0) != 0)
                     return;
 
                 try
                 {
-                    var hover = tab.InspectorHoverAtScreenPoint(capturedPoint.X, capturedPoint.Y);
-                    var highlightBounds = hover != null && hover.Hovered && hover.Bounds.HasValue
-                        ? (Rectangle?)hover.Bounds.Value
-                        : null;
-                    _dispatcher.Invoke(new Action(() =>
+                    var elapsed = (DateTime.UtcNow - _lastHoverRpcUtc).TotalMilliseconds;
+                    if (elapsed < MinHoverRpcIntervalMs)
                     {
-                        if (!_isActive || _isPaused)
-                            return;
+                        await Task.Delay((int)(MinHoverRpcIntervalMs - elapsed), token).ConfigureAwait(false);
+                    }
 
-                        if (highlightBounds.HasValue)
-                            _indicateOverlay?.UpdateHighlight(highlightBounds.Value);
-                        else
-                            _indicateOverlay?.HideHighlight();
-                    }));
+                    System.Drawing.Point point;
+                    lock (_hoverPointSync)
+                    {
+                        point = _lastPoint;
+                    }
+
+                    var tab = _tab;
+                    if (tab == null)
+                        return;
+
+                    tab.InspectorUpdateHoverAtScreenPoint(point.X, point.Y);
+                    _lastHoverRpcUtc = DateTime.UtcNow;
+                }
+                catch (OperationCanceledException)
+                {
                 }
                 catch
                 {
                 }
-            });
+                finally
+                {
+                    Interlocked.Exchange(ref _hoverInFlight, 0);
+                }
+            }, token);
         }
 
         private void OnMouseButtonDown(int x, int y)
         {
             if (!_isActive || _isPaused)
                 return;
+
+            _hoverDebounceCts?.Cancel();
 
             Task.Run(() =>
             {
@@ -390,6 +421,7 @@ namespace F2B.Browser.Chromium.Inspector.Services
         {
             _isPaused = true;
             _inputHook.ConsumeMouseClick = false;
+            _hoverDebounceCts?.Cancel();
             _pauseCts?.Cancel();
             _pauseCts = new CancellationTokenSource();
             var token = _pauseCts.Token;
@@ -406,7 +438,6 @@ namespace F2B.Browser.Chromium.Inspector.Services
             _dispatcher.Invoke(() =>
             {
                 _hotKeyHandler?.Unregister();
-                _indicateOverlay?.HideHighlight();
                 _countdownOverlay?.Close();
                 _countdownOverlay = new CountdownOverlay();
                 _countdownOverlay.ShowCountdown(PauseSeconds);
@@ -435,6 +466,7 @@ namespace F2B.Browser.Chromium.Inspector.Services
                 _isPaused = false;
                 _inputHook.ConsumeMouseClick = true;
                 _lastMoveTime = DateTime.MinValue;
+                _lastHoverRpcUtc = DateTime.MinValue;
             }
             catch (OperationCanceledException)
             {
@@ -459,6 +491,9 @@ namespace F2B.Browser.Chromium.Inspector.Services
             _isPaused = false;
             _pauseCts?.Cancel();
             _monitorCts?.Cancel();
+            _hoverDebounceCts?.Cancel();
+            _hoverDebounceCts?.Dispose();
+            _hoverDebounceCts = null;
 
             _session = null;
             _inputHook.ConsumeMouseClick = false;
@@ -475,10 +510,6 @@ namespace F2B.Browser.Chromium.Inspector.Services
 
         private void CloseOverlays()
         {
-            _indicateOverlay?.HideHighlight();
-            _indicateOverlay?.Close();
-            _indicateOverlay = null;
-
             _countdownOverlay?.Close();
             _countdownOverlay = null;
 

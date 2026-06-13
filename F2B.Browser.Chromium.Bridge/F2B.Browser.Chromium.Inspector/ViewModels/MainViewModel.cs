@@ -58,7 +58,7 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             PropertyExplorerItems = new ObservableCollection<InspectorPropertyItem>();
             SelectedItemProperties = new ObservableCollection<InspectorPropertyItem>();
 
-            RefreshConnectionCommand = new RelayCommand(RefreshConnectionStatus);
+            RefreshConnectionCommand = new RelayCommand(ReconnectAndRefreshStatus);
             IndicateCommand = new RelayCommand(() => _ = StartIndicateAsync(), () => _session.IsConnected && !IsIndicating && !IsHighlighting && !IsValidating);
             ValidateCommand = new RelayCommand(() => _ = ValidateSelectorAsync(), () => _hasCapturedElement && SelectorLevels.Count > 0 && !IsValidating && !IsHighlighting);
             HighlightCommand = new RelayCommand(() => _ = HighlightAsync(), () => !IsHighlighting && !IsIndicating && !IsValidating && SelectorLevels.Count > 0);
@@ -204,6 +204,27 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
         }
 
         public void RefreshConnectionStatus()
+        {
+            UpdateConnectionStatusMessage();
+        }
+
+        public void ReconnectAndRefreshStatus()
+        {
+            try
+            {
+                ConnectionStatus = "Reconnecting to Bridge on port " + BridgeConstants.DefaultPort + "...";
+                _session.Reconnect();
+            }
+            catch (Exception ex)
+            {
+                ConnectionStatus = "Bridge connection failed: " + ex.Message;
+                return;
+            }
+
+            UpdateConnectionStatusMessage();
+        }
+
+        private void UpdateConnectionStatusMessage()
         {
             if (!_session.IsConnected)
             {
@@ -486,11 +507,19 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
 
                 var matchCount = await CountSelectorMatchesWithRetryAsync();
                 if (matchCount <= 0)
+                {
                     ValidationState = ValidationState.Invalid;
+                    TargetElementDisplay = "Validate failed: 0 matches within " + ResolveTimeoutMs + "ms.";
+                }
                 else if (matchCount == 1)
+                {
                     ValidationState = ValidationState.Valid;
+                }
                 else
+                {
                     ValidationState = ValidationState.Ambiguous;
+                    TargetElementDisplay = "Validate ambiguous: " + matchCount + " matches.";
+                }
             }
             catch (Exception ex)
             {
@@ -508,6 +537,7 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             await _dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             var tab = _targetTab ?? await Task.Run(() => _session.GetTargetTab());
+            tab = await Task.Run(() => _session.RefreshTargetTab(tab));
             _targetTab = tab;
             if (tab != null)
                 await Task.Run(() => tab.Activate());

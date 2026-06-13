@@ -890,6 +890,18 @@ namespace F2B.Browser.Chromium.Bridge
             Invoke("inspector.restartPickAssist", WithTab(), 15000);
         }
 
+        public void InspectorUpdateHoverAtScreenPoint(int screenX, int screenY)
+        {
+            Invoke(
+                "inspector.hoverAtScreenPoint",
+                WithTab(new Dictionary<string, object>
+                {
+                    { "screenX", screenX },
+                    { "screenY", screenY }
+                }),
+                1500);
+        }
+
         public BridgeInspectorHoverResult InspectorHoverAtScreenPoint(int screenX, int screenY)
         {
             var response = Invoke(
