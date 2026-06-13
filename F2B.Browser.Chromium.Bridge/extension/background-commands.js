@@ -874,6 +874,32 @@ async function executeBridgeCommand(message) {
       return { tabId: tab?.id || 0 };
     }
 
+    case 'browser.resolveNewWindowTab': {
+      const known = new Set((message.knownWindowIds || []).map((id) => Number(id)).filter((id) => id > 0));
+      const timeout = message.timeout || 5000;
+      const started = Date.now();
+
+      while (Date.now() - started < timeout) {
+        const tabs = await chrome.tabs.query({});
+        const tab = pickNewWindowTab(tabs, known);
+        if (tab) {
+          return {
+            windowId: tab.windowId,
+            tabId: tab.id,
+            url: tab.url,
+            title: tab.title,
+            active: tab.active
+          };
+        }
+
+        await sleep(100);
+      }
+
+      throw new Error(
+        'New browser window was not detected within ' + timeout + 'ms. '
+        + 'Ensure the F2B Bridge extension is loaded in this Chromium profile.');
+    }
+
     case 'browser.open': {
       const created = await chrome.windows.create({
         url: message.url || 'about:blank',
@@ -1095,6 +1121,34 @@ async function waitForTabComplete(tabId, timeout) {
 
     await sleep(100);
   }
+}
+
+function pickNewWindowTab(tabs, knownWindowIds) {
+  const pool = tabs.filter((tab) => tab.windowId > 0);
+  if (pool.length === 0) {
+    return null;
+  }
+
+  let candidates = pool;
+  if (knownWindowIds.size > 0) {
+    candidates = pool.filter((tab) => !knownWindowIds.has(tab.windowId));
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    const maxWindowId = Math.max(...candidates.map((tab) => tab.windowId));
+    candidates = candidates.filter((tab) => tab.windowId === maxWindowId);
+  } else {
+    const focusedWindowId = pool.find((tab) => tab.active)?.windowId;
+    if (focusedWindowId) {
+      candidates = pool.filter((tab) => tab.windowId === focusedWindowId);
+    } else {
+      const maxWindowId = Math.max(...pool.map((tab) => tab.windowId));
+      candidates = pool.filter((tab) => tab.windowId === maxWindowId);
+    }
+  }
+
+  return candidates.find((tab) => tab.active) || candidates[candidates.length - 1];
 }
 
 async function captureScreenshot(message) {

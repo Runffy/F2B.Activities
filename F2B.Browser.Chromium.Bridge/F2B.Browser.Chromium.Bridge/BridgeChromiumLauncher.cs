@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 
 namespace F2B.Browser.Chromium.Bridge
 {
@@ -47,89 +46,63 @@ namespace F2B.Browser.Chromium.Bridge
             return null;
         }
 
-        public static string ResolveExtensionPath(string preferredPath = null)
-        {
-            if (!string.IsNullOrWhiteSpace(preferredPath))
-            {
-                var normalized = Path.GetFullPath(preferredPath);
-                if (File.Exists(Path.Combine(normalized, "manifest.json")))
-                    return normalized;
-            }
-
-            var envPath = Environment.GetEnvironmentVariable("F2B_BRIDGE_EXTENSION_PATH");
-            if (!string.IsNullOrWhiteSpace(envPath))
-            {
-                var normalized = Path.GetFullPath(envPath);
-                if (File.Exists(Path.Combine(normalized, "manifest.json")))
-                    return normalized;
-            }
-
-            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            var fromBaseDir = Path.Combine(baseDir, "extension");
-            if (File.Exists(Path.Combine(fromBaseDir, "manifest.json")))
-                return fromBaseDir;
-
-            var assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            for (var i = 0; i < 8 && !string.IsNullOrEmpty(assemblyDir); i++)
-            {
-                var candidate = Path.Combine(assemblyDir, "extension");
-                if (File.Exists(Path.Combine(candidate, "manifest.json")))
-                    return candidate;
-
-                assemblyDir = Directory.GetParent(assemblyDir)?.FullName;
-            }
-
-            return null;
-        }
-
         /// <summary>
-        /// Starts the system Chromium profile when no browser process is running.
-        /// Uses the default user-data-dir (same profile as manual Chrome usage).
+        /// Starts a new Chromium window via command line. Always uses --new-window so an existing
+        /// browser session receives a new window instead of reusing a tab in the current window.
         /// </summary>
-        /// <returns>True when a new Chromium process was started.</returns>
-        public static bool TryLaunch(
+        public static void LaunchNewWindow(
             string chromeExecutablePath = null,
-            string extensionPath = null,
-            string startUrl = null)
+            string startUrl = null,
+            string launchArguments = null,
+            string extensionPath = null)
         {
-            if (IsChromiumProcessRunning())
-                return false;
-
             var chromePath = ResolveChromeExecutable(chromeExecutablePath);
             if (chromePath == null)
-                return false;
+            {
+                throw new InvalidOperationException(
+                    "Chrome or Edge executable was not found. Set Chrome Executable Path on Open Browser.");
+            }
 
-            var arguments = BuildLaunchArguments(ResolveExtensionPath(extensionPath), startUrl);
+            if (!string.IsNullOrWhiteSpace(extensionPath))
+            {
+                var normalized = Path.GetFullPath(extensionPath);
+                if (!File.Exists(Path.Combine(normalized, "manifest.json")))
+                {
+                    throw new InvalidOperationException(
+                        "Extension Path does not contain manifest.json: " + normalized);
+                }
+            }
+
+            var arguments = BuildLaunchArguments(extensionPath, startUrl, launchArguments);
             Process.Start(new ProcessStartInfo
             {
                 FileName = chromePath,
                 Arguments = arguments,
                 UseShellExecute = false
             });
-
-            return true;
         }
 
-        private static string BuildLaunchArguments(string extensionPath, string startUrl)
+        private static string BuildLaunchArguments(
+            string extensionPath,
+            string startUrl,
+            string launchArguments)
         {
             var args = new List<string>
             {
                 "--no-first-run",
                 "--no-default-browser-check",
-                "--allow-file-access-from-files"
+                "--allow-file-access-from-files",
+                "--new-window"
             };
 
+            if (!string.IsNullOrWhiteSpace(launchArguments))
+                args.Add(launchArguments.Trim());
+
             if (!string.IsNullOrWhiteSpace(extensionPath))
-                args.Add(QuoteArgument("--load-extension=" + extensionPath));
+                args.Add(QuoteArgument("--load-extension=" + Path.GetFullPath(extensionPath)));
 
             if (!string.IsNullOrWhiteSpace(startUrl))
-            {
                 args.Add(QuoteArgument(startUrl));
-            }
-            else
-            {
-                args.Add("--no-startup-window");
-            }
 
             return string.Join(" ", args);
         }

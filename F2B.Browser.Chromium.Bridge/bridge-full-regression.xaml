@@ -35,7 +35,7 @@
       <AssemblyReference>F2B.Browser.Chromium.Bridge</AssemblyReference>
     </sco:Collection>
   </TextExpression.ReferencesForImplementation>
-  <Sequence DisplayName="Bridge full regression (Chrome extension v2.5.21; SwitchTab file:// url match)" sap2010:WorkflowViewState.IdRef="Sequence_Root">
+  <Sequence DisplayName="Bridge full regression (Chrome extension v2.5.22; Open Browser CLI + resolveNewWindowTab)" sap2010:WorkflowViewState.IdRef="Sequence_Root">
     <Sequence.Variables>
       <Variable x:TypeArguments="fbcb:BwBrowser" Name="browser" />
       <Variable x:TypeArguments="fbcb:BwBrowser" Name="browserAttached" />

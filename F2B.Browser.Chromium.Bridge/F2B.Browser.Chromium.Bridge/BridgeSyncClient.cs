@@ -458,6 +458,33 @@ namespace F2B.Browser.Chromium.Bridge
             return ParseTabs(_rpc, _instanceId, response);
         }
 
+        public HashSet<int> CollectWindowIds()
+        {
+            var windowIds = new HashSet<int>();
+            foreach (var tab in GetAllTabs())
+            {
+                if (tab.WindowId > 0)
+                    windowIds.Add(tab.WindowId);
+            }
+
+            return windowIds;
+        }
+
+        /// <summary>
+        /// Resolves the tab in the newly opened browser window. Does not wait for page load.
+        /// </summary>
+        public BwTab ResolveNewWindowTab(HashSet<int> knownWindowIds, int timeoutMs = 5000)
+        {
+            var response = Invoke("browser.resolveNewWindowTab", new Dictionary<string, object>
+            {
+                { "knownWindowIds", knownWindowIds != null ? knownWindowIds.ToArray() : new int[0] },
+                { "timeout", timeoutMs }
+            }, timeoutMs + 5000);
+
+            WindowId = BridgeJson.GetInt(response.Data, "windowId");
+            return CreateTab(response);
+        }
+
         public BwTab WaitForTabByUrl(string url, int timeoutMs = 15000)
         {
             if (string.IsNullOrWhiteSpace(url))
