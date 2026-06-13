@@ -1,5 +1,6 @@
 using System;
 using System.Activities;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 
@@ -87,6 +88,23 @@ namespace F2B.Browser.Chromium.Bridge
                 + total.ElapsedMilliseconds
                 + "ms");
 
+            HashSet<int> knownWindowIds = null;
+            if (extensionOnline)
+            {
+                var snapshotSw = Stopwatch.StartNew();
+                knownWindowIds = BridgeActivityServices
+                    .GetBrowser(instanceId, TimeSpan.FromSeconds(2))
+                    .CollectWindowIds();
+                BridgeDiagnostics.Trace(
+                    "OpenBrowser: snapshot "
+                    + (knownWindowIds == null ? 0 : knownWindowIds.Count)
+                    + " windows +"
+                    + snapshotSw.ElapsedMilliseconds
+                    + "ms (total +"
+                    + total.ElapsedMilliseconds
+                    + "ms)");
+            }
+
             var launchSw = Stopwatch.StartNew();
             BridgeChromiumLauncher.LaunchNewWindow(
                 chromeExecutablePath,
@@ -122,7 +140,7 @@ namespace F2B.Browser.Chromium.Bridge
                 + "ms)");
 
             var resolveSw = Stopwatch.StartNew();
-            var tab = browser.ResolveNewWindowTab(null, windowDetectTimeoutMs);
+            var tab = browser.ResolveNewWindowTab(knownWindowIds, windowDetectTimeoutMs);
             BridgeDiagnostics.Trace(
                 "OpenBrowser: resolve windowId="
                 + browser.WindowId

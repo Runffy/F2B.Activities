@@ -1,4 +1,4 @@
-importScripts('bridge-trace.js', 'background-commands.js?v=2.5.25');
+importScripts('bridge-trace.js', 'background-commands.js?v=2.5.26');
 
 const BRIDGE_HOST = '127.0.0.1';
 const BRIDGE_PORT = 19222;
@@ -18,15 +18,26 @@ let instanceLabel = null;
 let shouldStayConnected = true;
 let messageChain = Promise.resolve();
 
+const pendingNewWindowIds = new Set();
+globalThis.__f2bPendingNewWindowIds = pendingNewWindowIds;
+
 const bootstrapReady = bootstrap();
 
 chrome.runtime.onStartup.addListener(onBootstrap);
 chrome.runtime.onInstalled.addListener(onBootstrap);
 chrome.alarms.onAlarm.addListener(onAlarm);
-chrome.windows.onCreated.addListener(onBrowserActivity);
-chrome.tabs.onCreated.addListener(onBrowserActivity);
+chrome.windows.onCreated.addListener(onWindowCreated);
+chrome.tabs.onCreated.addListener(onTabCreated);
 
-function onBrowserActivity() {
+function onWindowCreated(window) {
+  if (window && window.id > 0) {
+    pendingNewWindowIds.add(window.id);
+  }
+
+  ensureConnected();
+}
+
+function onTabCreated() {
   ensureConnected();
 }
 

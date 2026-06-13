@@ -876,26 +876,50 @@ async function executeBridgeCommand(message) {
 
     case 'browser.resolveNewWindowTab': {
       const clientKnown = new Set((message.knownWindowIds || []).map((id) => Number(id)).filter((id) => id > 0));
-      const snapshotWindows = await chrome.windows.getAll();
-      const known = new Set(snapshotWindows.map((window) => window.id).filter((id) => id > 0));
-      for (const id of clientKnown) {
-        known.add(id);
-      }
-
+      const pendingKnown = globalThis.__f2bPendingNewWindowIds;
       const timeout = message.timeout || 5000;
       const started = Date.now();
 
       while (Date.now() - started < timeout) {
-        const tabs = await chrome.tabs.query({});
-        const tab = pickNewWindowTab(tabs, known);
-        if (tab) {
-          return {
-            windowId: tab.windowId,
-            tabId: tab.id,
-            url: tab.url,
-            title: tab.title,
-            active: tab.active
-          };
+        if (pendingKnown && pendingKnown.size > 0) {
+          for (const windowId of Array.from(pendingKnown)) {
+            if (clientKnown.has(windowId)) {
+              continue;
+            }
+
+            const tabs = await chrome.tabs.query({ windowId: windowId });
+            if (tabs.length === 0) {
+              continue;
+            }
+
+            pendingKnown.delete(windowId);
+            const tab = tabs.find((item) => item.active) || tabs[tabs.length - 1];
+            return {
+              windowId: tab.windowId,
+              tabId: tab.id,
+              url: tab.url,
+              title: tab.title,
+              active: tab.active
+            };
+          }
+        }
+
+        if (clientKnown.size > 0) {
+          const tabs = await chrome.tabs.query({});
+          const tab = pickNewWindowTab(tabs, clientKnown);
+          if (tab) {
+            if (pendingKnown) {
+              pendingKnown.delete(tab.windowId);
+            }
+
+            return {
+              windowId: tab.windowId,
+              tabId: tab.id,
+              url: tab.url,
+              title: tab.title,
+              active: tab.active
+            };
+          }
         }
 
         await sleep(100);
