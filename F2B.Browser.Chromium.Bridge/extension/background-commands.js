@@ -880,8 +880,15 @@ async function executeBridgeCommand(message) {
       const started = Date.now();
 
       while (Date.now() - started < timeout) {
-        const tabs = await chrome.tabs.query({});
-        const tab = pickNewWindowTab(tabs, known);
+        let tab = null;
+
+        if (known.size > 0) {
+          const tabs = await chrome.tabs.query({});
+          tab = pickNewWindowTab(tabs, known);
+        } else {
+          tab = await pickFocusedWindowTab();
+        }
+
         if (tab) {
           return {
             windowId: tab.windowId,
@@ -1121,6 +1128,20 @@ async function waitForTabComplete(tabId, timeout) {
 
     await sleep(100);
   }
+}
+
+async function pickFocusedWindowTab() {
+  const focused = await chrome.windows.getLastFocused();
+  if (!focused || focused.id <= 0) {
+    return null;
+  }
+
+  const tabs = await chrome.tabs.query({ windowId: focused.id });
+  if (tabs.length === 0) {
+    return null;
+  }
+
+  return tabs.find((tab) => tab.active) || tabs[tabs.length - 1];
 }
 
 function pickNewWindowTab(tabs, knownWindowIds) {

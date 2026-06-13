@@ -1,7 +1,7 @@
 using System;
 using System.Activities;
-using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 
 namespace F2B.Browser.Chromium.Bridge
 {
@@ -72,23 +72,62 @@ namespace F2B.Browser.Chromium.Bridge
             var extensionPath = ExtensionPath == null ? null : ExtensionPath.Get(context);
             var connectTimeout = TimeSpan.FromMilliseconds(connectTimeoutMs);
 
+            var total = Stopwatch.StartNew();
             BridgeActivityServices.EnsureStarted();
+            BridgeDiagnostics.Trace(
+                "OpenBrowser: start url="
+                + (string.IsNullOrWhiteSpace(url) ? "(none)" : url)
+                + " windowDetectMs="
+                + windowDetectTimeoutMs);
 
-            HashSet<int> knownWindowIds = null;
-            if (BridgeActivityServices.TryWaitForExtension(TimeSpan.FromSeconds(2), out _, instanceId))
-            {
-                var existingBrowser = BridgeActivityServices.GetBrowser(instanceId, TimeSpan.FromSeconds(5));
-                knownWindowIds = existingBrowser.CollectWindowIds();
-            }
+            var extensionOnline = BridgeActivityServices.TryWaitForExtension(
+                TimeSpan.FromMilliseconds(500),
+                out _,
+                instanceId);
+            BridgeDiagnostics.Trace(
+                "OpenBrowser: extensionOnline="
+                + extensionOnline
+                + " +"
+                + total.ElapsedMilliseconds
+                + "ms");
 
+            var launchSw = Stopwatch.StartNew();
             BridgeChromiumLauncher.LaunchNewWindow(
                 chromeExecutablePath,
                 url,
                 launchArguments,
                 extensionPath);
+            BridgeDiagnostics.Trace(
+                "OpenBrowser: launch +"
+                + launchSw.ElapsedMilliseconds
+                + "ms (total +"
+                + total.ElapsedMilliseconds
+                + "ms)");
 
-            var browser = BridgeActivityServices.GetBrowser(instanceId, connectTimeout);
-            var tab = browser.ResolveNewWindowTab(knownWindowIds, windowDetectTimeoutMs);
+            var connectSw = Stopwatch.StartNew();
+            var postLaunchConnectTimeout = extensionOnline
+                ? TimeSpan.FromMilliseconds(Math.Min(connectTimeoutMs, 5000))
+                : connectTimeout;
+            var browser = BridgeActivityServices.GetBrowser(instanceId, postLaunchConnectTimeout);
+            BridgeDiagnostics.Trace(
+                "OpenBrowser: connect +"
+                + connectSw.ElapsedMilliseconds
+                + "ms (total +"
+                + total.ElapsedMilliseconds
+                + "ms)");
+
+            var resolveSw = Stopwatch.StartNew();
+            var tab = browser.ResolveNewWindowTab(null, windowDetectTimeoutMs);
+            BridgeDiagnostics.Trace(
+                "OpenBrowser: resolve windowId="
+                + browser.WindowId
+                + " tabId="
+                + (tab == null ? 0 : tab.TabId)
+                + " +"
+                + resolveSw.ElapsedMilliseconds
+                + "ms (total +"
+                + total.ElapsedMilliseconds
+                + "ms)");
 
             Browser?.Set(context, browser);
             Tab?.Set(context, tab);
