@@ -1,4 +1,4 @@
-importScripts('bridge-trace.js', 'background-commands.js?v=2.5.23');
+importScripts('bridge-trace.js', 'background-commands.js?v=2.5.25');
 
 const BRIDGE_HOST = '127.0.0.1';
 const BRIDGE_PORT = 19222;
@@ -18,11 +18,17 @@ let instanceLabel = null;
 let shouldStayConnected = true;
 let messageChain = Promise.resolve();
 
-bootstrap();
+const bootstrapReady = bootstrap();
 
 chrome.runtime.onStartup.addListener(onBootstrap);
 chrome.runtime.onInstalled.addListener(onBootstrap);
 chrome.alarms.onAlarm.addListener(onAlarm);
+chrome.windows.onCreated.addListener(onBrowserActivity);
+chrome.tabs.onCreated.addListener(onBrowserActivity);
+
+function onBrowserActivity() {
+  ensureConnected();
+}
 
 async function bootstrap() {
   const manifestVersion = chrome.runtime.getManifest().version;
@@ -38,6 +44,7 @@ async function bootstrap() {
   instanceId = await getOrCreateInstanceId();
   instanceLabel = buildInstanceLabel();
   ensureAlarm();
+  console.log('[F2B Bridge] bootstrap ready as', instanceId);
   startBridgeConnection();
 }
 
@@ -56,12 +63,32 @@ function ensureAlarm() {
   chrome.alarms.create(ALARM_NAME, { periodInMinutes: 1 });
 }
 
-function ensureConnected() {
-  if (isSocketOpen() || isSocketConnecting() || reconnectLoopRunning) {
-    return;
-  }
+function closeActiveSocket() {
+  stopHeartbeat();
 
-  startBridgeConnection();
+  if (activeSocket != null) {
+    try {
+      activeSocket.close();
+    } catch (error) {
+      // Ignore close failures on half-open sockets.
+    }
+
+    activeSocket = null;
+  }
+}
+
+function ensureConnected() {
+  void bootstrapReady.then(() => {
+    if (!instanceId) {
+      return;
+    }
+
+    if (isSocketOpen() || isSocketConnecting() || reconnectLoopRunning) {
+      return;
+    }
+
+    startBridgeConnection();
+  });
 }
 
 function isSocketOpen() {
@@ -99,6 +126,12 @@ async function isBridgeServerReachable() {
 }
 
 async function attemptConnectLoop() {
+  await bootstrapReady;
+
+  if (!instanceId) {
+    return;
+  }
+
   reconnectLoopRunning = true;
 
   try {
@@ -109,7 +142,7 @@ async function attemptConnectLoop() {
 
       const reachable = await isBridgeServerReachable();
       if (!reachable) {
-        await sleep(1000);
+        await sleep(300);
         continue;
       }
 
@@ -117,8 +150,9 @@ async function attemptConnectLoop() {
         await connectOnce();
         return;
       } catch (error) {
-        console.warn('[F2B Bridge] connect failed, retrying in 1s:', error.message);
-        await sleep(1000);
+        console.warn('[F2B Bridge] connect failed, retrying in 300ms:', error.message);
+        closeActiveSocket();
+        await sleep(300);
       }
     }
   } finally {
@@ -127,7 +161,12 @@ async function attemptConnectLoop() {
 }
 
 function connectOnce() {
-  return new Promise((resolve, reject) => {
+  return bootstrapReady.then(() => new Promise((resolve, reject) => {
+    if (!instanceId) {
+      reject(new Error('instanceId not ready'));
+      return;
+    }
+
     if (isSocketOpen() || isSocketConnecting()) {
       resolve();
       return;
@@ -152,6 +191,17 @@ function connectOnce() {
 
     ws.onopen = () => {
       if (settled) {
+        return;
+      }
+
+      if (!instanceId) {
+        settled = true;
+        clearTimeout(timeoutId);
+        ws.close();
+        if (activeSocket === ws) {
+          activeSocket = null;
+        }
+        reject(new Error('instanceId not ready'));
         return;
       }
 
@@ -203,7 +253,7 @@ function connectOnce() {
       }
       reject(new Error('websocket error'));
     };
-  });
+  }));
 }
 
 function startHeartbeat(ws) {

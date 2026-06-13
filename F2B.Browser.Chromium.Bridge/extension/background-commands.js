@@ -875,20 +875,19 @@ async function executeBridgeCommand(message) {
     }
 
     case 'browser.resolveNewWindowTab': {
-      const known = new Set((message.knownWindowIds || []).map((id) => Number(id)).filter((id) => id > 0));
+      const clientKnown = new Set((message.knownWindowIds || []).map((id) => Number(id)).filter((id) => id > 0));
+      const snapshotWindows = await chrome.windows.getAll();
+      const known = new Set(snapshotWindows.map((window) => window.id).filter((id) => id > 0));
+      for (const id of clientKnown) {
+        known.add(id);
+      }
+
       const timeout = message.timeout || 5000;
       const started = Date.now();
 
       while (Date.now() - started < timeout) {
-        let tab = null;
-
-        if (known.size > 0) {
-          const tabs = await chrome.tabs.query({});
-          tab = pickNewWindowTab(tabs, known);
-        } else {
-          tab = await pickFocusedWindowTab();
-        }
-
+        const tabs = await chrome.tabs.query({});
+        const tab = pickNewWindowTab(tabs, known);
         if (tab) {
           return {
             windowId: tab.windowId,
@@ -1130,20 +1129,6 @@ async function waitForTabComplete(tabId, timeout) {
   }
 }
 
-async function pickFocusedWindowTab() {
-  const focused = await chrome.windows.getLastFocused();
-  if (!focused || focused.id <= 0) {
-    return null;
-  }
-
-  const tabs = await chrome.tabs.query({ windowId: focused.id });
-  if (tabs.length === 0) {
-    return null;
-  }
-
-  return tabs.find((tab) => tab.active) || tabs[tabs.length - 1];
-}
-
 function pickNewWindowTab(tabs, knownWindowIds) {
   const pool = tabs.filter((tab) => tab.windowId > 0);
   if (pool.length === 0) {
@@ -1160,13 +1145,7 @@ function pickNewWindowTab(tabs, knownWindowIds) {
     const maxWindowId = Math.max(...candidates.map((tab) => tab.windowId));
     candidates = candidates.filter((tab) => tab.windowId === maxWindowId);
   } else {
-    const focusedWindowId = pool.find((tab) => tab.active)?.windowId;
-    if (focusedWindowId) {
-      candidates = pool.filter((tab) => tab.windowId === focusedWindowId);
-    } else {
-      const maxWindowId = Math.max(...pool.map((tab) => tab.windowId));
-      candidates = pool.filter((tab) => tab.windowId === maxWindowId);
-    }
+    return null;
   }
 
   return candidates.find((tab) => tab.active) || candidates[candidates.length - 1];

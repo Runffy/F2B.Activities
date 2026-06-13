@@ -41,6 +41,23 @@ namespace F2B.Browser.Chromium.Bridge
             }
         }
 
+        public static bool IsExtensionConnected(string preferredInstanceId = null)
+        {
+            EnsureStarted();
+
+            var clients = _session.GetConnectedClients();
+            if (clients.Count == 0)
+                return false;
+
+            if (!string.IsNullOrWhiteSpace(preferredInstanceId))
+            {
+                return clients.Any(item =>
+                    string.Equals(item.InstanceId, preferredInstanceId, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return true;
+        }
+
         public static bool TryWaitForExtension(
             TimeSpan timeout,
             out string instanceId,

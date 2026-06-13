@@ -74,18 +74,14 @@ namespace F2B.Browser.Chromium.Bridge
 
             var total = Stopwatch.StartNew();
             BridgeActivityServices.EnsureStarted();
+
+            var extensionOnline = BridgeActivityServices.IsExtensionConnected(instanceId);
             BridgeDiagnostics.Trace(
                 "OpenBrowser: start url="
                 + (string.IsNullOrWhiteSpace(url) ? "(none)" : url)
                 + " windowDetectMs="
-                + windowDetectTimeoutMs);
-
-            var extensionOnline = BridgeActivityServices.TryWaitForExtension(
-                TimeSpan.FromMilliseconds(500),
-                out _,
-                instanceId);
-            BridgeDiagnostics.Trace(
-                "OpenBrowser: extensionOnline="
+                + windowDetectTimeoutMs
+                + " extensionOnline="
                 + extensionOnline
                 + " +"
                 + total.ElapsedMilliseconds
@@ -108,6 +104,15 @@ namespace F2B.Browser.Chromium.Bridge
             var postLaunchConnectTimeout = extensionOnline
                 ? TimeSpan.FromMilliseconds(Math.Min(connectTimeoutMs, 5000))
                 : connectTimeout;
+
+            if (!extensionOnline)
+            {
+                BridgeDiagnostics.Trace(
+                    "OpenBrowser: extension offline before launch; waiting up to "
+                    + connectTimeoutMs
+                    + "ms for WebSocket connect");
+            }
+
             var browser = BridgeActivityServices.GetBrowser(instanceId, postLaunchConnectTimeout);
             BridgeDiagnostics.Trace(
                 "OpenBrowser: connect +"
