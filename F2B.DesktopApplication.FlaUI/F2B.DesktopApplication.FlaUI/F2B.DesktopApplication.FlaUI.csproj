@@ -17,4 +17,8 @@
     <Reference Include="System.Activities.Presentation" />
     <Reference Include="System.Drawing" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\F2B.OpenRpa.Design\SelectorDesignerSupport.cs" Link="OpenRpa.Design\SelectorDesignerSupport.cs" />
+    <Compile Include="..\..\F2B.OpenRpa.Design\SelectorXmlEditorDialog.cs" Link="OpenRpa.Design\SelectorXmlEditorDialog.cs" />
+  </ItemGroup>
 </Project>

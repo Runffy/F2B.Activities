@@ -13,6 +13,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
+using F2B.OpenRpa.Design;
 
 namespace F2B.DesktopApplication.FlaUI
 {
@@ -107,7 +108,25 @@ namespace F2B.DesktopApplication.FlaUI
                 var isRequired = property.GetCustomAttribute<RequiredArgumentAttribute>() != null || IsCustomRequired(activityType, propertyName);
 
                 var editor = CreateExpressionTextBox(propertyName, expressionType);
-                var row = CreateRow(displayName, editor, out var editorBorder, rowIndex == 0 ? 0 : RowSpacing);
+                Border editorBorder;
+                FrameworkElement row;
+                if (SelectorDesignerSupport.IsSingleSelectorProperty(propertyName))
+                {
+                    row = SelectorDesignerSupport.CreateSelectorRow(
+                        displayName,
+                        editor,
+                        propertyName,
+                        () => ModelItem,
+                        "FlaUiRequiredFieldLabelColumn",
+                        EditorMinWidth,
+                        out var selectorEditorBorder,
+                        rowIndex == 0 ? 0 : RowSpacing);
+                    editorBorder = selectorEditorBorder;
+                }
+                else
+                {
+                    row = CreateRow(displayName, editor, out editorBorder, rowIndex == 0 ? 0 : RowSpacing);
+                }
 
                 _bodyPanel.Children.Add(row);
                 _editors[propertyName] = editor;

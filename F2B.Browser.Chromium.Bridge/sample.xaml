@@ -1,0 +1,129 @@
+<Activity mc:Ignorable="sap sap2010 sads" x:Class="New_Workflow" mva:VisualBasic.Settings="{x:Null}" sap2010:WorkflowViewState.IdRef="New_Workflow_1"
+ xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+ xmlns:fbcb="clr-namespace:F2B.Browser.Chromium.Bridge;assembly=F2B.Browser.Chromium.Bridge"
+ xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+ xmlns:mva="clr-namespace:Microsoft.VisualBasic.Activities;assembly=System.Activities"
+ xmlns:sads="http://schemas.microsoft.com/netfx/2010/xaml/activities/debugger"
+ xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation"
+ xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation"
+ xmlns:scg="clr-namespace:System.Collections.Generic;assembly=mscorlib"
+ xmlns:sco="clr-namespace:System.Collections.ObjectModel;assembly=mscorlib"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <TextExpression.NamespacesForImplementation>
+    <sco:Collection x:TypeArguments="x:String">
+      <x:String>System</x:String>
+      <x:String>System.Xml</x:String>
+      <x:String>OpenRPA</x:String>
+      <x:String>System.Data</x:String>
+      <x:String>System.Linq</x:String>
+      <x:String>Microsoft.VisualBasic</x:String>
+    </sco:Collection>
+  </TextExpression.NamespacesForImplementation>
+  <TextExpression.ReferencesForImplementation>
+    <sco:Collection x:TypeArguments="AssemblyReference">
+      <AssemblyReference>mscorlib</AssemblyReference>
+      <AssemblyReference>System.Xml</AssemblyReference>
+      <AssemblyReference>OpenRPA</AssemblyReference>
+      <AssemblyReference>OpenRPA.Interfaces</AssemblyReference>
+      <AssemblyReference>System.Data</AssemblyReference>
+      <AssemblyReference>System.Core</AssemblyReference>
+      <AssemblyReference>Microsoft.VisualBasic</AssemblyReference>
+      <AssemblyReference>System.Data.DataSetExtensions</AssemblyReference>
+    </sco:Collection>
+  </TextExpression.ReferencesForImplementation>
+  <Sequence sap2010:WorkflowViewState.IdRef="Sequence_1">
+    <fbcb:AttachBrowserActivity Browser="{x:Null}" InstanceId="{x:Null}" Tab="{x:Null}" ConnectTimeout="60000" DisplayName="Attach Browser" sap2010:WorkflowViewState.IdRef="AttachBrowserActivity_1" />
+    <fbcb:BackActivity Tab="{x:Null}" DisplayName="Back" sap2010:WorkflowViewState.IdRef="BackActivity_1" />
+    <fbcb:BrowserCloseActivity Browser="{x:Null}" DisplayName="Close Browser" sap2010:WorkflowViewState.IdRef="BrowserCloseActivity_1" />
+    <fbcb:BrowserGetActivatedTabActivity Browser="{x:Null}" Tab="{x:Null}" DisplayName="Get Activated Tab" sap2010:WorkflowViewState.IdRef="BrowserGetActivatedTabActivity_1" />
+    <fbcb:BrowserGetAllTabActivity Browser="{x:Null}" Tabs="{x:Null}" DisplayName="Get All Tabs" sap2010:WorkflowViewState.IdRef="BrowserGetAllTabActivity_1" />
+    <fbcb:BrowserGetLatestTabActivity Browser="{x:Null}" Tab="{x:Null}" DisplayName="Get Latest Tab" sap2010:WorkflowViewState.IdRef="BrowserGetLatestTabActivity_1" />
+    <fbcb:BrowserOpenActivity Browser="{x:Null}" InstanceId="{x:Null}" Tab="{x:Null}" Url="{x:Null}" ConnectTimeout="60000" DisplayName="Open Browser" sap2010:WorkflowViewState.IdRef="BrowserOpenActivity_1" OpenTimeout="15000" />
+    <fbcb:BrowserSwitchTabActivity Browser="{x:Null}" Index="{x:Null}" InputTab="{x:Null}" Tab="{x:Null}" TabInfo="{x:Null}" Title="{x:Null}" TitleRe="{x:Null}" Url="{x:Null}" UrlRe="{x:Null}" DisplayName="Switch Tab" sap2010:WorkflowViewState.IdRef="BrowserSwitchTabActivity_1" />
+    <fbcb:CheckActivity Element="{x:Null}" InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="Check" sap2010:WorkflowViewState.IdRef="CheckActivity_1" Timeout="15000" />
+    <fbcb:ClickActivity Element="{x:Null}" InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="Click" sap2010:WorkflowViewState.IdRef="ClickActivity_1" Timeout="15000" />
+    <fbcb:ClickForDownloadActivity Download="{x:Null}" Element="{x:Null}" InputTab="{x:Null}" SaveAsPath="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="Click For Download" sap2010:WorkflowViewState.IdRef="ClickForDownloadActivity_1" Timeout="60000" />
+    <fbcb:ClickForNewTabActivity Element="{x:Null}" InputTab="{x:Null}" Selector="{x:Null}" Tab="{x:Null}" TabInfo="{x:Null}" DelayBefore="300" DisplayName="Click For New Tab" sap2010:WorkflowViewState.IdRef="ClickForNewTabActivity_1" Timeout="15000" />
+    <fbcb:DoubleClickActivity Element="{x:Null}" InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="Double Click" Timeout="15000" sap2010:WorkflowViewState.IdRef="DoubleClickActivity_1" />
+    <fbcb:ElementExistsActivity Exists="{x:Null}" Selector="{x:Null}" Tab="{x:Null}" DisplayName="Element Exists" Index="0" sap2010:WorkflowViewState.IdRef="ElementExistsActivity_1" />
+    <fbcb:FindElementActivity Element="{x:Null}" ElementResult="{x:Null}" Selector="{x:Null}" Tab="{x:Null}" DelayBefore="300" DisplayName="Find Element" Index="0" Timeout="15000" sap2010:WorkflowViewState.IdRef="FindElementActivity_1" />
+    <fbcb:FindElementsActivity Element="{x:Null}" ElementsResult="{x:Null}" Selector="{x:Null}" Tab="{x:Null}" DisplayName="Find Elements" sap2010:WorkflowViewState.IdRef="FindElementsActivity_1" />
+    <fbcb:ForwardActivity Tab="{x:Null}" DisplayName="Forward" sap2010:WorkflowViewState.IdRef="ForwardActivity_1" />
+    <fbcb:GetAttributeActivity Element="{x:Null}" InputTab="{x:Null}" Name="{x:Null}" Selector="{x:Null}" Value="{x:Null}" DelayBefore="300" DisplayName="Get Attribute" Timeout="15000" sap2010:WorkflowViewState.IdRef="GetAttributeActivity_1" />
+    <fbcb:GetChildrenActivity ChildSelector="{x:Null}" Children="{x:Null}" Element="{x:Null}" InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="Get Children" Timeout="15000" sap2010:WorkflowViewState.IdRef="GetChildrenActivity_1" />
+    <fbcb:GetCookiesActivity Cookies="{x:Null}" InputBrowser="{x:Null}" InputTab="{x:Null}" DisplayName="Get Cookies" sap2010:WorkflowViewState.IdRef="GetCookiesActivity_1" />
+    <fbcb:GetInputValueActivity Element="{x:Null}" InputTab="{x:Null}" Selector="{x:Null}" Value="{x:Null}" DelayBefore="300" DisplayName="Get Input Value" Timeout="15000" sap2010:WorkflowViewState.IdRef="GetInputValueActivity_1" />
+    <fbcb:GetParentActivity Element="{x:Null}" InputTab="{x:Null}" Parent="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="Get Parent" Level="1" Timeout="15000" sap2010:WorkflowViewState.IdRef="GetParentActivity_1" />
+    <fbcb:GetRectActivity Element="{x:Null}" InputTab="{x:Null}" Rect="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="Get Rect" Timeout="15000" sap2010:WorkflowViewState.IdRef="GetRectActivity_1" />
+    <fbcb:GetSelectedActivity Element="{x:Null}" InputTab="{x:Null}" Selected="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="Get Selected" Timeout="15000" sap2010:WorkflowViewState.IdRef="GetSelectedActivity_1" />
+    <fbcb:GetStorageActivity InputBrowser="{x:Null}" InputTab="{x:Null}" Storage="{x:Null}" DisplayName="Get Storage" sap2010:WorkflowViewState.IdRef="GetStorageActivity_1" />
+    <fbcb:GetTextActivity Element="{x:Null}" InputTab="{x:Null}" Selector="{x:Null}" Text="{x:Null}" DelayBefore="300" DisplayName="Get Text" Timeout="15000" sap2010:WorkflowViewState.IdRef="GetTextActivity_1" />
+    <fbcb:InputActivity Element="{x:Null}" InputTab="{x:Null}" Selector="{x:Null}" Value="{x:Null}" DelayBefore="300" DisplayName="Input" Timeout="15000" sap2010:WorkflowViewState.IdRef="InputActivity_1" />
+    <fbcb:IsCheckedActivity Checked="{x:Null}" Element="{x:Null}" InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="Is Checked" Timeout="15000" sap2010:WorkflowViewState.IdRef="IsCheckedActivity_1" />
+    <fbcb:NavigateUrlActivity Tab="{x:Null}" Url="{x:Null}" DisplayName="Navigate Url" Timeout="15000" sap2010:WorkflowViewState.IdRef="NavigateUrlActivity_1" />
+    <fbcb:NewTabActivity Browser="{x:Null}" Tab="{x:Null}" TabInfo="{x:Null}" Url="{x:Null}" DisplayName="New Tab" Timeout="15000" sap2010:WorkflowViewState.IdRef="NewTabActivity_1" />
+    <fbcb:ParallelFindElementActivity MatchedIndex="{x:Null}" ParentObject="{x:Null}" Selectors="{x:Null}" DisplayName="Parallel Find Element" Timeout="15000" sap2010:WorkflowViewState.IdRef="ParallelFindElementActivity_1" />
+    <fbcb:RefreshActivity Tab="{x:Null}" DisplayName="Refresh" sap2010:WorkflowViewState.IdRef="RefreshActivity_1" />
+    <fbcb:RunJsActivity Arg="{x:Null}" InputElement="{x:Null}" InputTab="{x:Null}" Result="{x:Null}" Script="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="Run JavaScript" Timeout="15000" sap2010:WorkflowViewState.IdRef="RunJsActivity_1" />
+    <fbcb:SelectActivity Element="{x:Null}" Indices="{x:Null}" InputTab="{x:Null}" Selector="{x:Null}" Texts="{x:Null}" Values="{x:Null}" DelayBefore="300" DisplayName="Select" Interval="500" Timeout="15000" sap2010:WorkflowViewState.IdRef="SelectActivity_1" />
+    <fbcb:SendkeysActivity Delay="{x:Null}" InputElement="{x:Null}" InputTab="{x:Null}" Keys="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="Sendkeys" Timeout="15000" sap2010:WorkflowViewState.IdRef="SendkeysActivity_1" />
+    <fbcb:SetAttributeActivity Element="{x:Null}" InputTab="{x:Null}" Name="{x:Null}" Selector="{x:Null}" Value="{x:Null}" DelayBefore="300" DisplayName="Set Attribute" Timeout="15000" sap2010:WorkflowViewState.IdRef="SetAttributeActivity_1" />
+    <fbcb:TabCloseActivity Tab="{x:Null}" DisplayName="Close Tab" sap2010:WorkflowViewState.IdRef="TabCloseActivity_1" />
+    <fbcb:TabGetInfoActivity Info="{x:Null}" Tab="{x:Null}" DisplayName="Get Tab Info" sap2010:WorkflowViewState.IdRef="TabGetInfoActivity_1" />
+    <fbcb:TakeScreenshotActivity InputElement="{x:Null}" InputTab="{x:Null}" Path="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="Take Screenshot" Timeout="15000" sap2010:WorkflowViewState.IdRef="TakeScreenshotActivity_1" />
+    <fbcb:UncheckActivity Element="{x:Null}" InputTab="{x:Null}" Selector="{x:Null}" DelayBefore="300" DisplayName="Uncheck" Timeout="15000" sap2010:WorkflowViewState.IdRef="UncheckActivity_1" />
+    <sads:DebugSymbol.Symbol>dw1DOlxFbXB0eS54YW1sAA==</sads:DebugSymbol.Symbol>
+  </Sequence>
+  <sap2010:WorkflowViewState.ViewStateManager>
+    <sap2010:ViewStateManager>
+      <sap2010:ViewStateData Id="AttachBrowserActivity_1" sap:VirtualizedContainerService.HintSize="313,22" />
+      <sap2010:ViewStateData Id="BackActivity_1" sap:VirtualizedContainerService.HintSize="313,76" />
+      <sap2010:ViewStateData Id="BrowserCloseActivity_1" sap:VirtualizedContainerService.HintSize="313,76" />
+      <sap2010:ViewStateData Id="BrowserGetActivatedTabActivity_1" sap:VirtualizedContainerService.HintSize="313,76" />
+      <sap2010:ViewStateData Id="BrowserGetAllTabActivity_1" sap:VirtualizedContainerService.HintSize="313,76" />
+      <sap2010:ViewStateData Id="BrowserGetLatestTabActivity_1" sap:VirtualizedContainerService.HintSize="313,76" />
+      <sap2010:ViewStateData Id="BrowserOpenActivity_1" sap:VirtualizedContainerService.HintSize="313,22" />
+      <sap2010:ViewStateData Id="BrowserSwitchTabActivity_1" sap:VirtualizedContainerService.HintSize="313,124" />
+      <sap2010:ViewStateData Id="CheckActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="ClickActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="ClickForDownloadActivity_1" sap:VirtualizedContainerService.HintSize="313,154" />
+      <sap2010:ViewStateData Id="ClickForNewTabActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="DoubleClickActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="ElementExistsActivity_1" sap:VirtualizedContainerService.HintSize="313,98" />
+      <sap2010:ViewStateData Id="FindElementActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="FindElementsActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="ForwardActivity_1" sap:VirtualizedContainerService.HintSize="313,76" />
+      <sap2010:ViewStateData Id="GetAttributeActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="GetChildrenActivity_1" sap:VirtualizedContainerService.HintSize="313,154" />
+      <sap2010:ViewStateData Id="GetCookiesActivity_1" sap:VirtualizedContainerService.HintSize="313,102" />
+      <sap2010:ViewStateData Id="GetInputValueActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="GetParentActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="GetRectActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="GetSelectedActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="GetStorageActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="GetTextActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="InputActivity_1" sap:VirtualizedContainerService.HintSize="313,154" />
+      <sap2010:ViewStateData Id="IsCheckedActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="NavigateUrlActivity_1" sap:VirtualizedContainerService.HintSize="313,98" />
+      <sap2010:ViewStateData Id="NewTabActivity_1" sap:VirtualizedContainerService.HintSize="313,76" />
+      <sap2010:ViewStateData Id="ParallelFindElementActivity_1" sap:VirtualizedContainerService.HintSize="313,102" />
+      <sap2010:ViewStateData Id="RefreshActivity_1" sap:VirtualizedContainerService.HintSize="313,76" />
+      <sap2010:ViewStateData Id="RunJsActivity_1" sap:VirtualizedContainerService.HintSize="313,180" />
+      <sap2010:ViewStateData Id="SelectActivity_1" sap:VirtualizedContainerService.HintSize="313,180" />
+      <sap2010:ViewStateData Id="SendkeysActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="SetAttributeActivity_1" sap:VirtualizedContainerService.HintSize="313,180" />
+      <sap2010:ViewStateData Id="TabCloseActivity_1" sap:VirtualizedContainerService.HintSize="313,76" />
+      <sap2010:ViewStateData Id="TabGetInfoActivity_1" sap:VirtualizedContainerService.HintSize="313,76" />
+      <sap2010:ViewStateData Id="TakeScreenshotActivity_1" sap:VirtualizedContainerService.HintSize="313,180" />
+      <sap2010:ViewStateData Id="UncheckActivity_1" sap:VirtualizedContainerService.HintSize="313,128" />
+      <sap2010:ViewStateData Id="Sequence_1" sap:VirtualizedContainerService.HintSize="335,6242">
+        <sap:WorkflowViewStateService.ViewState>
+          <scg:Dictionary x:TypeArguments="x:String, x:Object">
+            <x:Boolean x:Key="IsExpanded">True</x:Boolean>
+          </scg:Dictionary>
+        </sap:WorkflowViewStateService.ViewState>
+      </sap2010:ViewStateData>
+      <sap2010:ViewStateData Id="New_Workflow_1" sap:VirtualizedContainerService.HintSize="375,6362" />
+    </sap2010:ViewStateManager>
+  </sap2010:WorkflowViewState.ViewStateManager>
+</Activity>

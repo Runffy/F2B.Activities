@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net462</TargetFramework>
+    <RootNamespace>Bridge.Demo.App</RootNamespace>
+    <AssemblyName>Bridge.Demo.App</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\F2B.Browser.Chromium.Bridge\F2B.Browser.Chromium.Bridge.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,87 @@
+<Window x:Class="Bridge.Demo.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="F2B Chromium Bridge Demo"
+        Width="640"
+        Height="480"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   x:Name="lblExtensionStatus"
+                   Text="chromium extension offline"
+                   FontSize="18"
+                   FontWeight="SemiBold"
+                   Foreground="#C0392B"
+                   Margin="0,0,0,12" />
+
+        <TextBlock Grid.Row="1"
+                   x:Name="lblServerInfo"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,12" />
+
+        <StackPanel Grid.Row="2" Margin="0,0,0,12">
+            <TextBlock Text="Connected browser instances:"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,6" />
+            <ListBox x:Name="lstInstances"
+                     Height="120"
+                     DisplayMemberPath="DisplayName" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Send to:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox x:Name="cboSendTarget"
+                      Width="360"
+                      DisplayMemberPath="DisplayName"
+                      SelectedValuePath="InstanceId" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="4" Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock Text="Alert message:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBox x:Name="txtAlertMessage"
+                         Width="280"
+                         Height="26"
+                         VerticalContentAlignment="Center"
+                         Text="Hello from F2B Bridge" />
+                <Button x:Name="btnSendAlert"
+                        Content="Send Alert"
+                        Width="120"
+                        Height="32"
+                        Margin="12,0,0,0"
+                        IsEnabled="False"
+                        Click="BtnSendAlert_OnClick" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="btnGetBaiduButtonText"
+                        Content="Get Baidu Button Text"
+                        Width="160"
+                        Height="32"
+                        Margin="0,0,8,0"
+                        IsEnabled="False"
+                        Click="BtnGetBaiduButtonText_OnClick" />
+                <Button x:Name="btnClickBaiduButton"
+                        Content="Click Baidu Search"
+                        Width="140"
+                        Height="32"
+                        IsEnabled="False"
+                        Click="BtnClickBaiduButton_OnClick" />
+            </StackPanel>
+        </StackPanel>
+
+        <TextBlock Grid.Row="5"
+                   x:Name="lblLog"
+                   TextWrapping="Wrap"
+                   VerticalAlignment="Top"
+                   Foreground="#555555" />
+    </Grid>
+</Window>

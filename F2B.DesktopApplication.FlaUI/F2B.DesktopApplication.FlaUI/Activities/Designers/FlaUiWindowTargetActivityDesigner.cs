@@ -9,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using System.Activities.Presentation.Converters;
 using System.Activities.Presentation.View;
+using F2B.OpenRpa.Design;
 
 namespace F2B.DesktopApplication.FlaUI
 {
@@ -53,7 +54,15 @@ namespace F2B.DesktopApplication.FlaUI
             body.Children.Add(_targetTypeRow);
 
             _selectorExpressionBox = CreateExpressionTextBox("Selector", typeof(string));
-            _selectorRow = CreateRow("Selector (XML)", _selectorExpressionBox, out _selectorEditorBorder, RowSpacing);
+            _selectorRow = SelectorDesignerSupport.CreateSelectorRow(
+                "Selector (XML)",
+                _selectorExpressionBox,
+                "Selector",
+                () => ModelItem,
+                "FlaUiWindowTargetLabelColumn",
+                EditorMinWidth,
+                out _selectorEditorBorder,
+                RowSpacing);
             body.Children.Add(_selectorRow);
 
             _inputWindowExpressionBox = CreateExpressionTextBox("InputWindow", typeof(UiWindow));

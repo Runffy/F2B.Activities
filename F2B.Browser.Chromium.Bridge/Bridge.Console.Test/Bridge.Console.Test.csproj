@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net462</TargetFramework>
+    <RootNamespace>F2B.Bridge.ConsoleTest</RootNamespace>
+    <AssemblyName>Bridge.Console.Test</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\F2B.Browser.Chromium.Bridge\F2B.Browser.Chromium.Bridge.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="demo\www\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="demo\www" />
+    <None Include="demo\SELECTORS.md" CopyToOutputDirectory="PreserveNewest" LinkBase="demo" />
+  </ItemGroup>
+</Project>

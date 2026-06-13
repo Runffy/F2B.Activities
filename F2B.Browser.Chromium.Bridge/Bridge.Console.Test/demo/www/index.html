@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>GWIS SYSTEM Demo</title>
+  <style>
+    body { font-family: Segoe UI, sans-serif; margin: 24px; line-height: 1.4; }
+    section { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #ddd; }
+    h2 { margin-top: 0; font-size: 16px; }
+    label { display: inline-block; margin-right: 8px; }
+    input, select, textarea, button { margin: 4px 8px 4px 0; }
+    iframe { border: 1px solid #ccc; margin-top: 8px; display: block; }
+    .hint { color: #666; font-size: 12px; }
+    #rectBox { width: 120px; height: 36px; background: #e8f0fe; border: 1px solid #aac; display: inline-block; line-height: 36px; text-align: center; }
+    #parentBox { padding: 8px; border: 1px dashed #888; display: inline-block; }
+    .demo-child { color: #036; }
+    .parallel-zone button { min-width: 100px; }
+  </style>
+</head>
+<body>
+  <h1>GWIS SYSTEM Demo Page</h1>
+  <p id="pageHint" class="hint">Full activity regression page (top-level + iframe + nested iframe).</p>
+
+  <!-- §1 Basic click / text -->
+  <section id="secBasic">
+    <h2>1. Basic Click / GetText</h2>
+    <button type="button" id="topBtn" name="topAction">Top Action</button>
+    <span id="topStatus">idle</span>
+  </section>
+
+  <!-- §2 Double click -->
+  <section id="secDoubleClick">
+    <h2>2. DoubleClick</h2>
+    <button type="button" id="dblClickBtn">Double Click Me</button>
+    <span id="dblClickStatus">waiting</span>
+  </section>
+
+  <!-- §3 Checkbox -->
+  <section id="secCheckbox">
+    <h2>3. Check / Uncheck / IsChecked</h2>
+    <label>
+      <input type="checkbox" id="agreeTerms" name="agreeTerms" />
+      Agree Terms
+    </label>
+  </section>
+
+  <!-- §4 Select (dropdown) -->
+  <section id="secSelect">
+    <h2>4. Select / GetSelected</h2>
+    <label for="topCountry">Country</label>
+    <select id="topCountry" name="topCountry">
+      <option value="">-- select --</option>
+      <option value="HK">Hong Kong</option>
+      <option value="CN">China</option>
+      <option value="SG">Singapore</option>
+    </select>
+    <span id="topCountryStatus"></span>
+  </section>
+
+  <!-- §5 Radio -->
+  <section id="secRadio">
+    <h2>5. Radio (click to select)</h2>
+    <label><input type="radio" name="topPlan" id="planBasic" value="basic" /> Basic</label>
+    <label><input type="radio" name="topPlan" id="planPro" value="pro" /> Pro</label>
+    <span id="planStatus"></span>
+  </section>
+
+  <!-- §6 Textarea / Input -->
+  <section id="secInput">
+    <h2>6. Input / GetInputValue / Textarea</h2>
+    <label for="topNotes">Notes</label>
+    <textarea id="topNotes" name="topNotes" rows="2" cols="40" placeholder="Top notes"></textarea>
+    <br />
+    <label for="sendKeysTarget">SendKeys Target</label>
+    <input type="text" id="sendKeysTarget" name="sendKeysTarget" />
+  </section>
+
+  <!-- §7 DOM tree -->
+  <section id="secDomTree">
+    <h2>7. GetParent / GetChildren / GetRect / SetAttribute</h2>
+    <div id="parentBox">
+      <span id="childTarget" class="demo-child">Child Text</span>
+    </div>
+    <div id="rectBox">Rect Target</div>
+    <button type="button" id="setAttrBtn" data-test="before">Set Attr Target</button>
+  </section>
+
+  <!-- §8 Parallel find -->
+  <section id="secParallel" class="parallel-zone">
+    <h2>8. ParallelFindElement</h2>
+    <button type="button" id="btnCandidateA">Candidate A</button>
+    <button type="button" id="btnCandidateB">Candidate B</button>
+  </section>
+
+  <!-- §9 Link / download -->
+  <section id="secLink">
+    <h2>9. ClickForNewTab / ClickForDownload</h2>
+    <a id="openNewTabLink" href="nav-a.html" target="_blank">Open New Tab</a>
+    &nbsp;|&nbsp;
+    <a id="downloadLink" href="sample.txt" download="sample.txt">Download Sample</a>
+  </section>
+
+  <!-- §10 Navigation -->
+  <section id="secNav">
+    <h2>10. Navigate / Back / Forward</h2>
+    <a id="gotoNavA" href="nav-a.html">Go Nav A (in-tab)</a>
+  </section>
+
+  <!-- §11 Login iframe (single level) -->
+  <section id="secLoginFrame">
+    <h2>11. Login iframe (frm: LoginWinMain)</h2>
+    <iframe name="LoginWinMain" src="login.html" width="680" height="420" title="LoginWinMain" loading="eager"></iframe>
+  </section>
+
+  <script>
+    localStorage.setItem('demoKey', 'demoValue');
+    sessionStorage.setItem('sessionKey', 'sessionValue');
+
+    document.getElementById('topBtn').addEventListener('click', function () {
+      document.getElementById('topStatus').textContent = 'clicked';
+    });
+
+    document.getElementById('dblClickBtn').addEventListener('dblclick', function () {
+      document.getElementById('dblClickStatus').textContent = 'double-clicked';
+    });
+
+    document.getElementById('topCountry').addEventListener('change', function () {
+      document.getElementById('topCountryStatus').textContent = 'country=' + this.value;
+    });
+
+    document.querySelectorAll('input[name="topPlan"]').forEach(function (el) {
+      el.addEventListener('change', function () {
+        document.getElementById('planStatus').textContent = 'plan=' + this.value;
+      });
+    });
+  </script>
+</body>
+</html>

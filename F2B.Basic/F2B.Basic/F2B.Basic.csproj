@@ -55,7 +55,10 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GetWindowsCredentialActivity.cs" />
+    <Compile Include="GetWindowsCredentialDesigner.cs" />
     <Compile Include="HttpCallResponse.cs" />
+    <Compile Include="WindowsCredentialManager.cs" />
     <Compile Include="HttpVerbChoiceConverter.cs" />
     <Compile Include="HttpRequestActivity.cs" />
     <Compile Include="HttpRequestDesigner.cs" />

@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "F2B.DesktopApplication.FlaU
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlaUI.Demo.App", "FlaUI.Demo.App\FlaUI.Demo.App.csproj", "{166979B4-8775-4D55-BB41-18CF4A338105}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "F2B.OpenRpa.Design", "..\F2B.OpenRpa.Design\F2B.OpenRpa.Design.csproj", "{873BB519-8C93-4327-9295-DE14A0DA2C1B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,18 @@ Global
 		{166979B4-8775-4D55-BB41-18CF4A338105}.Release|x64.Build.0 = Release|Any CPU
 		{166979B4-8775-4D55-BB41-18CF4A338105}.Release|x86.ActiveCfg = Release|Any CPU
 		{166979B4-8775-4D55-BB41-18CF4A338105}.Release|x86.Build.0 = Release|Any CPU
+		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Debug|x64.Build.0 = Debug|Any CPU
+		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Debug|x86.Build.0 = Debug|Any CPU
+		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Release|x64.ActiveCfg = Release|Any CPU
+		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Release|x64.Build.0 = Release|Any CPU
+		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Release|x86.ActiveCfg = Release|Any CPU
+		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
