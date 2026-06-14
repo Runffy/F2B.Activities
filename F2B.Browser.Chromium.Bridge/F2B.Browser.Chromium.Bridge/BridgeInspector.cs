@@ -72,6 +72,31 @@ namespace F2B.Browser.Chromium.Bridge
         public string TagName { get; set; }
     }
 
+    public sealed class BridgeInspectorValidateProbeResult
+    {
+        public string DocumentTitle { get; set; }
+
+        public string LocationHref { get; set; }
+
+        public bool SegmentResolved { get; set; }
+
+        public string SegmentElementId { get; set; }
+
+        public string SegmentElementTag { get; set; }
+
+        public int SelectorMatchCount { get; set; }
+
+        public string SelectorError { get; set; }
+
+        public string FrameError { get; set; }
+
+        public bool GetElementByIdFound { get; set; }
+
+        public string GetElementByIdTag { get; set; }
+
+        public string ProbeId { get; set; }
+    }
+
     public static class BridgeInspectorParser
     {
         public static IList<SelectorLevel> ParseLevels(object[] rawLevels)
@@ -138,6 +163,27 @@ namespace F2B.Browser.Chromium.Bridge
                     Value = BridgeJson.GetString(item, "value")
                 })
                 .ToList();
+        }
+
+        public static BridgeInspectorValidateProbeResult ParseValidateProbe(Dictionary<string, object> data)
+        {
+            if (data == null)
+                return new BridgeInspectorValidateProbeResult();
+
+            return new BridgeInspectorValidateProbeResult
+            {
+                DocumentTitle = BridgeJson.GetString(data, "documentTitle"),
+                LocationHref = BridgeJson.GetString(data, "locationHref"),
+                SegmentResolved = BridgeJson.GetBool(data, "segmentResolved"),
+                SegmentElementId = BridgeJson.GetString(data, "segmentElementId"),
+                SegmentElementTag = BridgeJson.GetString(data, "segmentElementTag"),
+                SelectorMatchCount = BridgeJson.GetInt(data, "selectorMatchCount"),
+                SelectorError = BridgeJson.GetString(data, "selectorError"),
+                FrameError = BridgeJson.GetString(data, "frameError"),
+                GetElementByIdFound = BridgeJson.GetBool(data, "getElementByIdFound"),
+                GetElementByIdTag = BridgeJson.GetString(data, "getElementByIdTag"),
+                ProbeId = BridgeJson.GetString(data, "probeId")
+            };
         }
 
         private static object[] ToSegmentArray(object[] rawSegments)

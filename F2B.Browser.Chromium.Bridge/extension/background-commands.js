@@ -1074,7 +1074,8 @@ async function executeBridgeCommand(message) {
     case 'inspector.buildSelector':
     case 'inspector.describe':
     case 'inspector.highlight':
-    case 'inspector.getDomChildren': {
+    case 'inspector.getDomChildren':
+    case 'inspector.validateProbe': {
       if (message.action === 'inspector.startPick') {
         return runInspectorPageCommand(message);
       }

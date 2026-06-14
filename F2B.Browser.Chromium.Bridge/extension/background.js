@@ -1,4 +1,4 @@
-importScripts('bridge-trace.js', 'background-commands.js?v=2.5.29');
+importScripts('bridge-trace.js', 'background-commands.js?v=2.5.30');
 
 const BRIDGE_HOST = '127.0.0.1';
 const BRIDGE_PORT = 19222;

@@ -1060,6 +1060,25 @@ namespace F2B.Browser.Chromium.Bridge
             return BridgeInspectorParser.ParseDomNodes(BridgeJson.GetArray(response.Data, "nodes"));
         }
 
+        public BridgeInspectorValidateProbeResult InspectorValidateProbe(
+            object[] segments,
+            SelectorScope scope)
+        {
+            var payload = WithTab(new Dictionary<string, object>
+            {
+                { "segments", segments ?? new object[0] }
+            });
+
+            if (scope != null)
+            {
+                payload["frameSelectorLevels"] = BridgeRpcHost.BuildSelectorLevelsPayload(scope.FrameLevels);
+                payload["selectorLevels"] = BridgeRpcHost.BuildSelectorLevelsPayload(scope.ElementLevels);
+            }
+
+            var response = Invoke("inspector.validateProbe", payload, 15000);
+            return BridgeInspectorParser.ParseValidateProbe(response.Data);
+        }
+
         private Dictionary<string, object> WithTab(IDictionary<string, object> extra = null)
         {
             var payload = extra != null

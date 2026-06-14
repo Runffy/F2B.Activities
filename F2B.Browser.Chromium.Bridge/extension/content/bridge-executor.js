@@ -553,6 +553,58 @@
         };
       }
 
+      case 'inspector.validateProbe': {
+        const builder = globalThis.F2bInspectorBuilder;
+        const dom = globalThis.DomSelectorResolver;
+        if (!builder || !dom) {
+          throw new Error('Inspector modules are not loaded.');
+        }
+
+        const segments = message.segments || [];
+        const frameLevels = message.frameSelectorLevels || [];
+        const selectorLevels = message.selectorLevels || [];
+        let searchRoot = document;
+        let frameError = '';
+
+        if (frameLevels.length > 0) {
+          try {
+            searchRoot = dom.resolveSearchRoot(frameLevels, document);
+          } catch (error) {
+            frameError = error.message || String(error);
+          }
+        }
+
+        const segmentElement = segments.length ? builder.resolveBySegments(segments) : null;
+        let selectorMatchCount = 0;
+        let selectorError = '';
+        try {
+          selectorMatchCount = dom.findElements(selectorLevels, searchRoot).length;
+        } catch (error) {
+          selectorError = error.message || String(error);
+        }
+
+        const enabledLevels = dom.parseSelectorLevels(selectorLevels).filter((level) => level.isEnabled !== false);
+        const idProperty = (enabledLevels[enabledLevels.length - 1]?.properties || []).find(
+          (property) => property.isSelected !== false && (property.name === 'id' || property.name === 'AutomationId')
+        );
+        const probeId = idProperty ? idProperty.value : '';
+        const byIdElement = probeId ? document.getElementById(probeId) : null;
+
+        return {
+          documentTitle: document.title || '',
+          locationHref: location.href || '',
+          segmentResolved: !!segmentElement,
+          segmentElementId: segmentElement ? (segmentElement.id || '') : '',
+          segmentElementTag: segmentElement ? (segmentElement.tagName || '') : '',
+          selectorMatchCount: selectorMatchCount,
+          selectorError: selectorError,
+          frameError: frameError,
+          getElementByIdFound: !!byIdElement,
+          getElementByIdTag: byIdElement ? (byIdElement.tagName || '') : '',
+          probeId: probeId
+        };
+      }
+
       default:
         throw new Error('Unsupported page action: ' + message.action);
     }

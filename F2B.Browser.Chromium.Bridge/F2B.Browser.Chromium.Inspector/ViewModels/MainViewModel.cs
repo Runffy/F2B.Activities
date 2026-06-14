@@ -505,11 +505,19 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             {
                 await PrepareTargetTabForResolveAsync();
 
-                var matchCount = await CountSelectorMatchesWithRetryAsync();
+                var scope = SelectorXmlSerializer.SplitScope(SelectorXml);
+                if (string.IsNullOrWhiteSpace(SelectorXmlSerializer.ToOperationXml(scope)))
+                {
+                    ValidationState = ValidationState.Invalid;
+                    TargetElementDisplay = "Validate failed: no enabled selector levels.";
+                    return;
+                }
+
+                var matchCount = await CountSelectorMatchesWithRetryAsync(scope);
                 if (matchCount <= 0)
                 {
                     ValidationState = ValidationState.Invalid;
-                    TargetElementDisplay = "Validate failed: 0 matches within " + ResolveTimeoutMs + "ms.";
+                    TargetElementDisplay = await BuildValidateFailureMessageAsync(scope);
                 }
                 else if (matchCount == 1)
                 {
@@ -532,6 +540,101 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             }
         }
 
+        private async Task<string> BuildValidateFailureMessageAsync(SelectorScope scope)
+        {
+            BwTab tab = _targetTab;
+            BwTabInfo tabInfo = null;
+            BwTab activeTab = null;
+            BwTabInfo activeInfo = null;
+            SelectorResolveResult resolveResult = null;
+            BridgeInspectorValidateProbeResult probe = null;
+            Exception probeException = null;
+
+            try
+            {
+                if (tab != null)
+                    tabInfo = await Task.Run(() => tab.GetInfo()).ConfigureAwait(true);
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                activeTab = await Task.Run(() => _session.GetTargetTab()).ConfigureAwait(true);
+                if (activeTab != null)
+                    activeInfo = await Task.Run(() => activeTab.GetInfo()).ConfigureAwait(true);
+            }
+            catch
+            {
+            }
+
+            if (tab != null)
+            {
+                try
+                {
+                    var client = _session.GetClient(tab.InstanceId);
+                    resolveResult = await Task.Run(() =>
+                    {
+                        try
+                        {
+                            var count = client.FindElements(scope, tab).Length;
+                            return new SelectorResolveResult
+                            {
+                                Count = count,
+                                Attempts = 1,
+                                LastError = null
+                            };
+                        }
+                        catch (Exception ex)
+                        {
+                            return new SelectorResolveResult
+                            {
+                                Count = 0,
+                                Attempts = 1,
+                                LastError = ex.Message
+                            };
+                        }
+                    }).ConfigureAwait(true);
+                }
+                catch (Exception ex)
+                {
+                    resolveResult = new SelectorResolveResult { Count = 0, Attempts = 0, LastError = ex.Message };
+                }
+
+                try
+                {
+                    probe = await Task.Run(() => tab.InspectorValidateProbe(_targetSegments, scope)).ConfigureAwait(true);
+                }
+                catch (Exception ex)
+                {
+                    probeException = ex;
+                }
+            }
+
+            ValidateDiagnostics.LogFailure(
+                tab,
+                tabInfo,
+                activeTab,
+                activeInfo,
+                scope,
+                SelectorXml,
+                resolveResult,
+                probe,
+                probeException);
+
+            return ValidateDiagnostics.BuildFailureSummary(
+                tab,
+                tabInfo,
+                activeTab,
+                activeInfo,
+                scope,
+                SelectorXml,
+                resolveResult,
+                probe,
+                probeException);
+        }
+
         private async Task PrepareTargetTabForResolveAsync()
         {
             await _dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
@@ -543,20 +646,42 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
                 await Task.Run(() => tab.Activate());
         }
 
-        private async Task<int> CountSelectorMatchesWithRetryAsync()
+        private async Task<int> CountSelectorMatchesWithRetryAsync(SelectorScope scope = null)
         {
-            var scope = SelectorXmlSerializer.SplitScope(SelectorXml);
+            scope = scope ?? SelectorXmlSerializer.SplitScope(SelectorXml);
             if (string.IsNullOrWhiteSpace(SelectorXmlSerializer.ToOperationXml(scope)))
                 return 0;
 
             if (_targetTab != null)
             {
                 var client = _session.GetClient(_targetTab.InstanceId);
-                return await SelectorResolveRetry.CountMatchesWithRetryAsync(
+                var count = await SelectorResolveRetry.CountMatchesWithRetryAsync(
                     client,
                     scope,
                     _targetTab,
-                    ResolveTimeoutMs);
+                    ResolveTimeoutMs).ConfigureAwait(true);
+
+                if (count > 0)
+                    return count;
+
+                if (scope.TabLevel != null && _session.Host != null)
+                {
+                    try
+                    {
+                        var hostCount = await Task.Run(() => _session.Host.FindElements(SelectorXml).Length).ConfigureAwait(true);
+                        if (hostCount > 0)
+                        {
+                            BridgeFileLog.Write("[INSPECTOR-VALIDATE] pinned tabId returned 0; wnd-resolved FindElements returned " + hostCount);
+                            return hostCount;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        BridgeFileLog.Write("[INSPECTOR-VALIDATE] wnd-resolved fallback failed: " + ex.Message);
+                    }
+                }
+
+                return count;
             }
 
             return _session.Host.ElementExists(SelectorXml) ? 1 : 0;
