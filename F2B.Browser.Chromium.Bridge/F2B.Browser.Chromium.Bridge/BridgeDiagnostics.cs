@@ -8,8 +8,21 @@ namespace F2B.Browser.Chromium.Bridge
 
         internal static void Trace(string message)
         {
-            BridgeFileLog.Write(message);
-            Log?.Invoke(message);
+            try
+            {
+                BridgeFileLog.Write(message);
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                Log?.Invoke(message);
+            }
+            catch
+            {
+            }
         }
     }
 }
