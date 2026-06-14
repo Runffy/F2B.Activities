@@ -22,23 +22,59 @@ namespace F2B.Browser.Chromium.Inspector.Services
 
         public static string SerializeLevelTag(InspectorSelectorLevel level)
         {
+            return BuildLevelTag(level, selectedOnly: true);
+        }
+
+        /// <summary>
+        /// Display label in Selector Editor list. Includes tag/id/class hints even when the level is disabled.
+        /// </summary>
+        public static string SerializeLevelDisplayTag(InspectorSelectorLevel level)
+        {
+            return BuildLevelTag(level, selectedOnly: false);
+        }
+
+        private static string BuildLevelTag(InspectorSelectorLevel level, bool selectedOnly)
+        {
             if (level == null)
                 return string.Empty;
 
             var attrs = new List<string>();
             foreach (var property in level.Properties.Where(item => item.IsSelected && !string.IsNullOrEmpty(item.Value)))
             {
-                var attrName = ToHtmlAttributeName(level.TagName, property.Name);
-                if (string.IsNullOrEmpty(attrName))
-                    continue;
+                AppendAttribute(level, property, attrs);
+            }
 
-                if (property.IsRegex && property.SupportsRegex)
-                    attrName += RegexSuffix;
+            if (!selectedOnly && attrs.Count == 0)
+            {
+                var hintNames = new[] { "tag", "id", "class", "name", "type", "placeholder", "idx" };
+                foreach (var hintName in hintNames)
+                {
+                    var property = level.Properties.FirstOrDefault(item =>
+                        string.Equals(item.Name, hintName, StringComparison.OrdinalIgnoreCase) &&
+                        !string.IsNullOrEmpty(item.Value));
 
-                attrs.Add(attrName + "='" + EscapeValue(property.Value) + "'");
+                    if (property == null)
+                        continue;
+
+                    AppendAttribute(level, property, attrs);
+                    if (attrs.Count >= 2)
+                        break;
+                }
             }
 
             return "<" + level.TagName + (attrs.Count == 0 ? " />" : " " + string.Join(" ", attrs) + " />");
+        }
+
+        private static void AppendAttribute(InspectorSelectorLevel level, InspectorPropertyItem property, IList<string> attrs)
+        {
+            var attrName = ToHtmlAttributeName(level.TagName, property.Name);
+            if (string.IsNullOrEmpty(attrName))
+                return;
+
+            if (property.IsRegex && property.SupportsRegex)
+                attrName += RegexSuffix;
+
+            attrs.Add(attrName + "='" + EscapeValue(property.Value) + "'");
         }
 
         public static IList<InspectorSelectorLevel> FromBridgeLevels(IEnumerable<SelectorLevel> levels)

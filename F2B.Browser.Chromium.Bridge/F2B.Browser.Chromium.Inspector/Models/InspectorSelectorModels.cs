@@ -122,7 +122,7 @@ namespace F2B.Browser.Chromium.Inspector.Models
 
         public void RefreshTagLine()
         {
-            TagLine = InspectorSelectorSerializer.SerializeLevelTag(this);
+            TagLine = InspectorSelectorSerializer.SerializeLevelDisplayTag(this);
         }
 
         public SelectorLevel ToSelectorLevel()

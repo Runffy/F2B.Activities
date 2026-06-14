@@ -40,9 +40,7 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
         private CancellationTokenSource _postCaptureCts;
         private Dispatcher _dispatcher;
         private BwTab _targetTab;
-        private object[] _targetSegments;
         private InspectorSelectorLevel _selectedSelectorLevel;
-        private InspectorVisualTreeNode _selectedVisualNode;
         private string _selectorXml = string.Empty;
         private string _targetElementDisplay = string.Empty;
         private string _connectionStatus = "Starting bridge server...";
@@ -53,13 +51,10 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
         private bool _isValidating;
         private bool _isTargetElementError;
         private bool _suppressSelectorUpdate;
-        private bool _suppressVisualTreeSelection;
 
         public MainViewModel()
         {
-            VisualTree = new ObservableCollection<InspectorVisualTreeNode>();
             SelectorLevels = new ObservableCollection<InspectorSelectorLevel>();
-            PropertyExplorerItems = new ObservableCollection<InspectorPropertyItem>();
             SelectedItemProperties = new ObservableCollection<InspectorPropertyItem>();
 
             RefreshConnectionCommand = new RelayCommand(ReconnectAndRefreshStatus);
@@ -68,9 +63,7 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             HighlightCommand = new RelayCommand(() => _ = HighlightAsync(), () => !IsHighlighting && !IsIndicating && !IsValidating && SelectorLevels.Count > 0);
         }
 
-        public ObservableCollection<InspectorVisualTreeNode> VisualTree { get; }
         public ObservableCollection<InspectorSelectorLevel> SelectorLevels { get; }
-        public ObservableCollection<InspectorPropertyItem> PropertyExplorerItems { get; }
         public ObservableCollection<InspectorPropertyItem> SelectedItemProperties { get; }
 
         public RelayCommand RefreshConnectionCommand { get; }
@@ -92,23 +85,6 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
 
         public Brush TargetElementForeground =>
             _isTargetElementError ? RedForeground : TargetElementNormalForeground;
-
-        public InspectorVisualTreeNode SelectedVisualNode
-        {
-            get => _selectedVisualNode;
-            set
-            {
-                if (!SetProperty(ref _selectedVisualNode, value))
-                    return;
-
-                if (value == null || _suppressVisualTreeSelection)
-                    return;
-
-                _ = LoadNodeDetailsAsync(value);
-            }
-        }
-
-        internal bool SuppressVisualTreeSelection => _suppressVisualTreeSelection;
 
         public InspectorSelectorLevel SelectedSelectorLevel
         {
@@ -340,7 +316,6 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
         private void ApplyCapture(IList<SelectorLevel> levels, object[] segments, string displayName)
         {
             SetTargetElementError(false);
-            _targetSegments = segments;
             _hasCapturedElement = levels != null && levels.Count > 0;
             TargetElementDisplay = displayName ?? string.Empty;
 
@@ -359,15 +334,13 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             _postCaptureCts?.Cancel();
             _postCaptureCts?.Dispose();
             _postCaptureCts = new CancellationTokenSource();
-            _ = ReloadVisualTreeAfterCaptureAsync(_postCaptureCts.Token);
+            _ = ValidateAfterCaptureAsync(_postCaptureCts.Token);
         }
 
-        private async Task ReloadVisualTreeAfterCaptureAsync(CancellationToken token)
+        private async Task ValidateAfterCaptureAsync(CancellationToken token)
         {
             try
             {
-                await ReloadVisualTreeAsync(expandToTarget: false).ConfigureAwait(true);
-
                 await Task.Delay(PostCaptureValidateDelayMs, token).ConfigureAwait(true);
 
                 if (!token.IsCancellationRequested)
@@ -375,151 +348,6 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             }
             catch (OperationCanceledException)
             {
-            }
-        }
-
-        private async Task LoadNodeDetailsAsync(InspectorVisualTreeNode node)
-        {
-            if (node == null || _targetTab == null)
-                return;
-
-            try
-            {
-                var describe = await Task.Run(() => _targetTab.InspectorDescribe(node.Segments));
-                PropertyExplorerItems.Clear();
-                foreach (var property in describe.Properties ?? Enumerable.Empty<BridgeInspectorProperty>())
-                {
-                    PropertyExplorerItems.Add(new InspectorPropertyItem
-                    {
-                        Name = property.Name,
-                        Value = property.Value,
-                        IsSelected = true,
-                        CanToggle = false
-                    });
-                }
-
-                var build = await Task.Run(() => _targetTab.InspectorBuildSelector(node.Segments));
-                ApplyCapture(build.Levels, build.Segments, build.DisplayName);
-            }
-            catch (Exception ex)
-            {
-                TargetElementDisplay = "Tree selection failed: " + ex.Message;
-            }
-        }
-
-        private async Task ReloadVisualTreeAsync(bool expandToTarget = true)
-        {
-            if (_targetTab == null || _dispatcher == null)
-                return;
-
-            try
-            {
-                await _dispatcher.InvokeAsync(() => VisualTree.Clear());
-
-                var htmlRoot = new InspectorVisualTreeNode("<html>", new object[0], new object[0], null);
-                htmlRoot.RequestLoadChildren = LoadVisualTreeChildren;
-
-                await _dispatcher.InvokeAsync(() => VisualTree.Add(htmlRoot));
-
-                if (expandToTarget && _targetSegments != null && _targetSegments.Length > 0)
-                    await ExpandVisualTreeToTargetAsync(htmlRoot);
-                else
-                    await _dispatcher.InvokeAsync(() => htmlRoot.IsExpanded = false);
-            }
-            catch (Exception ex)
-            {
-                if (!IsBridgeDisconnectError(ex))
-                    TargetElementDisplay = "Failed to load visual tree: " + ex.Message;
-            }
-        }
-
-        private async Task ExpandVisualTreeToTargetAsync(InspectorVisualTreeNode htmlRoot)
-        {
-            var target = _targetSegments;
-            if (target == null || target.Length == 0)
-                return;
-
-            _suppressVisualTreeSelection = true;
-            try
-            {
-                var current = htmlRoot;
-                for (var depth = 0; depth < target.Length; depth++)
-                {
-                    await LoadVisualTreeChildrenAsync(current);
-
-                    var prefix = new object[depth + 1];
-                    Array.Copy(target, prefix, prefix.Length);
-
-                    InspectorVisualTreeNode next = null;
-                    await _dispatcher.InvokeAsync(() =>
-                    {
-                        current.IsExpanded = true;
-                        next = current.Children.FirstOrDefault(child =>
-                            VisualTreeSegmentHelper.SegmentsEqual(child.Segments, prefix));
-                    });
-
-                    if (next == null)
-                        return;
-
-                    current = next;
-                }
-
-                await LoadVisualTreeChildrenAsync(current);
-                await _dispatcher.InvokeAsync(() =>
-                {
-                    current.IsExpanded = true;
-                    current.IsSelected = true;
-                    _selectedVisualNode = current;
-                    RaisePropertyChanged(nameof(SelectedVisualNode));
-                });
-            }
-            finally
-            {
-                _suppressVisualTreeSelection = false;
-            }
-        }
-
-        private async Task LoadVisualTreeChildrenAsync(InspectorVisualTreeNode parentNode)
-        {
-            if (parentNode == null || parentNode.ChildrenLoaded || _targetTab == null)
-                return;
-
-            var nodes = await Task.Run(() => _targetTab.InspectorGetDomChildren(parentNode.LoadSegments));
-            await _dispatcher.InvokeAsync(() =>
-            {
-                parentNode.Children.Clear();
-                foreach (var node in nodes)
-                {
-                    var child = InspectorVisualTreeNode.FromDomNode(node, parentNode);
-                    child.RequestLoadChildren = LoadVisualTreeChildren;
-                    parentNode.Children.Add(child);
-                }
-
-                parentNode.ChildrenLoaded = true;
-            });
-        }
-
-        private void LoadVisualTreeChildren(InspectorVisualTreeNode parentNode)
-        {
-            if (parentNode == null || parentNode.ChildrenLoaded || _targetTab == null)
-                return;
-
-            try
-            {
-                var nodes = _targetTab.InspectorGetDomChildren(parentNode.LoadSegments);
-                parentNode.Children.Clear();
-                foreach (var node in nodes)
-                {
-                    var child = InspectorVisualTreeNode.FromDomNode(node, parentNode);
-                    child.RequestLoadChildren = LoadVisualTreeChildren;
-                    parentNode.Children.Add(child);
-                }
-
-                parentNode.ChildrenLoaded = true;
-            }
-            catch (Exception ex)
-            {
-                TargetElementDisplay = "Failed to load tree children: " + ex.Message;
             }
         }
 
