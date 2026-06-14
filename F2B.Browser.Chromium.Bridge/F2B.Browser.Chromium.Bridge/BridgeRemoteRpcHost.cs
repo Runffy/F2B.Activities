@@ -49,6 +49,9 @@ namespace F2B.Browser.Chromium.Bridge
             return host;
         }
 
+        public bool IsConnected =>
+            !_disposed && _socket != null && _socket.State == WebSocketState.Open;
+
         public IReadOnlyList<BridgeClientInfo> ListExtensionClients()
         {
             var response = InvokeAsync(

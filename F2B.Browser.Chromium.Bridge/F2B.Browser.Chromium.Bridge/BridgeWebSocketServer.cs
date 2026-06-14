@@ -49,6 +49,8 @@ namespace F2B.Browser.Chromium.Bridge
 
         public int Port { get; }
 
+        public bool IsRunning => !_disposed && _listener != null && _listener.IsListening;
+
         public bool HasConnectedClients
         {
             get { return GetConnectedClientCount() > 0; }

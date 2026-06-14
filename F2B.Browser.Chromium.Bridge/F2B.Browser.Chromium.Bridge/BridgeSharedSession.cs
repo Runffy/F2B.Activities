@@ -29,6 +29,17 @@ namespace F2B.Browser.Chromium.Bridge
 
         public BridgeHost Host { get; }
 
+        public bool IsHealthy
+        {
+            get
+            {
+                if (Mode == BridgeSessionMode.Owner)
+                    return _server != null && _server.IsRunning;
+
+                return _remoteRpc != null && _remoteRpc.IsConnected;
+            }
+        }
+
         public event EventHandler ClientsChanged;
 
         public static BridgeSharedSession Connect(

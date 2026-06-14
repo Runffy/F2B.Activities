@@ -32,7 +32,15 @@ namespace F2B.Browser.Chromium.Bridge
                 if (!string.IsNullOrEmpty(folder))
                     Directory.CreateDirectory(folder);
 
-                File.AppendAllText(LogFilePath, line);
+                using (var stream = new FileStream(
+                    LogFilePath,
+                    FileMode.Append,
+                    FileAccess.Write,
+                    FileShare.ReadWrite))
+                using (var writer = new StreamWriter(stream))
+                {
+                    writer.Write(line);
+                }
             }
         }
     }

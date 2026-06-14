@@ -34,11 +34,39 @@ namespace F2B.Browser.Chromium.Bridge
         {
             lock (Sync)
             {
-                if (_session != null)
+                if (_session != null && _session.IsHealthy)
                     return;
 
+                ResetSessionInternal();
                 _session = BridgeSharedSession.Connect(port, "OpenRPA Bridge");
             }
+        }
+
+        /// <summary>
+        /// Drops the cached Bridge session so the next call reconnects (e.g. after Inspector was closed).
+        /// </summary>
+        public static void ResetSession()
+        {
+            lock (Sync)
+            {
+                ResetSessionInternal();
+            }
+        }
+
+        private static void ResetSessionInternal()
+        {
+            if (_session == null)
+                return;
+
+            try
+            {
+                _session.Dispose();
+            }
+            catch
+            {
+            }
+
+            _session = null;
         }
 
         public static bool IsExtensionConnected(string preferredInstanceId = null)
