@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "F2B Chromium Bridge",
-  "version": "2.5.30",
+  "version": "2.5.31",
   "description": "Connects Chromium to the local F2B Bridge host application.",
   "permissions": [
     "scripting",

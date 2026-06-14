@@ -40,6 +40,7 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
                 case "Type":
                 case "type":
                 case "placeholder":
+                case "text":
                 case "value":
                 case "style":
                 case "aria-label":

@@ -207,6 +207,58 @@
     };
   }
 
+  function findProperty(level, name) {
+    if (!level || !level.properties) {
+      return null;
+    }
+
+    return level.properties.find(function (item) {
+      return item.name === name && item.value;
+    }) || null;
+  }
+
+  function selectProperty(level, name) {
+    const prop = findProperty(level, name);
+    if (prop) {
+      prop.isSelected = true;
+    }
+
+    return prop;
+  }
+
+  function clearPropertySelections(level) {
+    if (!level || !level.properties) {
+      return;
+    }
+
+    level.properties.forEach(function (prop) {
+      prop.isSelected = false;
+    });
+  }
+
+  function getSelectedProperties(level) {
+    if (!level || !level.properties) {
+      return [];
+    }
+
+    return level.properties.filter(function (item) {
+      return item.isSelected && item.value;
+    });
+  }
+
+  function ensureLevelHasMinimumProperties(level) {
+    if (!level || level.tagName !== 'ctrl') {
+      return;
+    }
+
+    if (getSelectedProperties(level).length > 0) {
+      return;
+    }
+
+    selectProperty(level, 'tag');
+    selectProperty(level, 'idx');
+  }
+
   function countMatches(parent, levelProperties, tagName) {
     if (!parent || !parent.children) {
       return 0;
@@ -257,6 +309,11 @@
       level.properties.push(createProperty('idx', String(index), false, false));
     }
 
+    const text = getElementName(element);
+    if (text) {
+      level.properties.push(createProperty('text', text, false, true));
+    }
+
     applyDefaultCtrlSelections(level);
 
     if (isTarget && level.properties.length > 0) {
@@ -276,15 +333,21 @@
   }
 
   function applyDefaultCtrlSelections(level) {
-    level.properties.forEach(function (prop) {
-      prop.isSelected = false;
-    });
+    clearPropertySelections(level);
 
-    const preferred = ['id', 'data-automation-id', 'data-automationid', 'automationid', 'name'];
+    const preferred = [
+      'id',
+      'data-automation-id',
+      'data-automationid',
+      'automationid',
+      'name',
+      'text',
+      'class',
+      'type',
+      'placeholder'
+    ];
     for (let i = 0; i < preferred.length; i += 1) {
-      const prop = level.properties.find(function (item) {
-        return item.name === preferred[i] && item.value;
-      });
+      const prop = findProperty(level, preferred[i]);
       if (prop) {
         prop.isSelected = true;
         return;
@@ -346,6 +409,7 @@
       'data-automationid',
       'automationid',
       'name',
+      'text',
       'class',
       'tag',
       'type',
@@ -369,12 +433,9 @@
       });
 
     if (candidates.length === 0) {
+      ensureLevelHasMinimumProperties(level);
       return;
     }
-
-    const saved = candidates.map(function (prop) {
-      return prop.isSelected;
-    });
 
     for (let count = 1; count <= candidates.length; count += 1) {
       candidates.forEach(function (prop) {
@@ -390,9 +451,26 @@
       }
     }
 
-    candidates.forEach(function (prop, index) {
-      prop.isSelected = saved[index];
-    });
+    applyLevelPropertyFallback(level, allLevels);
+  }
+
+  function applyLevelPropertyFallback(level, allLevels) {
+    clearPropertySelections(level);
+
+    const fallbackOrder = ['text', 'class', 'type', 'placeholder', 'name'];
+    for (let i = 0; i < fallbackOrder.length; i += 1) {
+      const prop = findProperty(level, fallbackOrder[i]);
+      if (!prop) {
+        continue;
+      }
+
+      prop.isSelected = true;
+      if (countOperationMatches(allLevels) === 1) {
+        return;
+      }
+    }
+
+    ensureLevelHasMinimumProperties(level);
   }
 
   function minimizeSelectorLevels(levels) {
@@ -435,6 +513,45 @@
 
     for (let ei = enabledIndices.length - 1; ei >= 0; ei -= 1) {
       minimizeLevelPropertiesInContext(levels[enabledIndices[ei]], levels);
+    }
+
+    ensureSelectorUniqueness(levels);
+    return levels;
+  }
+
+  function ensureSelectorUniqueness(levels) {
+    for (let i = 0; i < levels.length; i += 1) {
+      const level = levels[i];
+      if (level.isEnabled !== false && level.tagName === 'ctrl') {
+        ensureLevelHasMinimumProperties(level);
+      }
+    }
+
+    if (countOperationMatches(levels) === 1) {
+      return levels;
+    }
+
+    for (let i = levels.length - 1; i >= 1; i -= 1) {
+      const level = levels[i];
+      if (level.tagName !== 'ctrl') {
+        continue;
+      }
+
+      level.isEnabled = true;
+      applyLevelPropertyFallback(level, levels);
+      ensureLevelHasMinimumProperties(level);
+
+      if (countOperationMatches(levels) === 1) {
+        return levels;
+      }
+    }
+
+    for (let i = 0; i < levels.length; i += 1) {
+      const level = levels[i];
+      if (level.isEnabled !== false && level.tagName === 'ctrl') {
+        selectProperty(level, 'tag');
+        selectProperty(level, 'idx');
+      }
     }
 
     return levels;

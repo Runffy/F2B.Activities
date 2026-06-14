@@ -25,6 +25,7 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
             { "Name", "name" },
             { "Type", "type" },
             { "Href", "href" },
+            { "text", "text" },
             { "id", "id" },
             { "class", "class" },
             { "tag", "tag" },
@@ -43,7 +44,8 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
             { "title", "title" },
             { "url", "url" },
             { "type", "type" },
-            { "href", "href" }
+            { "href", "href" },
+            { "text", "text" }
         };
 
         public static IList<SelectorLevel> Deserialize(string xml)
@@ -155,6 +157,11 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
                 attrs.Add(attrName + "='" + EscapeValue(property.Value) + "'");
             }
 
+            if (string.Equals(level.TagName, "ctrl", StringComparison.OrdinalIgnoreCase))
+            {
+                EnsureMinimumCtrlAttributes(level, attrs);
+            }
+
             if (string.Equals(level.TagName, "ctrl", StringComparison.OrdinalIgnoreCase) &&
                 !attrs.Any(item => item.StartsWith("role=", StringComparison.OrdinalIgnoreCase) ||
                                    item.StartsWith("role-re=", StringComparison.OrdinalIgnoreCase)))
@@ -171,6 +178,36 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
             }
 
             return "<" + level.TagName + (attrs.Count == 0 ? " />" : " " + string.Join(" ", attrs) + " />");
+        }
+
+        private static void EnsureMinimumCtrlAttributes(SelectorLevel level, IList<string> attrs)
+        {
+            if (attrs.Count > 0)
+                return;
+
+            var tagProperty = level.Properties.FirstOrDefault(item =>
+                (string.Equals(item.Name, "tag", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(item.Name, "TagName", StringComparison.OrdinalIgnoreCase)) &&
+                !string.IsNullOrEmpty(item.Value));
+
+            if (tagProperty != null)
+            {
+                var tagAttr = ResolveWireAttributeName(level.TagName, tagProperty.Name);
+                if (!string.IsNullOrEmpty(tagAttr))
+                    attrs.Add(tagAttr + "='" + EscapeValue(tagProperty.Value) + "'");
+            }
+
+            var idxProperty = level.Properties.FirstOrDefault(item =>
+                (string.Equals(item.Name, "idx", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(item.Name, "IndexInParent", StringComparison.OrdinalIgnoreCase)) &&
+                !string.IsNullOrEmpty(item.Value));
+
+            if (idxProperty != null)
+            {
+                var idxAttr = ResolveWireAttributeName(level.TagName, idxProperty.Name);
+                if (!string.IsNullOrEmpty(idxAttr))
+                    attrs.Add(idxAttr + "='" + EscapeValue(idxProperty.Value) + "'");
+            }
         }
 
         private static string DeriveRoleFromTag(string tag, string type)

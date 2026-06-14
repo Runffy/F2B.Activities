@@ -44,9 +44,15 @@ namespace F2B.Browser.Chromium.Inspector.Services
                 AppendAttribute(level, property, attrs);
             }
 
+            if (selectedOnly &&
+                string.Equals(level.TagName, "ctrl", StringComparison.OrdinalIgnoreCase))
+            {
+                EnsureMinimumCtrlAttributes(level, attrs);
+            }
+
             if (!selectedOnly && attrs.Count == 0)
             {
-                var hintNames = new[] { "tag", "id", "class", "name", "type", "placeholder", "idx" };
+                var hintNames = new[] { "tag", "id", "class", "text", "name", "type", "placeholder", "idx" };
                 foreach (var hintName in hintNames)
                 {
                     var property = level.Properties.FirstOrDefault(item =>
@@ -75,6 +81,26 @@ namespace F2B.Browser.Chromium.Inspector.Services
                 attrName += RegexSuffix;
 
             attrs.Add(attrName + "='" + EscapeValue(property.Value) + "'");
+        }
+
+        private static void EnsureMinimumCtrlAttributes(InspectorSelectorLevel level, IList<string> attrs)
+        {
+            if (attrs.Count > 0)
+                return;
+
+            var tagProperty = level.Properties.FirstOrDefault(item =>
+                string.Equals(item.Name, "tag", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrEmpty(item.Value));
+
+            if (tagProperty != null)
+                AppendAttribute(level, tagProperty, attrs);
+
+            var idxProperty = level.Properties.FirstOrDefault(item =>
+                string.Equals(item.Name, "idx", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrEmpty(item.Value));
+
+            if (idxProperty != null)
+                AppendAttribute(level, idxProperty, attrs);
         }
 
         public static IList<InspectorSelectorLevel> FromBridgeLevels(IEnumerable<SelectorLevel> levels)

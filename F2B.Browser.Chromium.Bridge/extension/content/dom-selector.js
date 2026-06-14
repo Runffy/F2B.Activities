@@ -243,6 +243,8 @@
           return true;
         }
         return compare(getElementName(element));
+      case 'text':
+        return compare(getElementName(element));
       case 'AutomationId':
         return compare(getAutomationId(element));
       case 'id':
