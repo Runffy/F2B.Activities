@@ -153,5 +153,21 @@ namespace F2B.Browser.Chromium.Bridge
         {
             return ResolveClient(instanceId, connectTimeout).GetBrowser();
         }
+
+        public static BridgeAttachResult AttachByWndSelector(string selectorXml, TimeSpan? connectTimeout = null)
+        {
+            EnsureStarted();
+
+            var timeout = connectTimeout ?? TimeSpan.FromSeconds(60);
+            if (!TryWaitForExtension(timeout, out _))
+            {
+                throw new TimeoutException(
+                    "No Chromium extension connected to Bridge within "
+                    + (int)timeout.TotalSeconds
+                    + " seconds.");
+            }
+
+            return Host.AttachByWndSelector(selectorXml);
+        }
     }
 }

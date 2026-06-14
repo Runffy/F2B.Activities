@@ -5,7 +5,7 @@ using System.ComponentModel;
 namespace F2B.Browser.Chromium.Bridge
 {
     [DisplayName("Attach Browser")]
-    [Description("Attach to a connected Chromium Bridge extension and output the currently activated tab.")]
+    [Description("Attach to a running Chrome tab by matching a <wnd>-only selector (title/url).")]
     public sealed class AttachBrowserActivity : CodeActivity
     {
         public AttachBrowserActivity()
@@ -19,34 +19,35 @@ namespace F2B.Browser.Chromium.Bridge
         [DefaultValue(60000)]
         public InArgument<int> ConnectTimeout { get; set; } = 60000;
 
-        [DisplayName("Extension Instance Id")]
-        [Description("Optional. Use when multiple Bridge extensions are connected.")]
+        [DisplayName("Selector")]
+        [Description("Wnd-only selector XML used to locate the target tab, e.g. <wnd title='...' /> or <wnd url='...' />. Optional idx selects the Nth match.")]
+        [RequiredArgument]
         [Category("Input")]
-        public InArgument<string> InstanceId { get; set; }
+        public InArgument<string> Selector { get; set; }
 
         [DisplayName("Output Browser")]
-        [Description("Outputs the attached Bridge browser instance.")]
+        [Description("Outputs the browser instance that owns the matched tab.")]
         [Category("Output")]
         public OutArgument<BwBrowser> Browser { get; set; }
 
         [DisplayName("Output Tab")]
-        [Description("Outputs the currently activated tab.")]
+        [Description("Outputs the matched tab. Activates the tab when it is not already active.")]
         [Category("Output")]
         public OutArgument<BwTab> Tab { get; set; }
 
         protected override void Execute(CodeActivityContext context)
         {
-            var connectTimeoutMs = BridgeActivityArgumentHelper.GetOrDefault(ConnectTimeout, context, 60000);
-            var instanceId = InstanceId == null ? null : InstanceId.Get(context);
+            var selector = Selector == null ? null : Selector.Get(context);
+            if (string.IsNullOrWhiteSpace(selector))
+                throw new ArgumentException("Selector must be provided for Attach Browser.");
 
-            var browser = BridgeActivityServices.GetBrowser(
-                instanceId,
+            var connectTimeoutMs = BridgeActivityArgumentHelper.GetOrDefault(ConnectTimeout, context, 60000);
+            var attached = BridgeActivityServices.AttachByWndSelector(
+                selector,
                 TimeSpan.FromMilliseconds(connectTimeoutMs));
 
-            var activatedTab = browser.GetActivatedTab();
-
-            Browser?.Set(context, browser);
-            Tab?.Set(context, activatedTab);
+            Browser?.Set(context, attached.Browser);
+            Tab?.Set(context, attached.Tab);
         }
     }
 }

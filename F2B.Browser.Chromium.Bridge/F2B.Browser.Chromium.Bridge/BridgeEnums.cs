@@ -34,4 +34,12 @@ namespace F2B.Browser.Chromium.Bridge
         Local,
         Session
     }
+
+    public enum BridgeTabLoadStatus
+    {
+        Unknown,
+        Loading,
+        Complete,
+        Unloaded
+    }
 }

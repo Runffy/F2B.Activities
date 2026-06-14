@@ -5,7 +5,7 @@ using System.Activities.Presentation;
 namespace F2B.Browser.Chromium.Bridge
 {
     [DisplayName("Navigate Url")]
-    [Description("Navigate the tab to a URL.")]
+    [Description("Navigate the tab to a URL without waiting for the page to finish loading.")]
     [Designer(typeof(BridgeCanvasFieldsActivityDesigner))]
     public sealed class NavigateUrlActivity : CodeActivity
     {
@@ -24,16 +24,9 @@ namespace F2B.Browser.Chromium.Bridge
         [Category("Input.B")]
         public InArgument<string> Url { get; set; }
 
-        [DisplayName("Timeout (ms)")]
-        [Category("Input.Z")]
-        [DefaultValue(15000)]
-        public InArgument<int> Timeout { get; set; } = 15000;
-
         protected override void Execute(CodeActivityContext context)
         {
-            Tab.Get(context).NavigateUrl(
-                Url.Get(context),
-                BridgeActivityArgumentHelper.GetOrDefault(Timeout, context, 15000));
+            Tab.Get(context).NavigateUrl(Url.Get(context), waitForLoad: false);
         }
     }
 }

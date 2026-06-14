@@ -874,6 +874,15 @@ async function executeBridgeCommand(message) {
       return { tabId: tab?.id || 0 };
     }
 
+    case 'browser.getStatus': {
+      const windowId = Number(message.windowId) || 0;
+      const tabs = windowId > 0
+        ? await chrome.tabs.query({ windowId })
+        : await chrome.tabs.query({});
+      const activeTab = tabs.find((item) => item.active) || null;
+      return serializeTabStatus(activeTab);
+    }
+
     case 'browser.resolveNewWindowTab': {
       const clientKnown = new Set((message.knownWindowIds || []).map((id) => Number(id)).filter((id) => id > 0));
       const pendingKnown = globalThis.__f2bPendingNewWindowIds;
@@ -993,14 +1002,7 @@ async function executeBridgeCommand(message) {
 
     case 'tab.getInfo': {
       const tab = await chrome.tabs.get(message.tabId);
-      return {
-        tabId: tab.id,
-        url: tab.url,
-        title: tab.title,
-        active: tab.active,
-        index: tab.index,
-        isClosed: false
-      };
+      return serializeTabStatus(tab);
     }
 
     case 'tab.activate': {
@@ -1012,6 +1014,10 @@ async function executeBridgeCommand(message) {
 
     case 'tab.navigate': {
       const tab = await chrome.tabs.update(message.tabId, { url: message.url, active: true });
+      if (message.waitForLoad === false || message.timeout === 0) {
+        return { tabId: tab.id };
+      }
+
       await waitForTabComplete(tab.id, message.timeout || 15000);
       return { tabId: tab.id };
     }
@@ -1146,6 +1152,39 @@ async function waitForTabComplete(tabId, timeout) {
 
     await sleep(100);
   }
+}
+
+function isErrorPageUrl(url) {
+  const value = String(url || '').toLowerCase();
+  return value.startsWith('chrome-error://') ||
+    value.startsWith('edge-error://') ||
+    value.indexOf('chromewebdata') >= 0;
+}
+
+function isBlankPageUrl(url) {
+  return !url || url === 'about:blank';
+}
+
+function serializeTabStatus(tab) {
+  if (!tab) {
+    return { hasActivatedTab: false };
+  }
+
+  const url = tab.url || '';
+  return {
+    hasActivatedTab: true,
+    tabId: tab.id,
+    windowId: tab.windowId,
+    url,
+    title: tab.title || '',
+    active: !!tab.active,
+    index: tab.index,
+    isClosed: false,
+    status: tab.status || 'unknown',
+    isErrorPage: isErrorPageUrl(url),
+    isRestrictedUrl: !!url && !isBlankPageUrl(url) && !isInjectableUrl(url),
+    isBlankPage: isBlankPageUrl(url)
+  };
 }
 
 function tabToResolveResult(tab) {

@@ -522,6 +522,16 @@ namespace F2B.Browser.Chromium.Bridge
             return CreateTab(response);
         }
 
+        public BwBrowserStatus GetStatus()
+        {
+            var response = Invoke("browser.getStatus", new Dictionary<string, object>
+            {
+                { "windowId", WindowId }
+            }, 15000);
+
+            return BridgeTabStatusParser.ParseBrowserStatus(_rpc, _instanceId, this, response);
+        }
+
         public BwTab GetLatestTab()
         {
             var response = Invoke("browser.getLatestTab", null, 15000);
@@ -676,24 +686,20 @@ namespace F2B.Browser.Chromium.Bridge
         public BwTabInfo GetInfo()
         {
             var response = Invoke("tab.getInfo", WithTab(), 15000);
-            return new BwTabInfo
-            {
-                TabId = BridgeJson.GetInt(response.Data, "tabId", TabId),
-                Url = BridgeJson.GetString(response.Data, "url"),
-                Title = BridgeJson.GetString(response.Data, "title"),
-                IsClosed = BridgeJson.GetBool(response.Data, "isClosed"),
-                Active = BridgeJson.GetBool(response.Data, "active"),
-                Index = BridgeJson.GetInt(response.Data, "index")
-            };
+            var info = new BwTabInfo();
+            BridgeTabStatusParser.ApplyTabSnapshot(response.Data, this, info);
+            return info;
         }
 
-        public void NavigateUrl(string url, int timeoutMs = 15000)
+        public void NavigateUrl(string url, bool waitForLoad = false, int timeoutMs = 15000)
         {
+            var rpcTimeoutMs = waitForLoad ? timeoutMs : 5000;
             Invoke("tab.navigate", WithTab(new Dictionary<string, object>
             {
                 { "url", url },
-                { "timeout", timeoutMs }
-            }), timeoutMs);
+                { "waitForLoad", waitForLoad },
+                { "timeout", waitForLoad ? timeoutMs : 0 }
+            }), rpcTimeoutMs);
         }
 
         public void Back()

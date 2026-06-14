@@ -1221,6 +1221,8 @@ namespace F2B.Browser.Chromium.Bridge
                     return DesignerMode.BrowserGetAllTab;
                 case nameof(BrowserGetActivatedTabActivity):
                     return DesignerMode.BrowserGetActivatedTab;
+                case nameof(BrowserGetStatusActivity):
+                    return DesignerMode.BrowserGetStatus;
                 case nameof(GetCookiesActivity):
                     return DesignerMode.GetCookies;
                 case nameof(GetStorageActivity):
@@ -1711,6 +1713,7 @@ namespace F2B.Browser.Chromium.Bridge
                 case DesignerMode.BrowserClose:
                 case DesignerMode.BrowserGetAllTab:
                 case DesignerMode.BrowserGetActivatedTab:
+                case DesignerMode.BrowserGetStatus:
                 case DesignerMode.BrowserGetLatestTab:
                 case DesignerMode.BrowserNewTab:
                 case DesignerMode.BrowserSwitchTab:
@@ -1761,6 +1764,7 @@ namespace F2B.Browser.Chromium.Bridge
             BrowserClose,
             BrowserGetAllTab,
             BrowserGetActivatedTab,
+            BrowserGetStatus,
             GetCookies,
             GetStorage,
             BrowserGetLatestTab,

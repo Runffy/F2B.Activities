@@ -194,6 +194,24 @@ namespace F2B.Browser.Chromium.Bridge
             return GetClient(context.InstanceId).GetAttribute(context, name, RemainingMs(deadline));
         }
 
+        public BridgeAttachResult AttachByWndSelector(string selectorXml)
+        {
+            if (string.IsNullOrWhiteSpace(selectorXml))
+                throw new ArgumentException("Attach Browser requires a selector XML with <wnd>.");
+
+            BridgeTabResolver.EnsureWndOnlySelector(selectorXml);
+            var scope = SelectorXmlSerializer.SplitScope(selectorXml);
+
+            var picked = TryPickWndMatch(scope);
+            if (picked == null)
+                throw new InvalidOperationException("No tab matched the attach <wnd> selector.");
+
+            if (!picked.Tab.Active)
+                picked.Tab.Activate();
+
+            return new BridgeAttachResult(GetClient(picked.InstanceId).GetBrowser(), picked.Tab);
+        }
+
         public BridgeSyncClient GetClient(string instanceId)
         {
             if (string.IsNullOrWhiteSpace(instanceId))
