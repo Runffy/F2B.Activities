@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -31,9 +32,12 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
         private static readonly SolidColorBrush WhiteForeground = new SolidColorBrush(Colors.White);
 
         private const int HighlightDurationMs = 3000;
-        private const int ResolveTimeoutMs = 5000;
+        private const int ResolveTimeoutMs = SelectorResolveRetry.DefaultTimeoutMilliseconds;
+        private const int ResolveIntervalMs = SelectorResolveRetry.DefaultIntervalMilliseconds;
+        private const int PostCaptureValidateDelayMs = 300;
 
         private readonly BridgeInspectorSession _session = new BridgeInspectorSession();
+        private CancellationTokenSource _postCaptureCts;
         private Dispatcher _dispatcher;
         private BwTab _targetTab;
         private object[] _targetSegments;
@@ -213,12 +217,21 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             try
             {
                 ConnectionStatus = "Reconnecting to Bridge on port " + BridgeConstants.DefaultPort + "...";
+                _postCaptureCts?.Cancel();
                 _session.Reconnect();
             }
             catch (Exception ex)
             {
                 ConnectionStatus = "Bridge connection failed: " + ex.Message;
                 return;
+            }
+
+            if (IsBridgeDisconnectMessage(TargetElementDisplay))
+            {
+                SetTargetElementError(false);
+                TargetElementDisplay = _hasCapturedElement
+                    ? "Bridge reconnected. Click Validate to check the selector."
+                    : string.Empty;
             }
 
             UpdateConnectionStatusMessage();
@@ -342,13 +355,27 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
 
             SelectedSelectorLevel = SelectorLevels.LastOrDefault();
             UpdateSelectorXmlFromLevels();
-            _ = ReloadVisualTreeAndValidateAsync();
+
+            _postCaptureCts?.Cancel();
+            _postCaptureCts?.Dispose();
+            _postCaptureCts = new CancellationTokenSource();
+            _ = ReloadVisualTreeAfterCaptureAsync(_postCaptureCts.Token);
         }
 
-        private async Task ReloadVisualTreeAndValidateAsync()
+        private async Task ReloadVisualTreeAfterCaptureAsync(CancellationToken token)
         {
-            await ReloadVisualTreeAsync();
-            await ValidateSelectorAsync();
+            try
+            {
+                await ReloadVisualTreeAsync(expandToTarget: false).ConfigureAwait(true);
+
+                await Task.Delay(PostCaptureValidateDelayMs, token).ConfigureAwait(true);
+
+                if (!token.IsCancellationRequested)
+                    await ValidateSelectorAsync().ConfigureAwait(true);
+            }
+            catch (OperationCanceledException)
+            {
+            }
         }
 
         private async Task LoadNodeDetailsAsync(InspectorVisualTreeNode node)
@@ -380,7 +407,7 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             }
         }
 
-        private async Task ReloadVisualTreeAsync()
+        private async Task ReloadVisualTreeAsync(bool expandToTarget = true)
         {
             if (_targetTab == null || _dispatcher == null)
                 return;
@@ -394,14 +421,15 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
 
                 await _dispatcher.InvokeAsync(() => VisualTree.Add(htmlRoot));
 
-                if (_targetSegments != null && _targetSegments.Length > 0)
+                if (expandToTarget && _targetSegments != null && _targetSegments.Length > 0)
                     await ExpandVisualTreeToTargetAsync(htmlRoot);
                 else
-                    await _dispatcher.InvokeAsync(() => htmlRoot.IsExpanded = true);
+                    await _dispatcher.InvokeAsync(() => htmlRoot.IsExpanded = false);
             }
             catch (Exception ex)
             {
-                TargetElementDisplay = "Failed to load visual tree: " + ex.Message;
+                if (!IsBridgeDisconnectError(ex))
+                    TargetElementDisplay = "Failed to load visual tree: " + ex.Message;
             }
         }
 
@@ -500,11 +528,17 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             if (string.IsNullOrWhiteSpace(SelectorXml))
                 return;
 
+            if (!_session.IsConnected)
+            {
+                ValidationState = ValidationState.Invalid;
+                SetTargetElementError(true);
+                TargetElementDisplay = "Validate skipped: Bridge extension is offline. Click Refresh Connection.";
+                return;
+            }
+
             IsValidating = true;
             try
             {
-                await PrepareTargetTabForResolveAsync();
-
                 var scope = SelectorXmlSerializer.SplitScope(SelectorXml);
                 if (string.IsNullOrWhiteSpace(SelectorXmlSerializer.ToOperationXml(scope)))
                 {
@@ -513,26 +547,15 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
                     return;
                 }
 
-                var matchCount = await CountSelectorMatchesWithRetryAsync(scope);
-                if (matchCount <= 0)
-                {
-                    ValidationState = ValidationState.Invalid;
-                    TargetElementDisplay = await BuildValidateFailureMessageAsync(scope);
-                }
-                else if (matchCount == 1)
-                {
-                    ValidationState = ValidationState.Valid;
-                }
-                else
-                {
-                    ValidationState = ValidationState.Ambiguous;
-                    TargetElementDisplay = "Validate ambiguous: " + matchCount + " matches.";
-                }
+                var result = await CountSelectorMatchesWithRetryAsync().ConfigureAwait(true);
+                ApplyValidationResult(result);
             }
             catch (Exception ex)
             {
                 ValidationState = ValidationState.Invalid;
-                TargetElementDisplay = "Validate failed: " + ex.Message;
+                TargetElementDisplay = FormatValidateException(ex);
+                if (IsBridgeDisconnectError(ex))
+                    UpdateConnectionStatusMessage();
             }
             finally
             {
@@ -540,99 +563,53 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             }
         }
 
-        private async Task<string> BuildValidateFailureMessageAsync(SelectorScope scope)
+        private void ApplyValidationResult(SelectorResolveResult result)
         {
-            BwTab tab = _targetTab;
-            BwTabInfo tabInfo = null;
-            BwTab activeTab = null;
-            BwTabInfo activeInfo = null;
-            SelectorResolveResult resolveResult = null;
-            BridgeInspectorValidateProbeResult probe = null;
-            Exception probeException = null;
+            if (result == null)
+                result = SelectorResolveResult.None;
 
-            try
+            if (result.Count <= 0)
             {
-                if (tab != null)
-                    tabInfo = await Task.Run(() => tab.GetInfo()).ConfigureAwait(true);
-            }
-            catch
-            {
+                ValidationState = ValidationState.Invalid;
+                if (IsBridgeDisconnectMessage(TargetElementDisplay))
+                    return;
+
+                TargetElementDisplay = FormatValidateFailure(result);
+                BridgeFileLog.Write("[INSPECTOR-VALIDATE] failed attempts=" + result.Attempts +
+                                    " error=" + (result.LastError ?? string.Empty));
+                return;
             }
 
-            try
+            if (result.Count == 1)
             {
-                activeTab = await Task.Run(() => _session.GetTargetTab()).ConfigureAwait(true);
-                if (activeTab != null)
-                    activeInfo = await Task.Run(() => activeTab.GetInfo()).ConfigureAwait(true);
-            }
-            catch
-            {
+                ValidationState = ValidationState.Valid;
+                SetTargetElementError(false);
+                BridgeFileLog.Write("[INSPECTOR-VALIDATE] ok matches=1 attempts=" + result.Attempts);
+                return;
             }
 
-            if (tab != null)
-            {
-                try
-                {
-                    var client = _session.GetClient(tab.InstanceId);
-                    resolveResult = await Task.Run(() =>
-                    {
-                        try
-                        {
-                            var count = client.FindElements(scope, tab).Length;
-                            return new SelectorResolveResult
-                            {
-                                Count = count,
-                                Attempts = 1,
-                                LastError = null
-                            };
-                        }
-                        catch (Exception ex)
-                        {
-                            return new SelectorResolveResult
-                            {
-                                Count = 0,
-                                Attempts = 1,
-                                LastError = ex.Message
-                            };
-                        }
-                    }).ConfigureAwait(true);
-                }
-                catch (Exception ex)
-                {
-                    resolveResult = new SelectorResolveResult { Count = 0, Attempts = 0, LastError = ex.Message };
-                }
+            ValidationState = ValidationState.Ambiguous;
+            TargetElementDisplay = "Validate ambiguous: " + result.Count + " matches.";
+        }
 
-                try
-                {
-                    probe = await Task.Run(() => tab.InspectorValidateProbe(_targetSegments, scope)).ConfigureAwait(true);
-                }
-                catch (Exception ex)
-                {
-                    probeException = ex;
-                }
-            }
+        private static string FormatValidateFailure(SelectorResolveResult result)
+        {
+            var message = "Validate failed: 0 matches within " + SelectorResolveRetry.DefaultTimeoutMilliseconds + "ms.";
+            if (!string.IsNullOrWhiteSpace(result?.LastError))
+                message += " " + result.LastError;
 
-            ValidateDiagnostics.LogFailure(
-                tab,
-                tabInfo,
-                activeTab,
-                activeInfo,
-                scope,
-                SelectorXml,
-                resolveResult,
-                probe,
-                probeException);
+            return message;
+        }
 
-            return ValidateDiagnostics.BuildFailureSummary(
-                tab,
-                tabInfo,
-                activeTab,
-                activeInfo,
-                scope,
-                SelectorXml,
-                resolveResult,
-                probe,
-                probeException);
+        private async Task<SelectorResolveResult> CountSelectorMatchesWithRetryAsync()
+        {
+            if (string.IsNullOrWhiteSpace(SelectorXml))
+                return SelectorResolveResult.None;
+
+            return await SelectorResolveRetry.CountMatchesWithRetryAsync(
+                () => Task.Run(() => _session.Host.FindElements(SelectorXml, _targetTab).Length),
+                ResolveTimeoutMs,
+                ResolveIntervalMs).ConfigureAwait(true);
         }
 
         private async Task PrepareTargetTabForResolveAsync()
@@ -646,45 +623,35 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
                 await Task.Run(() => tab.Activate());
         }
 
-        private async Task<int> CountSelectorMatchesWithRetryAsync(SelectorScope scope = null)
+        private static string FormatValidateException(Exception ex)
         {
-            scope = scope ?? SelectorXmlSerializer.SplitScope(SelectorXml);
-            if (string.IsNullOrWhiteSpace(SelectorXmlSerializer.ToOperationXml(scope)))
-                return 0;
+            if (!IsBridgeDisconnectError(ex))
+                return "Validate failed: " + ex.Message;
 
-            if (_targetTab != null)
+            return "Validate failed: Bridge connection lost (OpenRPA may have exited). " +
+                   "Restart OpenRPA, click Refresh Connection, then Validate again.";
+        }
+
+        private static bool IsBridgeDisconnectMessage(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return false;
+
+            return message.IndexOf("Bridge controller socket is not connected", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   message.IndexOf("Bridge connection lost", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsBridgeDisconnectError(Exception ex)
+        {
+            while (ex != null)
             {
-                var client = _session.GetClient(_targetTab.InstanceId);
-                var count = await SelectorResolveRetry.CountMatchesWithRetryAsync(
-                    client,
-                    scope,
-                    _targetTab,
-                    ResolveTimeoutMs).ConfigureAwait(true);
+                if (IsBridgeDisconnectMessage(ex.Message))
+                    return true;
 
-                if (count > 0)
-                    return count;
-
-                if (scope.TabLevel != null && _session.Host != null)
-                {
-                    try
-                    {
-                        var hostCount = await Task.Run(() => _session.Host.FindElements(SelectorXml).Length).ConfigureAwait(true);
-                        if (hostCount > 0)
-                        {
-                            BridgeFileLog.Write("[INSPECTOR-VALIDATE] pinned tabId returned 0; wnd-resolved FindElements returned " + hostCount);
-                            return hostCount;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        BridgeFileLog.Write("[INSPECTOR-VALIDATE] wnd-resolved fallback failed: " + ex.Message);
-                    }
-                }
-
-                return count;
+                ex = ex.InnerException;
             }
 
-            return _session.Host.ElementExists(SelectorXml) ? 1 : 0;
+            return false;
         }
 
         private async Task HighlightAsync()
@@ -697,10 +664,10 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             {
                 await PrepareTargetTabForResolveAsync();
 
-                var matchCount = await CountSelectorMatchesWithRetryAsync();
-                if (matchCount != 1)
+                var result = await CountSelectorMatchesWithRetryAsync().ConfigureAwait(true);
+                if (result.Count != 1)
                 {
-                    if (matchCount == 0)
+                    if (result.Count == 0)
                         TargetElementDisplay = "Highlight failed: element not found within 5 seconds.";
                     else
                         TargetElementDisplay = "Highlight failed: selector matched multiple elements.";

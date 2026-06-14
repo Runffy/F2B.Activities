@@ -1,13 +1,13 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using F2B.Browser.Chromium.Bridge;
-using F2B.Browser.Chromium.Bridge.Selectors;
 
 namespace F2B.Browser.Chromium.Inspector.Services
 {
     internal sealed class SelectorResolveResult
     {
+        public static readonly SelectorResolveResult None = new SelectorResolveResult { Count = 0, Attempts = 0 };
+
         public int Count { get; set; }
 
         public int Attempts { get; set; }
@@ -18,41 +18,20 @@ namespace F2B.Browser.Chromium.Inspector.Services
     internal static class SelectorResolveRetry
     {
         public const int DefaultTimeoutMilliseconds = 5000;
-        public const int DefaultIntervalMilliseconds = 250;
+        public const int DefaultIntervalMilliseconds = 300;
 
-        public static async Task<int> CountMatchesWithRetryAsync(
-            BridgeSyncClient client,
-            SelectorScope scope,
-            BwTab tab,
+        /// <summary>
+        /// FindElements is instantaneous; within the timeout window, poll every interval
+        /// until count != 0, then return immediately.
+        /// </summary>
+        public static async Task<SelectorResolveResult> CountMatchesWithRetryAsync(
+            Func<Task<int>> findElementsCountAsync,
             int timeoutMilliseconds = DefaultTimeoutMilliseconds,
             int intervalMilliseconds = DefaultIntervalMilliseconds,
             CancellationToken cancellationToken = default)
         {
-            var result = await CountMatchesDetailedAsync(
-                client,
-                scope,
-                tab,
-                timeoutMilliseconds,
-                intervalMilliseconds,
-                cancellationToken).ConfigureAwait(false);
-
-            return result.Count;
-        }
-
-        public static async Task<SelectorResolveResult> CountMatchesDetailedAsync(
-            BridgeSyncClient client,
-            SelectorScope scope,
-            BwTab tab,
-            int timeoutMilliseconds = DefaultTimeoutMilliseconds,
-            int intervalMilliseconds = DefaultIntervalMilliseconds,
-            CancellationToken cancellationToken = default)
-        {
-            if (client == null)
-                throw new ArgumentNullException(nameof(client));
-            if (scope == null)
-                throw new ArgumentNullException(nameof(scope));
-            if (tab == null)
-                throw new ArgumentNullException(nameof(tab));
+            if (findElementsCountAsync == null)
+                throw new ArgumentNullException(nameof(findElementsCountAsync));
 
             var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMilliseconds);
             var lastCount = 0;
@@ -66,7 +45,7 @@ namespace F2B.Browser.Chromium.Inspector.Services
 
                 try
                 {
-                    lastCount = client.FindElements(scope, tab).Length;
+                    lastCount = await findElementsCountAsync().ConfigureAwait(false);
                     lastError = null;
                     if (lastCount != 0)
                     {

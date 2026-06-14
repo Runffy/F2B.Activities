@@ -575,11 +575,9 @@ namespace F2B.Browser.Chromium.Bridge
             var takeScreenshotBaseOn = ReadBridgeTakeScreenshotBaseOn(ModelItem);
             var isTakeScreenshotTab = _designerMode == DesignerMode.TakeScreenshot && takeScreenshotBaseOn == BridgeTakeScreenshotBaseOn.Tab;
             var isTakeScreenshotElement = _designerMode == DesignerMode.TakeScreenshot && takeScreenshotBaseOn == BridgeTakeScreenshotBaseOn.Element;
-            var selectorNeedsInputTab = targetType == BridgeElementTargetType.Selector &&
-                BridgeDesignerSelectorHelper.ShouldShowOptionalInputTab(ModelItem, "Selector");
 
             SetRequiredBorder(_elementEditorBorder, isTakeScreenshotElement && targetType == BridgeElementTargetType.Element, IsArgumentFilled(ModelItem, "Element", _elementExpressionBox));
-            SetRequiredBorder(_tabEditorBorder, (isTakeScreenshotTab || (isTakeScreenshotElement && selectorNeedsInputTab)) || (_designerMode != DesignerMode.TakeScreenshot && selectorNeedsInputTab), IsArgumentFilled(ModelItem, "InputTab", _tabExpressionBox));
+            SetRequiredBorder(_tabEditorBorder, isTakeScreenshotTab, IsArgumentFilled(ModelItem, "InputTab", _tabExpressionBox));
             SetRequiredBorder(_selectorEditorBorder, isTakeScreenshotElement && targetType == BridgeElementTargetType.Selector, IsArgumentFilled(ModelItem, "Selector", _selectorExpressionBox));
 
             SetRequiredBorder(_saveAsPathEditorBorder, _designerMode == DesignerMode.ClickForDownload, IsArgumentFilled(ModelItem, "SaveAsPath", _saveAsPathExpressionBox));

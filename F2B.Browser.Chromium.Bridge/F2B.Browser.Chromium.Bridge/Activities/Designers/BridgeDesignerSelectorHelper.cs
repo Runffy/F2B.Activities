@@ -16,16 +16,13 @@ namespace F2B.Browser.Chromium.Bridge
             return SelectorDesignerSupport.TryReadSelectorText(modelItem, propertyName);
         }
 
+        /// <summary>
+        /// Input Tab is optional at runtime (use &lt;wnd&gt; in Selector instead).
+        /// It is not shown on the activity canvas; configure it in the properties panel if needed.
+        /// </summary>
         public static bool ShouldShowOptionalInputTab(ModelItem modelItem, string selectorPropertyName = "Selector")
         {
-            if (modelItem == null)
-                return true;
-
-            var selectorText = TryReadSelectorText(modelItem, selectorPropertyName);
-            if (string.IsNullOrWhiteSpace(selectorText))
-                return true;
-
-            return !SelectorXmlSerializer.HasWndLevel(selectorText);
+            return false;
         }
     }
 }
