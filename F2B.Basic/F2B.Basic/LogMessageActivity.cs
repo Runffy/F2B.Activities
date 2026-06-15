@@ -17,6 +17,10 @@ namespace F2B.Basic
     public sealed class LogMessageActivity : CodeActivity, global::System.Activities.Presentation.IActivityTemplateFactory
     {
         private static readonly ConcurrentDictionary<string, string> WorkflowLogFiles = new ConcurrentDictionary<string, string>();
+        private static readonly string MachineHostName = Environment.MachineName ?? string.Empty;
+        private static readonly string MachineUserName = Environment.UserName ?? string.Empty;
+        private const string UserLogHeader = "Timestamp,MachineName,UserName,WorkflowName,LogEntryId,Level,Message";
+        private const string ExecutionLogHeader = "Timestamp,MachineName,UserName,ProjectName,WorkflowName,LogEntryId,Level,Message";
 
         public LogMessageActivity()
         {
@@ -73,23 +77,64 @@ namespace F2B.Basic
                 return Path.Combine(folder, filename);
             });
 
-            if (!File.Exists(logfile))
+            string entryId = string.IsNullOrWhiteSpace(LogEntryId) ? string.Empty : LogEntryId.Trim();
+            DateTime now = DateTime.Now;
+
+            string userLine = BuildLogLine(now, workflowName, entryId, level, message);
+            AppendLogLine(logfile, UserLogHeader, userLine);
+
+            string executionLogFile = GetExecutionLogPath(now);
+            string executionLine = BuildLogLine(now, workflowName, entryId, level, message, projectName);
+            AppendLogLine(executionLogFile, ExecutionLogHeader, executionLine);
+
+            string consoleLine = $"[{level}] {message}";
+            Console.WriteLine(consoleLine);
+        }
+
+        private static string GetExecutionLogPath(DateTime timestamp)
+        {
+            string folder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "OpenRPA",
+                "Logs");
+            Directory.CreateDirectory(folder);
+            return Path.Combine(folder, $"ExecutionLog_{timestamp:yyyyMMdd}.csv");
+        }
+
+        private static void AppendLogLine(string logFilePath, string header, string line)
+        {
+            if (!File.Exists(logFilePath))
             {
-                File.AppendAllText(logfile, "Timestamp,WorkflowName,LogEntryId,Level,Message" + Environment.NewLine);
+                File.AppendAllText(logFilePath, header + Environment.NewLine);
             }
 
-            string entryId = string.IsNullOrWhiteSpace(LogEntryId) ? string.Empty : LogEntryId.Trim();
+            File.AppendAllText(logFilePath, line + Environment.NewLine);
+        }
 
-            string line = string.Join(",",
-                EscapeCsv(DateTime.Now.ToString("o", CultureInfo.InvariantCulture)),
+        private static string BuildLogLine(DateTime timestamp, string workflowName, string entryId, string level, string message, string projectName = null)
+        {
+            string timestampText = EscapeCsv(timestamp.ToString("o", CultureInfo.InvariantCulture));
+            if (projectName == null)
+            {
+                return string.Join(",",
+                    timestampText,
+                    EscapeCsv(MachineHostName),
+                    EscapeCsv(MachineUserName),
+                    EscapeCsv(workflowName),
+                    EscapeCsv(entryId),
+                    EscapeCsv(level),
+                    EscapeCsv(message));
+            }
+
+            return string.Join(",",
+                timestampText,
+                EscapeCsv(MachineHostName),
+                EscapeCsv(MachineUserName),
+                EscapeCsv(projectName),
                 EscapeCsv(workflowName),
                 EscapeCsv(entryId),
                 EscapeCsv(level),
                 EscapeCsv(message));
-            File.AppendAllText(logfile, line + Environment.NewLine);
-
-            string consoleLine = $"[{level}] {message}";
-            Console.WriteLine(consoleLine);
         }
 
         private static WorkflowMetadata ResolveWorkflowMetadata(CodeActivityContext context)
