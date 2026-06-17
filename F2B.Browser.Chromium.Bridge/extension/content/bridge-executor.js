@@ -583,12 +583,18 @@
           throw new Error('Element not found for selector build.');
         }
 
+        const tabTitle = message.tabTitle || document.title;
+        const tabUrl = message.tabUrl || location.href;
+        const optimize = message.optimize === true;
+        const levels = builder.buildSelectorLevelsFromElement(
+          element,
+          tabTitle,
+          tabUrl,
+          { optimize: optimize }
+        );
+
         return {
-          levels: builder.buildSelectorLevelsFromElement(
-            element,
-            message.tabTitle || document.title,
-            message.tabUrl || location.href
-          ),
+          levels: levels,
           segments: builder.getSegmentsFromElement(element),
           displayName: builder.buildDisplayName(element)
         };

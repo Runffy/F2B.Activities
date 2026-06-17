@@ -1008,7 +1008,7 @@ namespace F2B.Browser.Chromium.Bridge
             var response = Invoke(
                 "inspector.buildSelector",
                 WithTab(new Dictionary<string, object> { { "segments", segments ?? new object[0] } }),
-                15000);
+                30000);
 
             return new BridgeInspectorBuildResult
             {

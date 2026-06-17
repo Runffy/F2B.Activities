@@ -76,7 +76,17 @@
       return placeholder.trim();
     }
 
-    return (element.innerText || element.textContent || '').trim();
+    const tag = (element.tagName || '').toLowerCase();
+    if (tag === 'rect' || tag === 'path' || tag === 'svg' || tag === 'g') {
+      return tag;
+    }
+
+    const text = (element.textContent || '').trim();
+    if (text.length > 120) {
+      return text.substring(0, 120) + '...';
+    }
+
+    return text;
   }
 
   function getAutomationId(element) {
@@ -205,6 +215,69 @@
       isSelected: !!isSelected && !!value && isCompactPropertyValue(value),
       isRegex: !!isRegex
     };
+  }
+
+  function createSelectedProperty(name, value, isRegex) {
+    return {
+      name: name,
+      value: value || '',
+      isSelected: !!value,
+      isRegex: !!isRegex
+    };
+  }
+
+  function buildTitleReValue(title) {
+    const text = String(title || '').trim();
+    if (!text) {
+      return '';
+    }
+
+    if (text.length <= 20) {
+      return escapeRegex(text);
+    }
+
+    return escapeRegex(text.substring(0, 20)) + '.*';
+  }
+
+  function buildTextReValue(text) {
+    const value = String(text || '').trim();
+    if (!value) {
+      return '';
+    }
+
+    if (value.length <= 20) {
+      return escapeRegex(value);
+    }
+
+    return escapeRegex(value.substring(0, 20)) + '.*';
+  }
+
+  function getElementTextForSelector(element) {
+    if (!element || !element.getAttribute) {
+      return '';
+    }
+
+    const ariaLabel = element.getAttribute('aria-label');
+    if (ariaLabel && ariaLabel.trim()) {
+      return ariaLabel.trim();
+    }
+
+    const title = element.getAttribute('title');
+    if (title && title.trim()) {
+      return title.trim();
+    }
+
+    const placeholder = element.getAttribute('placeholder');
+    if (placeholder && placeholder.trim()) {
+      return placeholder.trim();
+    }
+
+    const text = (element.textContent || '').trim();
+    if (text.length > 500) {
+      return text.substring(0, 500);
+    }
+
+    return text;
   }
 
   function isCompactPropertyValue(value) {
@@ -598,7 +671,162 @@
     return level;
   }
 
-  function buildSelectorLevelsFromElement(element, tabTitle, tabUrl) {
+  function populateAutoWndLevel(level, tabTitle, tabUrl) {
+    const fullTitle = tabTitle || document.title || '';
+    const titleRe = buildTitleReValue(fullTitle);
+    if (titleRe) {
+      level.properties.push(createSelectedProperty('title', titleRe, true));
+    }
+
+    if (fullTitle && fullTitle !== titleRe) {
+      level.properties.push(createProperty('title', fullTitle, false, false));
+    }
+
+    if (tabUrl || location.href) {
+      level.properties.push(createProperty('url', tabUrl || location.href, false, false));
+    }
+  }
+
+  function populateAutoFrmLevel(level, element) {
+    if (!element) {
+      return;
+    }
+
+    const name = element.getAttribute('name');
+    const id = element.id || element.getAttribute('id');
+    const index = getIndexInParent(element);
+
+    if (name) {
+      level.properties.push(createProperty('name', name, false, false));
+    }
+
+    if (id) {
+      level.properties.push(createProperty('id', id, false, false));
+    }
+
+    if (index >= 0) {
+      level.properties.push(createProperty('idx', String(index), false, false));
+    }
+
+    if (name) {
+      selectPropertyByName(level, 'name', true);
+    } else if (id) {
+      selectPropertyByName(level, 'id', true);
+    } else if (index >= 0) {
+      selectPropertyByName(level, 'idx', true);
+    }
+  }
+
+  function selectPropertyByName(level, name, force) {
+    const prop = findProperty(level, name);
+    if (prop && (force || isCompactPropertyValue(prop.value))) {
+      prop.isSelected = true;
+    }
+
+    return prop;
+  }
+
+  function populateAutoCtrlLevel(level, element, isTarget) {
+    if (!element) {
+      return;
+    }
+
+    const tag = (element.tagName || '').toLowerCase();
+    const index = getIndexInParent(element);
+
+    if (isTarget) {
+      if (tag) {
+        level.properties.push(createSelectedProperty('tag', tag, false));
+      }
+
+      const id = element.id || element.getAttribute('id');
+      const text = getElementTextForSelector(element);
+      const name = element.getAttribute('name');
+
+      if (id) {
+        level.properties.push(createProperty('id', id, false, false));
+      }
+
+      if (text) {
+        const textValue = text.length > 20 ? buildTextReValue(text) : text;
+        level.properties.push(createProperty('text', textValue, false, text.length > 20));
+      }
+
+      if (name) {
+        level.properties.push(createProperty('name', name, false, false));
+      }
+
+      if (index >= 0) {
+        level.properties.push(createProperty('idx', String(index), false, false));
+      }
+
+      if (id) {
+        selectPropertyByName(level, 'id', true);
+      } else if (text) {
+        selectPropertyByName(level, 'text', true);
+      } else if (name) {
+        selectPropertyByName(level, 'name', true);
+      } else if (index >= 0) {
+        selectPropertyByName(level, 'idx', true);
+      }
+
+      return;
+    }
+
+    if (tag) {
+      level.properties.push(createSelectedProperty('tag', tag, false));
+    }
+
+    if (index >= 0) {
+      level.properties.push(createSelectedProperty('idx', String(index), false));
+    }
+  }
+
+  function buildAutoLevelForElement(element, tagName, tabTitle, tabUrl, isTarget) {
+    const level = {
+      tagName: tagName,
+      properties: [],
+      isEnabled: true,
+      canDisable: tagName !== 'wnd' && tagName !== 'frm'
+    };
+
+    if (tagName === 'wnd') {
+      populateAutoWndLevel(level, tabTitle, tabUrl);
+      return level;
+    }
+
+    if (tagName === 'frm') {
+      populateAutoFrmLevel(level, element);
+      return level;
+    }
+
+    populateAutoCtrlLevel(level, element, isTarget);
+    return level;
+  }
+
+  function buildAutoSelectorLevelsFromElement(element, tabTitle, tabUrl) {
+    const path = buildPathToRoot(element);
+    const levels = [];
+
+    levels.push(buildAutoLevelForElement(null, 'wnd', tabTitle, tabUrl, false));
+
+    for (let i = 0; i < path.length; i += 1) {
+      const el = path[i];
+      const tag = (el.tagName || '').toLowerCase();
+      const tagName = tag === 'iframe' || tag === 'frame' ? 'frm' : 'ctrl';
+      const isTarget = i === path.length - 1;
+      levels.push(buildAutoLevelForElement(el, tagName, tabTitle, tabUrl, isTarget));
+    }
+
+    return levels;
+  }
+
+  function buildSelectorLevelsFromElement(element, tabTitle, tabUrl, options) {
+    const optimize = options && options.optimize === true;
+    if (!optimize) {
+      return buildAutoSelectorLevelsFromElement(element, tabTitle, tabUrl);
+    }
+
     const path = buildPathToRoot(element);
     const levels = [];
 
@@ -642,7 +870,11 @@
 
   function buildDisplayName(element) {
     const role = getControlType(element);
-    const name = getElementName(element);
+    const dataName = element.getAttribute && element.getAttribute('data-name');
+    const nameSource = dataName
+      ? dataName.trim()
+      : getElementName(element);
+    const name = nameSource.length > 80 ? nameSource.substring(0, 80) + '...' : nameSource;
     const automationId = getAutomationId(element);
     return (role + ' "' + name + '" ' + automationId).trim();
   }
@@ -862,6 +1094,8 @@
 
   root.F2bInspectorBuilder = {
     buildSelectorLevelsFromElement,
+    buildAutoSelectorLevelsFromElement,
+    buildFastSelectorLevelsFromElement: buildAutoSelectorLevelsFromElement,
     describeElement,
     buildVisualTreeLabel,
     buildDisplayName,
