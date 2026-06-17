@@ -88,6 +88,9 @@ namespace F2B.Browser.Chromium.Bridge
                 return new BridgeExecutionContext(explicitTab.InstanceId, explicitTab, scope);
             }
 
+            if (explicitTab != null)
+                return new BridgeExecutionContext(explicitTab.InstanceId, explicitTab, scope);
+
             if (timeoutMs <= 0)
                 return ResolveWndContext(scope);
 

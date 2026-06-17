@@ -230,50 +230,152 @@
     return root;
   }
 
+  function getOwnerDocument(root) {
+    if (!root) {
+      return document;
+    }
+
+    if (root.nodeType === 9) {
+      return root;
+    }
+
+    return root.ownerDocument || document;
+  }
+
+  function collectXPathSnapshot(doc, xpath, context) {
+    if (!doc || !xpath || !context) {
+      return [];
+    }
+
+    try {
+      const snapshot = doc.evaluate(
+        xpath,
+        context,
+        null,
+        XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+        null
+      );
+      const results = [];
+      for (let i = 0; i < snapshot.snapshotLength; i += 1) {
+        const node = snapshot.snapshotItem(i);
+        if (node && node.nodeType === 1) {
+          results.push(node);
+        }
+      }
+
+      return results;
+    } catch (error) {
+      pageTrace('collectXPathSnapshot error: ' + (error.message || error));
+      return [];
+    }
+  }
+
+  function toSvgLocalNameXPath(xpath) {
+    return String(xpath || '')
+      .replace(/\/(svg)(?=\/|$|\[)/gi, "/*[local-name()='svg']")
+      .replace(/\/(g)(?=\/|$|\[)/gi, "/*[local-name()='g']")
+      .replace(/\/(rect)(?=\/|$|\[)/gi, "/*[local-name()='rect']");
+  }
+
+  function parseIdAnchoredXPath(xpath) {
+    return String(xpath || '').trim().match(/^\/\/\*\[@id=("|')([^"']+)\1\](.*)$/i);
+  }
+
+  function toRelativeXPathFromAnchor(rest) {
+    if (!rest) {
+      return '.';
+    }
+
+    if (rest.charAt(0) === '/') {
+      return '.' + rest;
+    }
+
+    return './' + rest;
+  }
+
+  function queryXPathFromAnchor(doc, anchor, rest) {
+    if (!anchor) {
+      return [];
+    }
+
+    if (!rest) {
+      return [anchor];
+    }
+
+    const relative = toRelativeXPathFromAnchor(rest);
+    const variants = [relative];
+    if (/\/(svg|g|rect)(?=\/|$|\[)/i.test(relative)) {
+      variants.push(toSvgLocalNameXPath(relative));
+    }
+
+    for (let i = 0; i < variants.length; i += 1) {
+      const hits = collectXPathSnapshot(doc, variants[i], anchor);
+      if (hits.length > 0) {
+        return hits;
+      }
+    }
+
+    if (/\/(svg|g|rect)(?=\/|$|\[)/i.test(rest)) {
+      try {
+        return Array.from(anchor.querySelectorAll('rect')).filter(function (node) {
+          return getElementTagName(node) === 'rect';
+        });
+      } catch (error) {
+        return [];
+      }
+    }
+
+    return [];
+  }
+
   function queryXPath(root, xpath) {
     if (!root || !xpath) {
       return [];
     }
 
-    const doc = root.nodeType === 9 ? root : (root.ownerDocument || document);
-    const contexts = [];
-    const primary = getXPathContextNode(root);
+    const doc = getOwnerDocument(root);
+    const trimmed = String(xpath).trim();
+    const idAnchor = parseIdAnchoredXPath(trimmed);
 
-    contexts.push(primary);
-    if (doc && primary !== doc) {
+    if (idAnchor) {
+      const anchor = doc.getElementById(idAnchor[2]);
+      if (anchor) {
+        const anchored = queryXPathFromAnchor(doc, anchor, idAnchor[3] || '');
+        if (anchored.length > 0) {
+          return anchored;
+        }
+      }
+    }
+
+    const variants = [trimmed];
+    if (/\/(svg|g|rect)(?=\/|$|\[)/i.test(trimmed)) {
+      variants.push(toSvgLocalNameXPath(trimmed));
+    }
+
+    const contexts = [];
+    if (doc) {
       contexts.push(doc);
     }
-    if (doc && doc.documentElement && primary !== doc.documentElement) {
+
+    if (doc && doc.documentElement) {
       contexts.push(doc.documentElement);
     }
 
-    for (let c = 0; c < contexts.length; c += 1) {
-      const context = contexts[c];
-      if (!context) {
-        continue;
-      }
+    if (doc && doc.body) {
+      contexts.push(doc.body);
+    }
 
-      try {
-        const snapshot = doc.evaluate(
-          xpath,
-          context,
-          null,
-          XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
-          null
-        );
-        const results = [];
-        for (let i = 0; i < snapshot.snapshotLength; i += 1) {
-          const node = snapshot.snapshotItem(i);
-          if (node && node.nodeType === 1) {
-            results.push(node);
-          }
-        }
+    const normalizedRoot = normalizeSearchRoot(root);
+    if (normalizedRoot && contexts.indexOf(normalizedRoot) < 0) {
+      contexts.push(normalizedRoot);
+    }
 
-        if (results.length > 0) {
-          return results;
+    for (let v = 0; v < variants.length; v += 1) {
+      for (let c = 0; c < contexts.length; c += 1) {
+        const hits = collectXPathSnapshot(doc, variants[v], contexts[c]);
+        if (hits.length > 0) {
+          return hits;
         }
-      } catch (error) {
-        pageTrace('queryXPath error context=' + c + ' ' + (error.message || error));
       }
     }
 
@@ -285,20 +387,79 @@
       return [];
     }
 
+    const doc = getOwnerDocument(root);
+    const trimmed = String(css).trim();
+    const anchored = parseIdAnchoredCss(trimmed);
+
+    if (anchored) {
+      const anchor = doc.getElementById(anchored.id);
+      if (!anchor) {
+        return [];
+      }
+
+      if (!anchored.rest) {
+        return [anchor];
+      }
+
+      try {
+        const queryRoot = doc.documentElement || doc;
+        return Array.from(queryRoot.querySelectorAll(trimmed));
+      } catch (error) {
+        pageTrace('queryCssSelector anchored error: ' + (error.message || error));
+      }
+    }
+
     try {
       const scope = normalizeSearchRoot(root);
       if (scope.nodeType === 9) {
-        return Array.from(scope.querySelectorAll(css));
+        return Array.from(scope.querySelectorAll(trimmed));
       }
 
       if (typeof scope.querySelectorAll === 'function') {
-        return Array.from(scope.querySelectorAll(css));
+        return Array.from(scope.querySelectorAll(trimmed));
       }
 
       return [];
     } catch (error) {
+      pageTrace('queryCssSelector error: ' + (error.message || error));
       return [];
     }
+  }
+
+  function unescapeCssIdentifier(value) {
+    return String(value || '').replace(/\\(.)/g, '$1');
+  }
+
+  function parseIdAnchoredCss(css) {
+    const trimmed = String(css || '').trim();
+    let match = trimmed.match(/^#((?:\\.|[^\s>#+~[,!])+)\s*>\s*(.+)$/);
+    if (match) {
+      return {
+        id: unescapeCssIdentifier(match[1]),
+        rest: match[2].trim(),
+        combinator: '>'
+      };
+    }
+
+    match = trimmed.match(/^#((?:\\.|[^\s>#+~[,!])+)\s+(.+)$/);
+    if (match) {
+      return {
+        id: unescapeCssIdentifier(match[1]),
+        rest: match[2].trim(),
+        combinator: ' '
+      };
+    }
+
+    match = trimmed.match(/^#((?:\\.|[^\s>#+~[,!])+)$/);
+    if (match) {
+      return {
+        id: unescapeCssIdentifier(match[1]),
+        rest: '',
+        combinator: ''
+      };
+    }
+
+    return null;
   }
 
   function matchLocatorResult(element, level) {
@@ -1034,6 +1195,8 @@
   root.DomSelectorResolver = {
     findElements,
     countElements,
+    queryXPath,
+    queryCssSelector,
     waitForElements,
     parseSelectorLevels,
     matchLevel,

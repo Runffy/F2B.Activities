@@ -427,6 +427,8 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             IsValidating = true;
             try
             {
+                await PrepareTargetTabForResolveAsync().ConfigureAwait(true);
+
                 var scope = SelectorXmlSerializer.SplitScope(SelectorXml);
                 if (string.IsNullOrWhiteSpace(SelectorXmlSerializer.ToOperationXml(scope)))
                 {

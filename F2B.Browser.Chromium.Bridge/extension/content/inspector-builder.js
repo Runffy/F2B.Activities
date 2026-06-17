@@ -922,11 +922,243 @@
     return 'concat("' + text.replace(/"/g, '",\'"\',"') + '")';
   }
 
+  function getElementTagNameLocal(element) {
+    return String(element.localName || element.tagName || '').toLowerCase();
+  }
+
+  function escapeCssIdentifier(value) {
+    if (value == null) {
+      return '';
+    }
+
+    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+      return CSS.escape(String(value));
+    }
+
+    return String(value).replace(/([ !"#$%&'()*+,./:;<=>?@\[\\\]^`{|}~])/g, '\\$1');
+  }
+
+  function escapeCssAttrValue(value) {
+    return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  }
+
+  function buildCssPathSegmentsFromAnchor(element, anchor) {
+    if (!element || !anchor || element === anchor) {
+      return [];
+    }
+
+    const segments = [];
+    let current = element;
+
+    while (current && current !== anchor && current.nodeType === 1) {
+      const tag = getElementTagNameLocal(current);
+      if (tag === 'html') {
+        break;
+      }
+
+      const parent = current.parentElement;
+      if (!parent) {
+        break;
+      }
+
+      const children = Array.from(parent.children).filter(function (child) {
+        return child.nodeType === 1;
+      });
+      const childIndex = children.indexOf(current) + 1;
+      let segment = tag;
+
+      if (children.length > 1) {
+        segment = tag + ':nth-child(' + childIndex + ')';
+      }
+
+      segments.unshift(segment);
+      current = parent;
+    }
+
+    if (current !== anchor || segments.length === 0) {
+      return [];
+    }
+
+    return segments;
+  }
+
+  function countGeneratedCssMatches(doc, css) {
+    const dom = root.DomSelectorResolver;
+    if (!dom || typeof dom.queryCssSelector !== 'function') {
+      try {
+        return doc.querySelectorAll(css).length;
+      } catch (error) {
+        return 0;
+      }
+    }
+
+    return dom.queryCssSelector(doc.documentElement || doc, css).length;
+  }
+
+  function cssSelectorMatchesElement(doc, css, element) {
+    const dom = root.DomSelectorResolver;
+    let matches = [];
+
+    if (dom && typeof dom.queryCssSelector === 'function') {
+      matches = dom.queryCssSelector(doc.documentElement || doc, css);
+    } else {
+      try {
+        matches = Array.from(doc.querySelectorAll(css));
+      } catch (error) {
+        return false;
+      }
+    }
+
+    return matches.length === 1 && matches[0] === element;
+  }
+
+  function buildRelativeCssSelector(element) {
+    if (!element || element.nodeType !== 1) {
+      return '';
+    }
+
+    const doc = element.ownerDocument || document;
+    const tag = getElementTagNameLocal(element);
+    const candidates = [];
+
+    if (element.id && isStableId(element.id)) {
+      candidates.push('#' + escapeCssIdentifier(element.id));
+    }
+
+    const anchorId = findStableAnchorId(element);
+    if (anchorId) {
+      const idSel = '#' + escapeCssIdentifier(anchorId);
+      const anchor = doc.getElementById(anchorId);
+
+      if (anchor) {
+        candidates.push(idSel + ' ' + tag);
+
+        const dataAutomationId = element.getAttribute('data-automation-id') ||
+          element.getAttribute('data-automationid') ||
+          element.getAttribute('data-testid');
+        if (dataAutomationId) {
+          candidates.push(idSel + ' [data-automation-id="' + escapeCssAttrValue(dataAutomationId) + '"]');
+          candidates.push(idSel + ' [data-testid="' + escapeCssAttrValue(dataAutomationId) + '"]');
+        }
+
+        const tail = buildCssPathSegmentsFromAnchor(element, anchor);
+        if (tail.length > 0) {
+          candidates.push(idSel + ' > ' + tail.join(' > '));
+          candidates.push(idSel + ' ' + tail.join(' '));
+        }
+      }
+    }
+
+    for (let i = 0; i < candidates.length; i += 1) {
+      const css = candidates[i];
+      if (cssSelectorMatchesElement(doc, css, element)) {
+        return css;
+      }
+    }
+
+    return candidates.length > 0 ? candidates[candidates.length - 1] : '';
+  }
+
   function buildRelativeXPath(element) {
     if (!element || element.nodeType !== 1) {
       return '';
     }
 
+    const doc = element.ownerDocument || document;
+    const anchorId = findStableAnchorId(element);
+    if (anchorId) {
+      const anchor = doc.getElementById(anchorId);
+      if (anchor) {
+        const tail = buildRelativeTailFromAnchor(element, anchor);
+        if (tail) {
+          const xpath = '//*[@id="' + anchorId.replace(/"/g, '\\"') + '"]' + tail;
+          if (countGeneratedXPathMatches(doc, xpath) > 0) {
+            return xpath;
+          }
+
+          const localTail = toSvgLocalNameXPathForBuilder(tail);
+          if (localTail !== tail) {
+            const localXPath = '//*[@id="' + anchorId.replace(/"/g, '\\"') + '"]' + localTail;
+            if (countGeneratedXPathMatches(doc, localXPath) > 0) {
+              return localXPath;
+            }
+          }
+        }
+      }
+    }
+
+    return buildRelativeXPathSegments(element);
+  }
+
+  function toSvgLocalNameXPathForBuilder(xpath) {
+    return String(xpath || '')
+      .replace(/\/(svg)(?=\/|$|\[)/gi, "/*[local-name()='svg']")
+      .replace(/\/(g)(?=\/|$|\[)/gi, "/*[local-name()='g']")
+      .replace(/\/(rect)(?=\/|$|\[)/gi, "/*[local-name()='rect']");
+  }
+
+  function countGeneratedXPathMatches(doc, xpath) {
+    const dom = root.DomSelectorResolver;
+    if (!dom || typeof dom.queryXPath !== 'function') {
+      return 0;
+    }
+
+    return dom.queryXPath(doc.documentElement || doc, xpath).length;
+  }
+
+  function findStableAnchorId(element) {
+    let current = element;
+    while (current && current.nodeType === 1) {
+      if (current.id && isStableId(current.id)) {
+        return current.id;
+      }
+
+      current = current.parentElement;
+    }
+
+    return '';
+  }
+
+  function buildRelativeTailFromAnchor(element, anchor) {
+    if (!element || !anchor || element === anchor) {
+      return '';
+    }
+
+    const segments = [];
+    let current = element;
+
+    while (current && current !== anchor && current.nodeType === 1) {
+      const tag = (current.tagName || '').toLowerCase();
+      if (tag === 'html') {
+        break;
+      }
+
+      const parent = current.parentElement;
+      if (!parent) {
+        break;
+      }
+
+      const sameTag = Array.from(parent.children).filter(function (child) {
+        return child.nodeType === 1 && (child.tagName || '').toLowerCase() === tag;
+      });
+
+      let segment = tag;
+      if (sameTag.length > 1) {
+        segment = tag + '[' + (sameTag.indexOf(current) + 1) + ']';
+      }
+
+      segments.unshift(segment);
+      current = parent;
+    }
+
+    if (current !== anchor || segments.length === 0) {
+      return '';
+    }
+
+    return '/' + segments.join('/');
+  }
+
+  function buildRelativeXPathSegments(element) {
     const segments = [];
     let current = element;
     let anchored = false;
@@ -938,7 +1170,7 @@
       }
 
       if (!anchored && current.id && isStableId(current.id)) {
-        segments.unshift('*[@id=' + escapeXPathLiteral(current.id) + ']');
+        segments.unshift('*[@id="' + current.id.replace(/"/g, '\\"') + '"]');
         anchored = true;
         current = current.parentElement;
         break;
@@ -1064,16 +1296,16 @@
     };
   }
 
-  function buildMinimalTargetCtrlWithXPath(element) {
-    const tag = (element.tagName || '').toLowerCase();
+  function buildMinimalTargetCtrlWithCssSelector(element) {
+    const tag = getElementTagNameLocal(element);
     const properties = [];
     if (tag) {
       properties.push(createSelectedProperty('tag', tag, false));
     }
 
-    const xpath = buildRelativeXPath(element);
-    if (xpath) {
-      properties.push(createSelectedProperty('xpath', xpath, false));
+    const cssSelector = buildRelativeCssSelector(element);
+    if (cssSelector) {
+      properties.push(createSelectedProperty('css-selector', cssSelector, false));
     }
 
     return {
@@ -1102,7 +1334,7 @@
       return levels;
     }
 
-    levels[levels.length - 1] = buildMinimalTargetCtrlWithXPath(element);
+    levels[levels.length - 1] = buildMinimalTargetCtrlWithCssSelector(element);
     return levels;
   }
 
