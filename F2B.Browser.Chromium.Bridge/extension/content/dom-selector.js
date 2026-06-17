@@ -198,28 +198,86 @@
     return null;
   }
 
+  function getElementTagName(element) {
+    if (!element) {
+      return '';
+    }
+
+    return String(element.localName || element.tagName || '').toLowerCase();
+  }
+
+  function getXPathContextNode(root) {
+    if (!root) {
+      return document.documentElement || document.body || document;
+    }
+
+    if (root.nodeType === 9) {
+      return root.documentElement || root.body || root;
+    }
+
+    return root;
+  }
+
+  function normalizeSearchRoot(root) {
+    if (!root) {
+      return document.documentElement || document.body || document;
+    }
+
+    if (root.nodeType === 9) {
+      return root.documentElement || root.body || root;
+    }
+
+    return root;
+  }
+
   function queryXPath(root, xpath) {
     if (!root || !xpath) {
       return [];
     }
 
     const doc = root.nodeType === 9 ? root : (root.ownerDocument || document);
-    const context = root.nodeType === 9 ? root : root;
+    const contexts = [];
+    const primary = getXPathContextNode(root);
 
-    try {
-      const snapshot = doc.evaluate(xpath, context, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-      const results = [];
-      for (let i = 0; i < snapshot.snapshotLength; i += 1) {
-        const node = snapshot.snapshotItem(i);
-        if (node && node.nodeType === 1) {
-          results.push(node);
-        }
+    contexts.push(primary);
+    if (doc && primary !== doc) {
+      contexts.push(doc);
+    }
+    if (doc && doc.documentElement && primary !== doc.documentElement) {
+      contexts.push(doc.documentElement);
+    }
+
+    for (let c = 0; c < contexts.length; c += 1) {
+      const context = contexts[c];
+      if (!context) {
+        continue;
       }
 
-      return results;
-    } catch (error) {
-      return [];
+      try {
+        const snapshot = doc.evaluate(
+          xpath,
+          context,
+          null,
+          XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+          null
+        );
+        const results = [];
+        for (let i = 0; i < snapshot.snapshotLength; i += 1) {
+          const node = snapshot.snapshotItem(i);
+          if (node && node.nodeType === 1) {
+            results.push(node);
+          }
+        }
+
+        if (results.length > 0) {
+          return results;
+        }
+      } catch (error) {
+        pageTrace('queryXPath error context=' + c + ' ' + (error.message || error));
+      }
     }
+
+    return [];
   }
 
   function queryCssSelector(root, css) {
@@ -228,18 +286,39 @@
     }
 
     try {
-      if (root.nodeType === 9) {
-        return Array.from(root.querySelectorAll(css));
+      const scope = normalizeSearchRoot(root);
+      if (scope.nodeType === 9) {
+        return Array.from(scope.querySelectorAll(css));
       }
 
-      if (typeof root.querySelectorAll === 'function') {
-        return Array.from(root.querySelectorAll(css));
+      if (typeof scope.querySelectorAll === 'function') {
+        return Array.from(scope.querySelectorAll(css));
       }
 
       return [];
     } catch (error) {
       return [];
     }
+  }
+
+  function matchLocatorResult(element, level) {
+    const selected = getSelectedProperties(level);
+    for (let i = 0; i < selected.length; i += 1) {
+      const property = selected[i];
+      if (property.name === 'xpath' || property.name === 'css-selector') {
+        continue;
+      }
+
+      if (property.name === 'role' || property.name === 'ControlType') {
+        continue;
+      }
+
+      if (!matchProperty(element, property)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   function matchLevelProperties(element, level, options) {
@@ -293,7 +372,7 @@
     const matched = [];
 
     for (let i = 0; i < candidates.length && matched.length < limit; i += 1) {
-      if (matchLevelProperties(candidates[i], level, { skipLocators: true })) {
+      if (matchLocatorResult(candidates[i], level)) {
         matched.push(candidates[i]);
       }
     }
@@ -400,7 +479,7 @@
           : (` ${element.className || ''} `).includes(` ${expected} `);
       case 'TagName':
       case 'tag':
-        return compare(element.tagName.toLowerCase());
+        return compare(getElementTagName(element));
       case 'Type':
       case 'type':
         return compare((element.getAttribute('type') || '').toLowerCase());
@@ -516,7 +595,7 @@
       return [];
     }
 
-    let current = [root || document];
+    let current = [normalizeSearchRoot(root || document)];
     for (let i = 0; i < enabledLevels.length; i += 1) {
       const level = enabledLevels[i];
       const next = [];
@@ -525,8 +604,7 @@
       if (locator) {
         for (let p = 0; p < current.length; p += 1) {
           const parent = current[p];
-          const searchRoot = parent.nodeType === 9 ? parent : parent;
-          const matches = findByLocator(searchRoot, level, maxResults);
+          const matches = findByLocator(parent, level, maxResults);
           for (let m = 0; m < matches.length; m += 1) {
             next.push(matches[m]);
             if (next.length >= (maxResults || Number.MAX_SAFE_INTEGER)) {

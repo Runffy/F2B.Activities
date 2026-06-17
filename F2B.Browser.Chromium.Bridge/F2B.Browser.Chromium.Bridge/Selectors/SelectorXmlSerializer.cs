@@ -167,7 +167,8 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
 
             if (string.Equals(level.TagName, "ctrl", StringComparison.OrdinalIgnoreCase) &&
                 !attrs.Any(item => item.StartsWith("role=", StringComparison.OrdinalIgnoreCase) ||
-                                   item.StartsWith("role-re=", StringComparison.OrdinalIgnoreCase)))
+                                   item.StartsWith("role-re=", StringComparison.OrdinalIgnoreCase)) &&
+                !LevelUsesLocator(level))
             {
                 var tag = level.Properties.FirstOrDefault(item =>
                     string.Equals(item.Name, "tag", StringComparison.OrdinalIgnoreCase) ||
@@ -247,6 +248,17 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
                 return "list";
 
             return "pane";
+        }
+
+        private static bool LevelUsesLocator(SelectorLevel level)
+        {
+            if (level?.Properties == null)
+                return false;
+
+            return level.Properties.Any(property =>
+                property.IsSelected &&
+                (string.Equals(property.Name, "xpath", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(property.Name, "css-selector", StringComparison.OrdinalIgnoreCase)));
         }
 
         private static string EscapeValue(string value)
