@@ -170,11 +170,15 @@
       return null;
     }
 
-    // Keep pick lightweight; heavy selector build runs in inspector.buildSelector.
+    const tabTitle = document.title;
+    const tabUrl = location.href;
+
     return {
       segments: builder.getSegmentsFromElement(target),
-      tabTitle: document.title,
-      tabUrl: location.href
+      levels: builder.buildSelectorLevelsFromElement(target, tabTitle, tabUrl),
+      displayName: builder.buildDisplayName(target),
+      tabTitle: tabTitle,
+      tabUrl: tabUrl
     };
   }
 

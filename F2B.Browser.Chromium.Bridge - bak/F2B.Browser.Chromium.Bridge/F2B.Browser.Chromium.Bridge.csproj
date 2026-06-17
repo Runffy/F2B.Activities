@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <RootNamespace>F2B.Browser.Chromium.Bridge</RootNamespace>
+    <AssemblyName>F2B.Browser.Chromium.Bridge</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Activities" />
+    <Reference Include="System.Activities.Presentation" />
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\F2B.OpenRpa.Design\SelectorDesignerSupport.cs" Link="OpenRpa.Design\SelectorDesignerSupport.cs" />
+    <Compile Include="..\..\F2B.OpenRpa.Design\SelectorXmlEditorDialog.cs" Link="OpenRpa.Design\SelectorXmlEditorDialog.cs" />
+  </ItemGroup>
+</Project>
