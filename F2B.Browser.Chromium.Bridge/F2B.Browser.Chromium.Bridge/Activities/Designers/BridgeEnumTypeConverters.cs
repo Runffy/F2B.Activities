@@ -47,6 +47,41 @@ namespace F2B.Browser.Chromium.Bridge
         }
     }
 
+    public sealed class BridgeClickMethodTypeConverter : EnumConverter
+    {
+        public BridgeClickMethodTypeConverter() : base(typeof(BridgeClickMethod))
+        {
+        }
+
+        public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
+        {
+            if (destinationType == typeof(string) && value is BridgeClickMethod item)
+            {
+                switch (item)
+                {
+                    case BridgeClickMethod.Javascript: return "Javascript";
+                    case BridgeClickMethod.ClickEvent: return "ClickEvent";
+                }
+            }
+
+            return base.ConvertTo(context, culture, value, destinationType);
+        }
+
+        public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
+        {
+            if (value is string text)
+            {
+                switch (text.Trim())
+                {
+                    case "Javascript": return BridgeClickMethod.Javascript;
+                    case "ClickEvent": return BridgeClickMethod.ClickEvent;
+                }
+            }
+
+            return base.ConvertFrom(context, culture, value);
+        }
+    }
+
     public sealed class BridgeSelectValTypeConverter : EnumConverter
     {
         public BridgeSelectValTypeConverter() : base(typeof(BridgeSelectValType))

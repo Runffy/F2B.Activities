@@ -11,6 +11,13 @@ namespace F2B.Browser.Chromium.Bridge
     {
         public DoubleClickActivity() : base("Double Click") { }
 
+        [DisplayName("Click Method")]
+        [Description("Javascript uses element.click() or dblclick dispatch. ClickEvent dispatches mouse events at the element center.")]
+        [Category("Input.D")]
+        [DefaultValue(BridgeClickMethod.Javascript)]
+        [TypeConverter("F2B.Browser.Chromium.Bridge.BridgeClickMethodTypeConverter, F2B.Browser.Chromium.Bridge")]
+        public BridgeClickMethod ClickMethod { get; set; } = BridgeClickMethod.Javascript;
+
         [DisplayName("Timeout (ms)")]
         [Category("Input.Z")]
         [DefaultValue(15000)]
@@ -22,7 +29,7 @@ namespace F2B.Browser.Chromium.Bridge
             var target = ResolveTargetElement(context, budget.RemainingMs);
             if (budget.RemainingMs <= 0)
                 throw new TimeoutException("DoubleClick timeout before operation.");
-            target.DoubleClick(timeoutMs: budget.RemainingMs);
+            target.DoubleClick(clickMethod: ClickMethod, timeoutMs: budget.RemainingMs);
         }
     }
 }

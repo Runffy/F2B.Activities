@@ -202,9 +202,26 @@
     return {
       name: name,
       value: value || '',
-      isSelected: !!isSelected && !!value,
+      isSelected: !!isSelected && !!value && isCompactPropertyValue(value),
       isRegex: !!isRegex
     };
+  }
+
+  function isCompactPropertyValue(value) {
+    if (value == null) {
+      return false;
+    }
+
+    const text = String(value);
+    if (!text) {
+      return false;
+    }
+
+    if (/[\r\n]/.test(text)) {
+      return false;
+    }
+
+    return text.length <= 20;
   }
 
   function findProperty(level, name) {
@@ -219,7 +236,7 @@
 
   function selectProperty(level, name) {
     const prop = findProperty(level, name);
-    if (prop) {
+    if (prop && isCompactPropertyValue(prop.value)) {
       prop.isSelected = true;
     }
 
@@ -348,7 +365,7 @@
     ];
     for (let i = 0; i < preferred.length; i += 1) {
       const prop = findProperty(level, preferred[i]);
-      if (prop) {
+      if (prop && isCompactPropertyValue(prop.value)) {
         prop.isSelected = true;
         return;
       }
@@ -383,7 +400,7 @@
       const prop = level.properties.find(function (item) {
         return item.name === preferred[i] && item.value;
       });
-      if (prop) {
+      if (prop && isCompactPropertyValue(prop.value)) {
         prop.isSelected = true;
         return;
       }
@@ -419,7 +436,9 @@
     ];
     const candidates = level.properties
       .filter(function (prop) {
-        return prop.value && (priority.indexOf(prop.name) >= 0 || prop.name.indexOf('data-') === 0);
+        return prop.value &&
+          isCompactPropertyValue(prop.value) &&
+          (priority.indexOf(prop.name) >= 0 || prop.name.indexOf('data-') === 0);
       })
       .sort(function (a, b) {
         const aIndex = priority.indexOf(a.name);
@@ -460,7 +479,7 @@
     const fallbackOrder = ['text', 'class', 'type', 'placeholder', 'name'];
     for (let i = 0; i < fallbackOrder.length; i += 1) {
       const prop = findProperty(level, fallbackOrder[i]);
-      if (!prop) {
+      if (!prop || !isCompactPropertyValue(prop.value)) {
         continue;
       }
 

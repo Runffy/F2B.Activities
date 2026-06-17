@@ -9,6 +9,35 @@ namespace F2B.Browser.Chromium.Inspector.Services
     public static class InspectorSelectorSerializer
     {
         private const string RegexSuffix = "-re";
+        public const int CompactPropertyMaxLength = 20;
+
+        public static bool IsCompactPropertyValue(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return false;
+
+            if (value.IndexOf('\n') >= 0 || value.IndexOf('\r') >= 0)
+                return false;
+
+            return value.Length <= CompactPropertyMaxLength;
+        }
+
+        public static string FormatDisplayValue(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+
+            var singleLine = value
+                .Replace("\r\n", " ")
+                .Replace("\n", " ")
+                .Replace("\r", " ")
+                .Trim();
+
+            if (singleLine.Length > CompactPropertyMaxLength)
+                return singleLine.Substring(0, CompactPropertyMaxLength) + "...";
+
+            return singleLine;
+        }
 
         public static string Serialize(IEnumerable<InspectorSelectorLevel> levels)
         {
@@ -22,7 +51,7 @@ namespace F2B.Browser.Chromium.Inspector.Services
 
         public static string SerializeLevelTag(InspectorSelectorLevel level)
         {
-            return BuildLevelTag(level, selectedOnly: true);
+            return BuildLevelTag(level, selectedOnly: true, truncateForDisplay: false);
         }
 
         /// <summary>
@@ -30,10 +59,10 @@ namespace F2B.Browser.Chromium.Inspector.Services
         /// </summary>
         public static string SerializeLevelDisplayTag(InspectorSelectorLevel level)
         {
-            return BuildLevelTag(level, selectedOnly: false);
+            return BuildLevelTag(level, selectedOnly: false, truncateForDisplay: true);
         }
 
-        private static string BuildLevelTag(InspectorSelectorLevel level, bool selectedOnly)
+        private static string BuildLevelTag(InspectorSelectorLevel level, bool selectedOnly, bool truncateForDisplay)
         {
             if (level == null)
                 return string.Empty;
@@ -41,7 +70,7 @@ namespace F2B.Browser.Chromium.Inspector.Services
             var attrs = new List<string>();
             foreach (var property in level.Properties.Where(item => item.IsSelected && !string.IsNullOrEmpty(item.Value)))
             {
-                AppendAttribute(level, property, attrs);
+                AppendAttribute(level, property, attrs, truncateForDisplay);
             }
 
             if (selectedOnly &&
@@ -62,7 +91,7 @@ namespace F2B.Browser.Chromium.Inspector.Services
                     if (property == null)
                         continue;
 
-                    AppendAttribute(level, property, attrs);
+                    AppendAttribute(level, property, attrs, truncateForDisplay);
                     if (attrs.Count >= 2)
                         break;
                 }
@@ -71,7 +100,11 @@ namespace F2B.Browser.Chromium.Inspector.Services
             return "<" + level.TagName + (attrs.Count == 0 ? " />" : " " + string.Join(" ", attrs) + " />");
         }
 
-        private static void AppendAttribute(InspectorSelectorLevel level, InspectorPropertyItem property, IList<string> attrs)
+        private static void AppendAttribute(
+            InspectorSelectorLevel level,
+            InspectorPropertyItem property,
+            IList<string> attrs,
+            bool truncateForDisplay)
         {
             var attrName = ToHtmlAttributeName(level.TagName, property.Name);
             if (string.IsNullOrEmpty(attrName))
@@ -80,7 +113,16 @@ namespace F2B.Browser.Chromium.Inspector.Services
             if (property.IsRegex && property.SupportsRegex)
                 attrName += RegexSuffix;
 
-            attrs.Add(attrName + "='" + EscapeValue(property.Value) + "'");
+            var value = EscapeValue(truncateForDisplay
+                ? FormatDisplayValue(property.Value)
+                : property.Value);
+
+            attrs.Add(attrName + "='" + value + "'");
+        }
+
+        private static void AppendAttribute(InspectorSelectorLevel level, InspectorPropertyItem property, IList<string> attrs)
+        {
+            AppendAttribute(level, property, attrs, truncateForDisplay: false);
         }
 
         private static void EnsureMinimumCtrlAttributes(InspectorSelectorLevel level, IList<string> attrs)

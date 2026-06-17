@@ -12,6 +12,7 @@ using F2B.Browser.Chromium.Bridge;
 using F2B.Browser.Chromium.Bridge.Selectors;
 using F2B.Browser.Chromium.Inspector.Helpers;
 using F2B.Browser.Chromium.Inspector.Models;
+using F2B.Browser.Chromium.Inspector.Overlays;
 using F2B.Browser.Chromium.Inspector.Services;
 
 namespace F2B.Browser.Chromium.Inspector.ViewModels
@@ -50,7 +51,9 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
         private bool _isHighlighting;
         private bool _isValidating;
         private bool _isTargetElementError;
+        private bool _suppressTargetElementStatusMessage;
         private bool _suppressSelectorUpdate;
+        private AnalyzingOverlay _analyzingOverlay;
 
         public MainViewModel()
         {
@@ -203,12 +206,7 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             }
 
             if (IsBridgeDisconnectMessage(TargetElementDisplay))
-            {
                 SetTargetElementError(false);
-                TargetElementDisplay = _hasCapturedElement
-                    ? "Bridge reconnected. Click Validate to check the selector."
-                    : string.Empty;
-            }
 
             UpdateConnectionStatusMessage();
         }
@@ -256,38 +254,47 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
                     if (!string.IsNullOrEmpty(pick.InvalidatedReason))
                     {
                         SetTargetElementError(true);
-                        TargetElementDisplay = FormatIndicateInvalidated(pick.InvalidatedReason);
+                        SetTargetElementStatusMessage(FormatIndicateInvalidated(pick.InvalidatedReason));
                     }
                     else
                     {
                         SetTargetElementError(false);
-                        TargetElementDisplay = pick.RestrictedUrl
+                        SetTargetElementStatusMessage(pick.RestrictedUrl
                             ? "Indicate skipped: the active tab is a restricted Chrome page (for example chrome://extensions). Switch to a normal http/https page and try again."
-                            : "Pick cancelled.";
+                            : "Pick cancelled.");
                     }
 
                     return;
                 }
 
+                ShowAnalyzingOverlay();
+                _suppressTargetElementStatusMessage = true;
+
                 if (pick.Levels != null && pick.Levels.Count > 0)
                 {
-                    ApplyCapture(pick.Levels, pick.Segments, pick.DisplayName);
-                    return;
+                    await ApplyCaptureAfterIndicateAsync(pick.Levels, pick.Segments, pick.DisplayName);
                 }
-
-                var build = await Task.Run(() => tab.InspectorBuildSelector(pick.Segments));
-                ApplyCapture(build.Levels, build.Segments, build.DisplayName);
+                else
+                {
+                    var build = await Task.Run(() => tab.InspectorBuildSelector(pick.Segments));
+                    await ApplyCaptureAfterIndicateAsync(build.Levels, build.Segments, build.DisplayName);
+                }
             }
             catch (Exception ex)
             {
-                TargetElementDisplay = FormatIndicateError(ex);
+                _suppressTargetElementStatusMessage = false;
+                SetTargetElementError(true);
+                SetTargetElementStatusMessage(FormatIndicateError(ex));
             }
             finally
             {
+                _suppressTargetElementStatusMessage = false;
+
                 if (session != null)
                     session.TargetTabRebound -= OnIndicateTargetTabRebound;
 
                 session?.Dispose();
+                HideAnalyzingOverlay();
 
                 if (window != null && _dispatcher != null)
                 {
@@ -302,6 +309,38 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             }
         }
 
+        private void ShowAnalyzingOverlay()
+        {
+            if (_dispatcher == null)
+                return;
+
+            _dispatcher.Invoke(() =>
+            {
+                _analyzingOverlay?.Close();
+                _analyzingOverlay = new AnalyzingOverlay();
+                _analyzingOverlay.ShowMessage("正在分析中...");
+            });
+        }
+
+        private void HideAnalyzingOverlay()
+        {
+            if (_dispatcher == null)
+                return;
+
+            _dispatcher.Invoke(() =>
+            {
+                _analyzingOverlay?.Close();
+                _analyzingOverlay = null;
+            });
+        }
+
+        private async Task ApplyCaptureAfterIndicateAsync(IList<SelectorLevel> levels, object[] segments, string displayName)
+        {
+            ApplyCapture(levels, segments, displayName, runPostCaptureValidation: false);
+            await Task.Delay(PostCaptureValidateDelayMs).ConfigureAwait(true);
+            await ValidateSelectorAsync().ConfigureAwait(true);
+        }
+
         private void OnIndicateTargetTabRebound(BwTab tab)
         {
             if (tab == null || _dispatcher == null)
@@ -313,11 +352,11 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
                 _dispatcher.Invoke(() => _targetTab = tab);
         }
 
-        private void ApplyCapture(IList<SelectorLevel> levels, object[] segments, string displayName)
+        private void ApplyCapture(IList<SelectorLevel> levels, object[] segments, string displayName, bool runPostCaptureValidation = true)
         {
             SetTargetElementError(false);
             _hasCapturedElement = levels != null && levels.Count > 0;
-            TargetElementDisplay = displayName ?? string.Empty;
+            SetCapturedElementDisplayName(displayName ?? string.Empty);
 
             SelectorLevels.Clear();
             SelectedItemProperties.Clear();
@@ -330,6 +369,9 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
 
             SelectedSelectorLevel = SelectorLevels.LastOrDefault();
             UpdateSelectorXmlFromLevels();
+
+            if (!runPostCaptureValidation)
+                return;
 
             _postCaptureCts?.Cancel();
             _postCaptureCts?.Dispose();
@@ -360,7 +402,6 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             {
                 ValidationState = ValidationState.Invalid;
                 SetTargetElementError(true);
-                TargetElementDisplay = "Validate skipped: Bridge extension is offline. Click Refresh Connection.";
                 return;
             }
 
@@ -371,7 +412,7 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
                 if (string.IsNullOrWhiteSpace(SelectorXmlSerializer.ToOperationXml(scope)))
                 {
                     ValidationState = ValidationState.Invalid;
-                    TargetElementDisplay = "Validate failed: no enabled selector levels.";
+                    SetTargetElementError(true);
                     return;
                 }
 
@@ -381,7 +422,7 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             catch (Exception ex)
             {
                 ValidationState = ValidationState.Invalid;
-                TargetElementDisplay = FormatValidateException(ex);
+                SetTargetElementError(true);
                 if (IsBridgeDisconnectError(ex))
                     UpdateConnectionStatusMessage();
             }
@@ -399,10 +440,7 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             if (result.Count <= 0)
             {
                 ValidationState = ValidationState.Invalid;
-                if (IsBridgeDisconnectMessage(TargetElementDisplay))
-                    return;
-
-                TargetElementDisplay = FormatValidateFailure(result);
+                SetTargetElementError(true);
                 BridgeFileLog.Write("[INSPECTOR-VALIDATE] failed attempts=" + result.Attempts +
                                     " error=" + (result.LastError ?? string.Empty));
                 return;
@@ -417,16 +455,7 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             }
 
             ValidationState = ValidationState.Ambiguous;
-            TargetElementDisplay = "Validate ambiguous: " + result.Count + " matches.";
-        }
-
-        private static string FormatValidateFailure(SelectorResolveResult result)
-        {
-            var message = "Validate failed: 0 matches within " + SelectorResolveRetry.DefaultTimeoutMilliseconds + "ms.";
-            if (!string.IsNullOrWhiteSpace(result?.LastError))
-                message += " " + result.LastError;
-
-            return message;
+            SetTargetElementError(true);
         }
 
         private async Task<SelectorResolveResult> CountSelectorMatchesWithRetryAsync()
@@ -449,15 +478,6 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             _targetTab = tab;
             if (tab != null)
                 await Task.Run(() => tab.Activate());
-        }
-
-        private static string FormatValidateException(Exception ex)
-        {
-            if (!IsBridgeDisconnectError(ex))
-                return "Validate failed: " + ex.Message;
-
-            return "Validate failed: Bridge connection lost (OpenRPA may have exited). " +
-                   "Restart OpenRPA, click Refresh Connection, then Validate again.";
         }
 
         private static bool IsBridgeDisconnectMessage(string message)
@@ -495,11 +515,7 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
                 var result = await CountSelectorMatchesWithRetryAsync().ConfigureAwait(true);
                 if (result.Count != 1)
                 {
-                    if (result.Count == 0)
-                        TargetElementDisplay = "Highlight failed: element not found within 5 seconds.";
-                    else
-                        TargetElementDisplay = "Highlight failed: selector matched multiple elements.";
-
+                    SetTargetElementError(true);
                     return;
                 }
 
@@ -509,7 +525,8 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             }
             catch (Exception ex)
             {
-                TargetElementDisplay = "Highlight failed: " + ex.Message;
+                SetTargetElementError(true);
+                BridgeFileLog.Write("[INSPECTOR-HIGHLIGHT] " + ex.Message);
             }
             finally
             {
@@ -556,7 +573,22 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
 
         public void ReportRuntimeError(Exception exception)
         {
-            TargetElementDisplay = FormatIndicateError(exception);
+            SetTargetElementError(true);
+            SetTargetElementStatusMessage(FormatIndicateError(exception));
+        }
+
+        private void SetCapturedElementDisplayName(string displayName)
+        {
+            SetTargetElementError(false);
+            TargetElementDisplay = displayName ?? string.Empty;
+        }
+
+        private void SetTargetElementStatusMessage(string message)
+        {
+            if (_suppressTargetElementStatusMessage)
+                return;
+
+            TargetElementDisplay = message ?? string.Empty;
         }
 
         private static string FormatIndicateInvalidated(string reason)

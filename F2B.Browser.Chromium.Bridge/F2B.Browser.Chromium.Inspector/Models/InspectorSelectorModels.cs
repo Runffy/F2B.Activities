@@ -64,7 +64,7 @@ namespace F2B.Browser.Chromium.Inspector.Models
             {
                 Name = source.Name,
                 Value = source.Value,
-                IsSelected = source.IsSelected,
+                IsSelected = source.IsSelected && InspectorSelectorSerializer.IsCompactPropertyValue(source.Value),
                 IsRegex = source.IsRegex,
                 CanToggle = true
             };

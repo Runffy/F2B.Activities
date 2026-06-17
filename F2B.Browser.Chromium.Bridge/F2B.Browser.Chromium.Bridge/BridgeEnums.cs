@@ -13,6 +13,12 @@ namespace F2B.Browser.Chromium.Bridge
         ElementAppear
     }
 
+    public enum BridgeClickMethod
+    {
+        Javascript,
+        ClickEvent
+    }
+
     public enum BridgeFindElementWaitState
     {
         None,

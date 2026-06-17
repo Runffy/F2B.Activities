@@ -1151,6 +1151,7 @@ namespace F2B.Browser.Chromium.Bridge
             BridgeClickValidateMode validate = BridgeClickValidateMode.None,
             string validationSelectorXml = null,
             int waitBeforeValidate = 1000,
+            BridgeClickMethod clickMethod = BridgeClickMethod.Javascript,
             int timeoutMs = 15000)
         {
             Invoke("element.click", WithSelector(new Dictionary<string, object>
@@ -1163,6 +1164,7 @@ namespace F2B.Browser.Chromium.Bridge
                 { "validate", validate.ToString() },
                 { "validationSelectorLevels", BuildValidationLevels(validationSelectorXml) },
                 { "waitBeforeValidate", waitBeforeValidate },
+                { "clickMethod", clickMethod.ToString() },
                 { "timeout", timeoutMs }
             }), timeoutMs);
         }
@@ -1176,6 +1178,7 @@ namespace F2B.Browser.Chromium.Bridge
             BridgeClickValidateMode validate = BridgeClickValidateMode.None,
             string validationSelectorXml = null,
             int waitBeforeValidate = 1000,
+            BridgeClickMethod clickMethod = BridgeClickMethod.Javascript,
             int timeoutMs = 15000)
         {
             Invoke("element.doubleClick", WithSelector(new Dictionary<string, object>
@@ -1188,25 +1191,28 @@ namespace F2B.Browser.Chromium.Bridge
                 { "validate", validate.ToString() },
                 { "validationSelectorLevels", BuildValidationLevels(validationSelectorXml) },
                 { "waitBeforeValidate", waitBeforeValidate },
+                { "clickMethod", clickMethod.ToString() },
                 { "timeout", timeoutMs }
             }), timeoutMs);
         }
 
-        public BwTab ClickForNewTab(int timeoutMs = 15000)
+        public BwTab ClickForNewTab(BridgeClickMethod clickMethod = BridgeClickMethod.Javascript, int timeoutMs = 15000)
         {
             var response = Invoke("element.clickForNewTab", WithSelector(new Dictionary<string, object>
             {
+                { "clickMethod", clickMethod.ToString() },
                 { "timeout", timeoutMs }
             }), timeoutMs);
 
             return new BwTab(_rpc, _instanceId, BridgeJson.GetInt(response.Data, "tabId"));
         }
 
-        public BwDownloadInfo ClickForDownload(string saveAsPath, int timeoutMs = 60000)
+        public BwDownloadInfo ClickForDownload(string saveAsPath, BridgeClickMethod clickMethod = BridgeClickMethod.Javascript, int timeoutMs = 60000)
         {
             var response = Invoke("element.clickForDownload", WithSelector(new Dictionary<string, object>
             {
                 { "saveAsPath", saveAsPath },
+                { "clickMethod", clickMethod.ToString() },
                 { "timeout", timeoutMs }
             }), timeoutMs);
 

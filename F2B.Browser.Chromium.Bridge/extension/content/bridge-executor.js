@@ -24,6 +24,93 @@
     };
   }
 
+  function usesClickEventMethod(clickMethod) {
+    return String(clickMethod || 'Javascript').toLowerCase() === 'clickevent';
+  }
+
+  function getElementClickPoint(element) {
+    const rect = element.getBoundingClientRect();
+    return {
+      clientX: rect.left + Math.max(rect.width, 1) / 2,
+      clientY: rect.top + Math.max(rect.height, 1) / 2
+    };
+  }
+
+  function isSameClickTarget(element, candidate) {
+    return !!candidate && (element === candidate || element.contains(candidate) || candidate.contains(element));
+  }
+
+  function createMouseEventInit(element, type) {
+    const point = getElementClickPoint(element);
+    return {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: point.clientX,
+      clientY: point.clientY,
+      button: 0,
+      buttons: type === 'mouseup' || type === 'pointerup' ? 0 : 1,
+      detail: type === 'dblclick' ? 2 : 1
+    };
+  }
+
+  function dispatchPointerClickSequence(element) {
+    const sequence = ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'];
+    for (const type of sequence) {
+      const Ctor = typeof PointerEvent !== 'undefined' && type.startsWith('pointer')
+        ? PointerEvent
+        : MouseEvent;
+      element.dispatchEvent(new Ctor(type, createMouseEventInit(element, type)));
+    }
+  }
+
+  function resolveClickEventTarget(element) {
+    const point = getElementClickPoint(element);
+    const hit = document.elementFromPoint(point.clientX, point.clientY);
+    return isSameClickTarget(element, hit) ? hit : element;
+  }
+
+  function performJavascriptClick(element) {
+    if (typeof element.click !== 'function') {
+      throw new Error('element.click is not a function. Set ClickMethod to ClickEvent for SVG and other non-HTML elements.');
+    }
+
+    element.click();
+  }
+
+  function performJavascriptDoubleClick(element) {
+    element.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+  }
+
+  function performClickEventClick(element) {
+    dispatchPointerClickSequence(resolveClickEventTarget(element));
+  }
+
+  function performClickEventDoubleClick(element) {
+    const target = resolveClickEventTarget(element);
+    dispatchPointerClickSequence(target);
+    dispatchPointerClickSequence(target);
+    target.dispatchEvent(new MouseEvent('dblclick', createMouseEventInit(target, 'dblclick')));
+  }
+
+  function performElementClick(element, clickMethod) {
+    if (usesClickEventMethod(clickMethod)) {
+      performClickEventClick(element);
+      return;
+    }
+
+    performJavascriptClick(element);
+  }
+
+  function performElementDoubleClick(element, clickMethod) {
+    if (usesClickEventMethod(clickMethod)) {
+      performClickEventDoubleClick(element);
+      return;
+    }
+
+    performJavascriptDoubleClick(element);
+  }
+
   async function resolveTarget(message) {
     pageTrace('resolveTarget start timeout=' + (message.findTimeout || message.timeout || 5000));
 
@@ -92,9 +179,9 @@
         const interval = message.interval || 0;
         for (let i = 0; i < count; i += 1) {
           if (message.action === 'element.doubleClick') {
-            element.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+            performElementDoubleClick(element, message.clickMethod);
           } else {
-            element.click();
+            performElementClick(element, message.clickMethod);
           }
 
           if (interval > 0 && i < count - 1) {

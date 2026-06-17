@@ -89,17 +89,22 @@
                         <ListBox ItemsSource="{Binding SelectorLevels}"
                                  SelectedItem="{Binding SelectedSelectorLevel, Mode=TwoWay}"
                                  BorderThickness="0"
+                                 ScrollViewer.CanContentScroll="False"
                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                                 ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 ScrollViewer.PanningMode="Both"
+                                 VirtualizingPanel.IsVirtualizing="True"
+                                 VirtualizingPanel.ScrollUnit="Pixel">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
-                                    <Setter Property="HorizontalContentAlignment" Value="Left" />
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                     <Setter Property="Padding" Value="2,1" />
+                                    <Setter Property="MaxHeight" Value="28" />
                                 </Style>
                             </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="{x:Type models:InspectorSelectorLevel}">
-                                    <DockPanel LastChildFill="False">
+                                    <DockPanel LastChildFill="True">
                                         <CheckBox DockPanel.Dock="Left"
                                                   IsChecked="{Binding IsEnabled, Mode=TwoWay}"
                                                   IsEnabled="{Binding CanDisable}"

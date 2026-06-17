@@ -16,6 +16,13 @@ namespace F2B.Browser.Chromium.Bridge
         [Category("Input.F")]
         public InArgument<string> SaveAsPath { get; set; }
 
+        [DisplayName("Click Method")]
+        [Description("Javascript uses element.click(). ClickEvent dispatches mouse events at the element center.")]
+        [Category("Input.D")]
+        [DefaultValue(BridgeClickMethod.Javascript)]
+        [TypeConverter("F2B.Browser.Chromium.Bridge.BridgeClickMethodTypeConverter, F2B.Browser.Chromium.Bridge")]
+        public BridgeClickMethod ClickMethod { get; set; } = BridgeClickMethod.Javascript;
+
         [DisplayName("Timeout (ms)")]
         [Category("Input.Z")]
         [DefaultValue(60000)]
@@ -31,7 +38,7 @@ namespace F2B.Browser.Chromium.Bridge
             var target = ResolveTargetElement(context, budget.RemainingMs);
             if (budget.RemainingMs <= 0)
                 throw new TimeoutException("ClickForDownload timeout before operation.");
-            var download = target.ClickForDownload(SaveAsPath.Get(context), budget.RemainingMs);
+            var download = target.ClickForDownload(SaveAsPath.Get(context), clickMethod: ClickMethod, timeoutMs: budget.RemainingMs);
             Download?.Set(context, download);
         }
     }

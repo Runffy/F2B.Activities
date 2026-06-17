@@ -13,6 +13,13 @@ namespace F2B.Browser.Chromium.Bridge
         {
         }
 
+        [DisplayName("Click Method")]
+        [Description("Javascript uses element.click(). ClickEvent dispatches mouse events at the element center.")]
+        [Category("Input.D")]
+        [DefaultValue(BridgeClickMethod.Javascript)]
+        [TypeConverter("F2B.Browser.Chromium.Bridge.BridgeClickMethodTypeConverter, F2B.Browser.Chromium.Bridge")]
+        public BridgeClickMethod ClickMethod { get; set; } = BridgeClickMethod.Javascript;
+
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element and click.")]
         [Category("Input.Z")]
@@ -27,7 +34,7 @@ namespace F2B.Browser.Chromium.Bridge
             if (budget.RemainingMs <= 0)
                 throw new TimeoutException("Click timeout before operation.");
 
-            target.Click(timeoutMs: budget.RemainingMs);
+            target.Click(clickMethod: ClickMethod, timeoutMs: budget.RemainingMs);
         }
     }
 }
