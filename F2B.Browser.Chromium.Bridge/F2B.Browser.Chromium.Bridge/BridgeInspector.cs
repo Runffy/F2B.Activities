@@ -38,6 +38,8 @@ namespace F2B.Browser.Chromium.Bridge
     {
         public IList<SelectorLevel> Levels { get; set; }
 
+        public IList<SelectorLevel> MinimalLevels { get; set; }
+
         public object[] Segments { get; set; }
 
         public string DisplayName { get; set; }

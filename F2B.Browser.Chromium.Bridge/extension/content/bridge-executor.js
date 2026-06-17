@@ -585,16 +585,12 @@
 
         const tabTitle = message.tabTitle || document.title;
         const tabUrl = message.tabUrl || location.href;
-        const optimize = message.optimize === true;
-        const levels = builder.buildSelectorLevelsFromElement(
-          element,
-          tabTitle,
-          tabUrl,
-          { optimize: optimize }
-        );
+        const fullLevels = builder.buildAutoSelectorLevelsFromElement(element, tabTitle, tabUrl);
+        const minimalLevels = builder.buildMinimalSelectorLevelsFromElement(element, tabTitle, tabUrl);
 
         return {
-          levels: levels,
+          levels: fullLevels,
+          minimalLevels: minimalLevels,
           segments: builder.getSegmentsFromElement(element),
           displayName: builder.buildDisplayName(element)
         };

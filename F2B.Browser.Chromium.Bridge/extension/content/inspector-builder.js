@@ -81,7 +81,7 @@
       return tag;
     }
 
-    const text = (element.textContent || '').trim();
+    const text = getDirectElementText(element);
     if (text.length > 120) {
       return text.substring(0, 120) + '...';
     }
@@ -252,32 +252,34 @@
     return escapeRegex(value.substring(0, 20)) + '.*';
   }
 
-  function getElementTextForSelector(element) {
-    if (!element || !element.getAttribute) {
+  function getDirectElementText(element) {
+    if (!element || !element.childNodes) {
       return '';
     }
 
-    const ariaLabel = element.getAttribute('aria-label');
-    if (ariaLabel && ariaLabel.trim()) {
-      return ariaLabel.trim();
+    let text = '';
+    for (let i = 0; i < element.childNodes.length; i += 1) {
+      const node = element.childNodes[i];
+      if (node.nodeType === 3) {
+        text += node.textContent || '';
+      }
     }
 
-    const title = element.getAttribute('title');
-    if (title && title.trim()) {
-      return title.trim();
-    }
-
-    const placeholder = element.getAttribute('placeholder');
-    if (placeholder && placeholder.trim()) {
-      return placeholder.trim();
-    }
-
-    const text = (element.textContent || '').trim();
+    text = text.trim();
     if (text.length > 500) {
       return text.substring(0, 500);
     }
 
     return text;
+  }
+
+  function getElementTextForSelector(element) {
+    if (!element) {
+      return '';
+    }
+
+    // Only direct text nodes on this element; exclude text from child elements.
+    return getDirectElementText(element);
   }
 
   function isCompactPropertyValue(value) {
@@ -687,32 +689,107 @@
     }
   }
 
-  function populateAutoFrmLevel(level, element) {
+  function findProperties(level, name) {
+    if (!level || !level.properties) {
+      return [];
+    }
+
+    return level.properties.filter(function (item) {
+      return item.name === name && item.value;
+    });
+  }
+
+  function hasProperty(level, name) {
+    return findProperty(level, name) != null;
+  }
+
+  function populateAllElementAttributes(level, element) {
+    if (!element || !element.attributes) {
+      return;
+    }
+
+    for (let i = 0; i < element.attributes.length; i += 1) {
+      const attr = element.attributes[i];
+      if (!attr.value) {
+        continue;
+      }
+
+      if (hasProperty(level, attr.name)) {
+        continue;
+      }
+
+      level.properties.push(createProperty(
+        attr.name,
+        attr.value,
+        false,
+        isRegexFriendlyAttr(attr.name)
+      ));
+    }
+  }
+
+  function ensureDerivedCtrlProperties(level, element, includeText) {
     if (!element) {
       return;
     }
 
-    const name = element.getAttribute('name');
-    const id = element.id || element.getAttribute('id');
+    const tag = (element.tagName || '').toLowerCase();
+    if (tag && !hasProperty(level, 'tag')) {
+      level.properties.push(createProperty('tag', tag, false, false));
+    }
+
     const index = getIndexInParent(element);
-
-    if (name) {
-      level.properties.push(createProperty('name', name, false, false));
-    }
-
-    if (id) {
-      level.properties.push(createProperty('id', id, false, false));
-    }
-
-    if (index >= 0) {
+    if (index >= 0 && !hasProperty(level, 'idx')) {
       level.properties.push(createProperty('idx', String(index), false, false));
     }
 
-    if (name) {
-      selectPropertyByName(level, 'name', true);
-    } else if (id) {
-      selectPropertyByName(level, 'id', true);
-    } else if (index >= 0) {
+    if (includeText) {
+      const text = getElementTextForSelector(element);
+      if (text && !hasProperty(level, 'text')) {
+        level.properties.push(createProperty('text', text, false, true));
+      }
+    }
+  }
+
+  function applyAutoCtrlSelections(level, element, isTarget) {
+    clearPropertySelections(level);
+
+    const id = element.id || element.getAttribute('id');
+    const text = getElementTextForSelector(element);
+    const name = element.getAttribute('name');
+    const index = getIndexInParent(element);
+
+    if (isTarget) {
+      selectPropertyByName(level, 'tag', true);
+
+      if (id) {
+        selectPropertyByName(level, 'id', true);
+        return;
+      }
+
+      if (text) {
+        if (text.length > 20) {
+          level.properties.unshift(createSelectedProperty('text', buildTextReValue(text), true));
+        } else {
+          selectPropertyByName(level, 'text', true);
+        }
+
+        return;
+      }
+
+      if (name) {
+        selectPropertyByName(level, 'name', true);
+        return;
+      }
+
+      if (index >= 0) {
+        selectPropertyByName(level, 'idx', true);
+      }
+
+      return;
+    }
+
+    selectPropertyByName(level, 'tag', true);
+    if (index >= 0) {
       selectPropertyByName(level, 'idx', true);
     }
   }
@@ -731,54 +808,33 @@
       return;
     }
 
-    const tag = (element.tagName || '').toLowerCase();
-    const index = getIndexInParent(element);
+    populateAllElementAttributes(level, element);
+    ensureDerivedCtrlProperties(level, element, isTarget);
+    applyAutoCtrlSelections(level, element, isTarget);
+  }
 
-    if (isTarget) {
-      if (tag) {
-        level.properties.push(createSelectedProperty('tag', tag, false));
-      }
-
-      const id = element.id || element.getAttribute('id');
-      const text = getElementTextForSelector(element);
-      const name = element.getAttribute('name');
-
-      if (id) {
-        level.properties.push(createProperty('id', id, false, false));
-      }
-
-      if (text) {
-        const textValue = text.length > 20 ? buildTextReValue(text) : text;
-        level.properties.push(createProperty('text', textValue, false, text.length > 20));
-      }
-
-      if (name) {
-        level.properties.push(createProperty('name', name, false, false));
-      }
-
-      if (index >= 0) {
-        level.properties.push(createProperty('idx', String(index), false, false));
-      }
-
-      if (id) {
-        selectPropertyByName(level, 'id', true);
-      } else if (text) {
-        selectPropertyByName(level, 'text', true);
-      } else if (name) {
-        selectPropertyByName(level, 'name', true);
-      } else if (index >= 0) {
-        selectPropertyByName(level, 'idx', true);
-      }
-
+  function populateAutoFrmLevel(level, element) {
+    if (!element) {
       return;
     }
 
-    if (tag) {
-      level.properties.push(createSelectedProperty('tag', tag, false));
+    populateAllElementAttributes(level, element);
+
+    const index = getIndexInParent(element);
+    if (index >= 0 && !hasProperty(level, 'idx')) {
+      level.properties.push(createProperty('idx', String(index), false, false));
     }
 
-    if (index >= 0) {
-      level.properties.push(createSelectedProperty('idx', String(index), false));
+    clearPropertySelections(level);
+
+    const name = element.getAttribute('name');
+    const id = element.id || element.getAttribute('id');
+    if (name) {
+      selectPropertyByName(level, 'name', true);
+    } else if (id) {
+      selectPropertyByName(level, 'id', true);
+    } else if (index >= 0) {
+      selectPropertyByName(level, 'idx', true);
     }
   }
 
@@ -818,6 +874,235 @@
       levels.push(buildAutoLevelForElement(el, tagName, tabTitle, tabUrl, isTarget));
     }
 
+    return levels;
+  }
+
+  function buildUrlReValue(url) {
+    const text = String(url || '').trim();
+    if (!text) {
+      return '';
+    }
+
+    let source = text;
+    try {
+      source = new URL(text, location.href).pathname || text;
+    } catch (error) {
+      source = text;
+    }
+
+    if (source.length <= 20) {
+      return escapeRegex(source);
+    }
+
+    return escapeRegex(source.substring(0, 20)) + '.*';
+  }
+
+  function isStableId(id) {
+    if (!id) {
+      return false;
+    }
+
+    if (/^:r[0-9a-z]+:$/i.test(id)) {
+      return false;
+    }
+
+    return id.length <= 120;
+  }
+
+  function escapeXPathLiteral(value) {
+    const text = String(value || '');
+    if (text.indexOf('"') === -1) {
+      return '"' + text + '"';
+    }
+
+    if (text.indexOf("'") === -1) {
+      return "'" + text + "'";
+    }
+
+    return 'concat("' + text.replace(/"/g, '",\'"\',"') + '")';
+  }
+
+  function buildRelativeXPath(element) {
+    if (!element || element.nodeType !== 1) {
+      return '';
+    }
+
+    const segments = [];
+    let current = element;
+    let anchored = false;
+
+    while (current && current.nodeType === 1) {
+      const tag = (current.tagName || '').toLowerCase();
+      if (tag === 'html') {
+        break;
+      }
+
+      if (!anchored && current.id && isStableId(current.id)) {
+        segments.unshift('*[@id=' + escapeXPathLiteral(current.id) + ']');
+        anchored = true;
+        current = current.parentElement;
+        break;
+      }
+
+      const parent = current.parentElement;
+      if (!parent) {
+        segments.unshift(tag);
+        break;
+      }
+
+      const sameTag = Array.from(parent.children).filter(function (child) {
+        return child.nodeType === 1 && (child.tagName || '').toLowerCase() === tag;
+      });
+
+      let segment = tag;
+      if (sameTag.length > 1) {
+        segment = tag + '[' + (sameTag.indexOf(current) + 1) + ']';
+      }
+
+      segments.unshift(segment);
+      if (tag === 'body') {
+        break;
+      }
+
+      current = parent;
+    }
+
+    return segments.length > 0 ? '//' + segments.join('/') : '';
+  }
+
+  function buildMinimalWndLevel(tabTitle) {
+    return {
+      tagName: 'wnd',
+      properties: [
+        createSelectedProperty('title', buildTitleReValue(tabTitle || document.title || ''), true)
+      ],
+      isEnabled: true,
+      canDisable: false
+    };
+  }
+
+  function buildMinimalFrmLevel(element) {
+    const level = {
+      tagName: 'frm',
+      properties: [],
+      isEnabled: true,
+      canDisable: false
+    };
+
+    const name = element.getAttribute('name');
+    const src = element.getAttribute('src');
+    const index = getIndexInParent(element);
+
+    if (name) {
+      level.properties.push(createSelectedProperty('name', name, false));
+    } else if (src) {
+      level.properties.push(createSelectedProperty('src', buildUrlReValue(src), true));
+    } else if (index >= 0) {
+      level.properties.push(createSelectedProperty('idx', String(index), false));
+    }
+
+    return level;
+  }
+
+  function buildMinimalTargetProperties(element) {
+    const properties = [];
+    const tag = (element.tagName || '').toLowerCase();
+    if (tag) {
+      properties.push(createSelectedProperty('tag', tag, false));
+    }
+
+    const id = element.id || element.getAttribute('id');
+    if (id) {
+      properties.push(createSelectedProperty('id', id, false));
+      return properties;
+    }
+
+    const text = getDirectElementText(element);
+    if (text) {
+      if (text.length > 20) {
+        properties.push(createSelectedProperty('text', buildTextReValue(text), true));
+      } else {
+        properties.push(createSelectedProperty('text', text, false));
+      }
+      return properties;
+    }
+
+    const name = element.getAttribute('name');
+    if (name) {
+      properties.push(createSelectedProperty('name', name, false));
+      return properties;
+    }
+
+    if (element.value != null && String(element.value) !== '') {
+      properties.push(createSelectedProperty('value', String(element.value), false));
+      return properties;
+    }
+
+    const cls = (element.getAttribute('class') || '').trim();
+    if (cls) {
+      const firstClass = cls.split(/\s+/).filter(Boolean)[0];
+      if (firstClass) {
+        properties.push(createSelectedProperty('class', firstClass, false));
+        return properties;
+      }
+    }
+
+    const index = getIndexInParent(element);
+    if (index >= 0) {
+      properties.push(createSelectedProperty('idx', String(index), false));
+    }
+
+    return properties;
+  }
+
+  function buildMinimalTargetCtrlLevel(element) {
+    return {
+      tagName: 'ctrl',
+      properties: buildMinimalTargetProperties(element),
+      isEnabled: true,
+      canDisable: true
+    };
+  }
+
+  function buildMinimalTargetCtrlWithXPath(element) {
+    const tag = (element.tagName || '').toLowerCase();
+    const properties = [];
+    if (tag) {
+      properties.push(createSelectedProperty('tag', tag, false));
+    }
+
+    const xpath = buildRelativeXPath(element);
+    if (xpath) {
+      properties.push(createSelectedProperty('xpath', xpath, false));
+    }
+
+    return {
+      tagName: 'ctrl',
+      properties: properties,
+      isEnabled: true,
+      canDisable: true
+    };
+  }
+
+  function buildMinimalSelectorLevelsFromElement(element, tabTitle, tabUrl) {
+    const path = buildPathToRoot(element);
+    const levels = [buildMinimalWndLevel(tabTitle)];
+
+    for (let i = 0; i < path.length - 1; i += 1) {
+      const el = path[i];
+      const tag = (el.tagName || '').toLowerCase();
+      if (tag === 'iframe' || tag === 'frame') {
+        levels.push(buildMinimalFrmLevel(el));
+      }
+    }
+
+    levels.push(buildMinimalTargetCtrlLevel(element));
+
+    if (countOperationMatches(levels) === 1) {
+      return levels;
+    }
+
+    levels[levels.length - 1] = buildMinimalTargetCtrlWithXPath(element);
     return levels;
   }
 
@@ -1095,6 +1380,7 @@
   root.F2bInspectorBuilder = {
     buildSelectorLevelsFromElement,
     buildAutoSelectorLevelsFromElement,
+    buildMinimalSelectorLevelsFromElement,
     buildFastSelectorLevelsFromElement: buildAutoSelectorLevelsFromElement,
     describeElement,
     buildVisualTreeLabel,

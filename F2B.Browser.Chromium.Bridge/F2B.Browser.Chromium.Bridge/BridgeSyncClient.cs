@@ -1013,6 +1013,7 @@ namespace F2B.Browser.Chromium.Bridge
             return new BridgeInspectorBuildResult
             {
                 Levels = BridgeInspectorParser.ParseLevels(BridgeJson.GetArray(response.Data, "levels")),
+                MinimalLevels = BridgeInspectorParser.ParseLevels(BridgeJson.GetArray(response.Data, "minimalLevels")),
                 Segments = BridgeJson.GetArray(response.Data, "segments"),
                 DisplayName = BridgeJson.GetString(response.Data, "displayName")
             };

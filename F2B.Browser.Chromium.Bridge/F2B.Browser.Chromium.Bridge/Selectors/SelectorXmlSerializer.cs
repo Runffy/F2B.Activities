@@ -45,7 +45,10 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
             { "url", "url" },
             { "type", "type" },
             { "href", "href" },
-            { "text", "text" }
+            { "text", "text" },
+            { "value", "value" },
+            { "xpath", "xpath" },
+            { "css-selector", "css-selector" }
         };
 
         public static IList<SelectorLevel> Deserialize(string xml)

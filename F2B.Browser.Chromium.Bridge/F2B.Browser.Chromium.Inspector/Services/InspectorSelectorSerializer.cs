@@ -55,11 +55,24 @@ namespace F2B.Browser.Chromium.Inspector.Services
         }
 
         /// <summary>
-        /// Display label in Selector Editor list. Includes tag/id/class hints even when the level is disabled.
+        /// Display label in Selector Editor list: all properties except idx, sorted by value length ascending.
         /// </summary>
         public static string SerializeLevelDisplayTag(InspectorSelectorLevel level)
         {
-            return BuildLevelTag(level, selectedOnly: false, truncateForDisplay: true);
+            if (level == null)
+                return string.Empty;
+
+            var attrs = new List<string>();
+            var properties = level.Properties
+                .Where(item => !string.IsNullOrEmpty(item.Value)
+                    && !string.Equals(item.Name, "idx", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(item => item.Value.Length)
+                .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var property in properties)
+                AppendAttribute(level, property, attrs, truncateForDisplay: true);
+
+            return "<" + level.TagName + (attrs.Count == 0 ? " />" : " " + string.Join(" ", attrs) + " />");
         }
 
         private static string BuildLevelTag(InspectorSelectorLevel level, bool selectedOnly, bool truncateForDisplay)
@@ -77,24 +90,6 @@ namespace F2B.Browser.Chromium.Inspector.Services
                 string.Equals(level.TagName, "ctrl", StringComparison.OrdinalIgnoreCase))
             {
                 EnsureMinimumCtrlAttributes(level, attrs);
-            }
-
-            if (!selectedOnly && attrs.Count == 0)
-            {
-                var hintNames = new[] { "tag", "id", "class", "text", "name", "type", "placeholder", "idx" };
-                foreach (var hintName in hintNames)
-                {
-                    var property = level.Properties.FirstOrDefault(item =>
-                        string.Equals(item.Name, hintName, StringComparison.OrdinalIgnoreCase) &&
-                        !string.IsNullOrEmpty(item.Value));
-
-                    if (property == null)
-                        continue;
-
-                    AppendAttribute(level, property, attrs, truncateForDisplay);
-                    if (attrs.Count >= 2)
-                        break;
-                }
             }
 
             return "<" + level.TagName + (attrs.Count == 0 ? " />" : " " + string.Join(" ", attrs) + " />");

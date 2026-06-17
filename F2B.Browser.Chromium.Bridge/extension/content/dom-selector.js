@@ -119,6 +119,22 @@
     };
   }
 
+  function getDirectElementText(element) {
+    if (!element || !element.childNodes) {
+      return '';
+    }
+
+    let text = '';
+    for (let i = 0; i < element.childNodes.length; i += 1) {
+      const node = element.childNodes[i];
+      if (node.nodeType === 3) {
+        text += node.textContent || '';
+      }
+    }
+
+    return text.trim();
+  }
+
   function getElementName(element) {
     const ariaLabel = element.getAttribute('aria-label');
     if (ariaLabel) {
@@ -155,6 +171,134 @@
 
   function normalizeRoleToken(role) {
     return String(role || '').replace(/\s+/g, '').toLowerCase();
+  }
+
+  function getSelectedProperties(level) {
+    return (level.properties || []).filter(function (property) {
+      return property.isSelected !== false && property.value;
+    });
+  }
+
+  function getLocatorProperty(level) {
+    const selected = getSelectedProperties(level);
+    const xpath = selected.find(function (property) {
+      return property.name === 'xpath';
+    });
+    if (xpath) {
+      return { type: 'xpath', property: xpath };
+    }
+
+    const css = selected.find(function (property) {
+      return property.name === 'css-selector';
+    });
+    if (css) {
+      return { type: 'css-selector', property: css };
+    }
+
+    return null;
+  }
+
+  function queryXPath(root, xpath) {
+    if (!root || !xpath) {
+      return [];
+    }
+
+    const doc = root.nodeType === 9 ? root : (root.ownerDocument || document);
+    const context = root.nodeType === 9 ? root : root;
+
+    try {
+      const snapshot = doc.evaluate(xpath, context, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+      const results = [];
+      for (let i = 0; i < snapshot.snapshotLength; i += 1) {
+        const node = snapshot.snapshotItem(i);
+        if (node && node.nodeType === 1) {
+          results.push(node);
+        }
+      }
+
+      return results;
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function queryCssSelector(root, css) {
+    if (!root || !css) {
+      return [];
+    }
+
+    try {
+      if (root.nodeType === 9) {
+        return Array.from(root.querySelectorAll(css));
+      }
+
+      if (typeof root.querySelectorAll === 'function') {
+        return Array.from(root.querySelectorAll(css));
+      }
+
+      return [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function matchLevelProperties(element, level, options) {
+    const skipLocators = options && options.skipLocators;
+    if (level && String(level.tagName || '').toLowerCase() === 'frm') {
+      const tag = element.tagName.toLowerCase();
+      if (tag !== 'iframe' && tag !== 'frame') {
+        return false;
+      }
+    }
+
+    const selected = getSelectedProperties(level);
+    for (let i = 0; i < selected.length; i += 1) {
+      const property = selected[i];
+      if (skipLocators && (property.name === 'xpath' || property.name === 'css-selector')) {
+        continue;
+      }
+
+      if (!matchProperty(element, property)) {
+        return false;
+      }
+    }
+
+    const indexProperty = selected.find(function (property) {
+      return property.name === 'IndexInParent' || property.name === 'idx';
+    });
+    if (indexProperty && indexProperty.value !== '' && indexProperty.value != null) {
+      const parent = element.parentElement;
+      if (!parent) {
+        return false;
+      }
+
+      const idx = parseInt(indexProperty.value, 10);
+      const siblings = Array.from(parent.children);
+      return siblings.indexOf(element) === idx;
+    }
+
+    return true;
+  }
+
+  function findByLocator(root, level, maxResults) {
+    const locator = getLocatorProperty(level);
+    if (!locator) {
+      return [];
+    }
+
+    const candidates = locator.type === 'xpath'
+      ? queryXPath(root, locator.property.value)
+      : queryCssSelector(root, locator.property.value);
+    const limit = maxResults || Number.MAX_SAFE_INTEGER;
+    const matched = [];
+
+    for (let i = 0; i < candidates.length && matched.length < limit; i += 1) {
+      if (matchLevelProperties(candidates[i], level, { skipLocators: true })) {
+        matched.push(candidates[i]);
+      }
+    }
+
+    return matched;
   }
 
   function matchRole(element, role) {
@@ -244,7 +388,7 @@
         }
         return compare(getElementName(element));
       case 'text':
-        return compare(getElementName(element));
+        return compare(getDirectElementText(element));
       case 'AutomationId':
         return compare(getAutomationId(element));
       case 'id':
@@ -275,6 +419,11 @@
         return true;
       case 'src':
         return compare(element.getAttribute('src') || '');
+      case 'value':
+        return compare(element.value != null ? String(element.value) : '');
+      case 'xpath':
+      case 'css-selector':
+        return true;
       case 'FrameworkId':
         return compare(element.getAttribute('data-framework') || '');
       case 'IndexInParent':
@@ -288,35 +437,7 @@
   }
 
   function matchLevel(element, level) {
-    if (level && String(level.tagName || '').toLowerCase() === 'frm') {
-      const tag = element.tagName.toLowerCase();
-      if (tag !== 'iframe' && tag !== 'frame') {
-        return false;
-      }
-    }
-
-    const selected = (level.properties || []).filter((property) => property.isSelected !== false);
-    for (const property of selected) {
-      if (!matchProperty(element, property)) {
-        return false;
-      }
-    }
-
-    const indexProperty = selected.find(function (property) {
-      return property.name === 'IndexInParent' || property.name === 'idx';
-    });
-    if (indexProperty && indexProperty.value !== '' && indexProperty.value != null) {
-      const parent = element.parentElement;
-      if (!parent) {
-        return false;
-      }
-
-      const idx = parseInt(indexProperty.value, 10);
-      const siblings = Array.from(parent.children);
-      return siblings.indexOf(element) === idx;
-    }
-
-    return true;
+    return matchLevelProperties(element, level, { skipLocators: false });
   }
 
   function collectDeepElements(root) {
@@ -399,14 +520,41 @@
     for (let i = 0; i < enabledLevels.length; i += 1) {
       const level = enabledLevels[i];
       const next = [];
-      const searchDescendants = i > 0;
-      const isRootLevel = i === 0;
+      const locator = getLocatorProperty(level);
 
-      for (const parent of current) {
-        const matches = findMatchingElements(parent, level, searchDescendants, isRootLevel);
-        next.push(...matches);
-        if (next.length >= (maxResults || Number.MAX_SAFE_INTEGER)) {
-          break;
+      if (locator) {
+        for (let p = 0; p < current.length; p += 1) {
+          const parent = current[p];
+          const searchRoot = parent.nodeType === 9 ? parent : parent;
+          const matches = findByLocator(searchRoot, level, maxResults);
+          for (let m = 0; m < matches.length; m += 1) {
+            next.push(matches[m]);
+            if (next.length >= (maxResults || Number.MAX_SAFE_INTEGER)) {
+              break;
+            }
+          }
+
+          if (next.length >= (maxResults || Number.MAX_SAFE_INTEGER)) {
+            break;
+          }
+        }
+      } else {
+        const searchDescendants = i > 0;
+        const isRootLevel = i === 0;
+
+        for (let p = 0; p < current.length; p += 1) {
+          const parent = current[p];
+          const matches = findMatchingElements(parent, level, searchDescendants, isRootLevel);
+          for (let m = 0; m < matches.length; m += 1) {
+            next.push(matches[m]);
+            if (next.length >= (maxResults || Number.MAX_SAFE_INTEGER)) {
+              break;
+            }
+          }
+
+          if (next.length >= (maxResults || Number.MAX_SAFE_INTEGER)) {
+            break;
+          }
         }
       }
 
@@ -801,8 +949,13 @@
     }
   }
 
+  function countElements(levels, root) {
+    return findElements(levels, root).length;
+  }
+
   root.DomSelectorResolver = {
     findElements,
+    countElements,
     waitForElements,
     parseSelectorLevels,
     matchLevel,

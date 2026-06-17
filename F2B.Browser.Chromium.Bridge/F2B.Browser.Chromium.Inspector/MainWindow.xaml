@@ -128,7 +128,7 @@
                                 BorderThickness="0,0,0,1" Padding="8,5">
                             <TextBlock Text="Selected Items" Style="{StaticResource PanelTitleStyle}" />
                         </Border>
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding SelectedItemProperties}" Margin="4,2">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type models:InspectorPropertyItem}">
@@ -149,7 +149,8 @@
                                                       Margin="0,0,6,0" />
                                             <TextBlock VerticalAlignment="Center"
                                                        FontSize="12"
-                                                       TextTrimming="CharacterEllipsis"
+                                                       FontFamily="Consolas"
+                                                       TextWrapping="NoWrap"
                                                        Text="{Binding DisplayText, Mode=OneWay}" />
                                         </DockPanel>
                                     </DataTemplate>

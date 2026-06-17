@@ -277,7 +277,7 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
                 else
                 {
                     var build = await Task.Run(() => tab.InspectorBuildSelector(pick.Segments));
-                    await ApplyCaptureAfterIndicateAsync(build.Levels, build.Segments, build.DisplayName);
+                    await ApplyCaptureAfterIndicateAsync(build.Levels, build.Segments, build.DisplayName, build.MinimalLevels);
                 }
             }
             catch (Exception ex)
@@ -334,9 +334,13 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             });
         }
 
-        private async Task ApplyCaptureAfterIndicateAsync(IList<SelectorLevel> levels, object[] segments, string displayName)
+        private async Task ApplyCaptureAfterIndicateAsync(
+            IList<SelectorLevel> levels,
+            object[] segments,
+            string displayName,
+            IList<SelectorLevel> minimalLevels = null)
         {
-            ApplyCapture(levels, segments, displayName, runPostCaptureValidation: false);
+            ApplyCapture(levels, segments, displayName, minimalLevels, runPostCaptureValidation: false);
             await Task.Delay(PostCaptureValidateDelayMs).ConfigureAwait(true);
             await ValidateSelectorAsync().ConfigureAwait(true);
         }
@@ -352,7 +356,12 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
                 _dispatcher.Invoke(() => _targetTab = tab);
         }
 
-        private void ApplyCapture(IList<SelectorLevel> levels, object[] segments, string displayName, bool runPostCaptureValidation = true)
+        private void ApplyCapture(
+            IList<SelectorLevel> levels,
+            object[] segments,
+            string displayName,
+            IList<SelectorLevel> minimalLevels = null,
+            bool runPostCaptureValidation = true)
         {
             SetTargetElementError(false);
             _hasCapturedElement = levels != null && levels.Count > 0;
@@ -368,7 +377,17 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             }
 
             SelectedSelectorLevel = SelectorLevels.LastOrDefault();
-            UpdateSelectorXmlFromLevels();
+
+            if (minimalLevels != null && minimalLevels.Count > 0)
+            {
+                _suppressSelectorUpdate = true;
+                SelectorXml = SelectorXmlSerializer.Serialize(minimalLevels);
+                _suppressSelectorUpdate = false;
+            }
+            else
+            {
+                UpdateSelectorXmlFromLevels();
+            }
 
             if (!runPostCaptureValidation)
                 return;
@@ -553,8 +572,12 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             if (level == null)
                 return;
 
-            foreach (var property in level.Properties)
+            foreach (var property in level.Properties
+                         .OrderBy(item => item.Value?.Length ?? 0)
+                         .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
+            {
                 SelectedItemProperties.Add(property);
+            }
         }
 
         private void UpdateSelectorXmlFromLevels()
