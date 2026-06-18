@@ -31,6 +31,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="PdfSharp, Version=1.50.5147.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp.1.50.5147\lib\net20\PdfSharp.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed">
       <HintPath>..\..\packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -39,6 +42,7 @@
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System"/>
     <Reference Include="System.Activities" />
     <Reference Include="System.Activities.Presentation" />
@@ -62,6 +66,9 @@
     <Compile Include="HttpVerbChoiceConverter.cs" />
     <Compile Include="HttpRequestActivity.cs" />
     <Compile Include="HttpRequestDesigner.cs" />
+    <Compile Include="ImagesToPdfActivity.cs" />
+    <Compile Include="ImagesToPdfBuilder.cs" />
+    <Compile Include="ImagesToPdfDesigner.cs" />
     <Compile Include="LogMessageActivity.cs" />
     <Compile Include="LogMessageDesigner.cs" />
     <Compile Include="MessageBoxActivity.cs" />

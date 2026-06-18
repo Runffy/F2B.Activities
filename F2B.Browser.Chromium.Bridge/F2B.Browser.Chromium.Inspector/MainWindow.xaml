@@ -84,7 +84,16 @@
                     <DockPanel LastChildFill="True">
                         <Border DockPanel.Dock="Top" Background="#FFE0E0E0" BorderBrush="#FFBDBDBD"
                                 BorderThickness="0,0,0,1" Padding="8,5">
-                            <TextBlock Text="Selector Editor" Style="{StaticResource PanelTitleStyle}" />
+                            <DockPanel LastChildFill="True">
+                                <Button DockPanel.Dock="Right"
+                                        Content="Insert Parent"
+                                        Style="{StaticResource ToolbarButtonStyle}"
+                                        Padding="8,2"
+                                        Command="{Binding InsertParentStepCommand}"
+                                        ToolTip="Insert a &lt;parent level='N' /&gt; step after the selected level (default N=1)" />
+                                <TextBlock Text="Selector Editor" Style="{StaticResource PanelTitleStyle}"
+                                           VerticalAlignment="Center" />
+                            </DockPanel>
                         </Border>
                         <ListBox ItemsSource="{Binding SelectorLevels}"
                                  SelectedItem="{Binding SelectedSelectorLevel, Mode=TwoWay}"

@@ -1246,11 +1246,55 @@ function pickNewWindowTab(tabs, knownWindowIds) {
   return candidates.find((tab) => tab.active) || candidates[candidates.length - 1];
 }
 
+function isFullPageScreenshot(message) {
+  return message && (message.fullPage === true || message.fullPage === 'true' || message.fullPage === 1);
+}
+
+async function captureFullPageScreenshot(tabId) {
+  const target = { tabId: tabId };
+
+  try {
+    await chrome.scripting.executeScript({
+      target: target,
+      files: ['lib/html2canvas.min.js', 'content/full-page-capture.js']
+    });
+  } catch (error) {
+    throw new Error('Full-page screenshot failed: could not inject html2canvas. ' + (error.message || error));
+  }
+
+  const results = await chrome.scripting.executeScript({
+    target: target,
+    func: () => {
+      const capture = globalThis.__f2bCaptureFullPage;
+      if (typeof capture !== 'function') {
+        throw new Error('Full-page screenshot failed: capture helper is not available.');
+      }
+
+      return capture();
+    }
+  });
+
+  const dataUrl = results && results[0] && results[0].result;
+  if (!dataUrl || typeof dataUrl !== 'string' || dataUrl.indexOf('data:image/') !== 0) {
+    throw new Error('Full-page screenshot failed: html2canvas returned empty image data.');
+  }
+
+  return dataUrl;
+}
+
 async function captureScreenshot(message) {
   const tab = message.tabId ? await chrome.tabs.get(message.tabId) : await resolveTargetTab(message);
   await chrome.windows.update(tab.windowId, { focused: true });
   await chrome.tabs.update(tab.id, { active: true });
-  const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+
+  if (!isInjectableUrl(tab.url)) {
+    throw new Error('RESTRICTED_URL:' + (tab.url || ''));
+  }
+
+  const dataUrl = isFullPageScreenshot(message)
+    ? await captureFullPageScreenshot(tab.id)
+    : await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+
   return {
     tabId: tab.id,
     dataUrl: dataUrl,

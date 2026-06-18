@@ -7,7 +7,7 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
 {
     /// <summary>
     /// Inspector-compatible selector XML (one self-closing tag per line).
-    /// Web extensions: url, tag, type, href on ctrl/wnd levels.
+    /// Web extensions: url, tag, type, href on ctrl/wnd levels; parent for DOM upward navigation.
     /// </summary>
     public static class SelectorXmlSerializer
     {
@@ -26,6 +26,7 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
             { "Type", "type" },
             { "Href", "href" },
             { "text", "text" },
+            { "role", "role" },
             { "id", "id" },
             { "class", "class" },
             { "tag", "tag" },
@@ -46,6 +47,7 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
             { "type", "type" },
             { "href", "href" },
             { "text", "text" },
+            { "role", "role" },
             { "value", "value" },
             { "xpath", "xpath" },
             { "css-selector", "css-selector" }
@@ -146,8 +148,7 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
             var attrs = new List<string>();
             foreach (var property in level.Properties.Where(item => item.IsSelected))
             {
-                if (string.Equals(property.Name, "role", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(property.Name, "ControlType", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(property.Name, "ControlType", StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 var attrName = ResolveWireAttributeName(level.TagName, property.Name);
@@ -164,24 +165,37 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
             {
                 EnsureMinimumCtrlAttributes(level, attrs);
             }
-
-            if (string.Equals(level.TagName, "ctrl", StringComparison.OrdinalIgnoreCase) &&
-                !attrs.Any(item => item.StartsWith("role=", StringComparison.OrdinalIgnoreCase) ||
-                                   item.StartsWith("role-re=", StringComparison.OrdinalIgnoreCase)) &&
-                !LevelUsesLocator(level))
+            else if (string.Equals(level.TagName, "parent", StringComparison.OrdinalIgnoreCase))
             {
-                var tag = level.Properties.FirstOrDefault(item =>
-                    string.Equals(item.Name, "tag", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(item.Name, "TagName", StringComparison.OrdinalIgnoreCase))?.Value;
-                var type = level.Properties.FirstOrDefault(item =>
-                    string.Equals(item.Name, "type", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(item.Name, "Type", StringComparison.OrdinalIgnoreCase))?.Value;
-                var role = DeriveRoleFromTag(tag, type);
-                if (!string.IsNullOrEmpty(role))
-                    attrs.Insert(0, "role='" + EscapeValue(role) + "'");
+                EnsureMinimumParentAttributes(level, attrs);
             }
 
             return "<" + level.TagName + (attrs.Count == 0 ? " />" : " " + string.Join(" ", attrs) + " />");
+        }
+
+        public static SelectorLevel CreateParentLevel(int level = 1)
+        {
+            var parentLevel = new SelectorLevel("parent");
+            parentLevel.Properties.Add(new SelectorProperty
+            {
+                Name = "level",
+                Value = Math.Max(1, level).ToString(),
+                IsSelected = true
+            });
+            return parentLevel;
+        }
+
+        private static void EnsureMinimumParentAttributes(SelectorLevel level, IList<string> attrs)
+        {
+            if (attrs.Any(item => item.StartsWith("level=", StringComparison.OrdinalIgnoreCase)))
+                return;
+
+            var levelProperty = level.Properties.FirstOrDefault(item =>
+                string.Equals(item.Name, "level", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrEmpty(item.Value));
+
+            var value = levelProperty?.Value ?? "1";
+            attrs.Add("level='" + EscapeValue(value) + "'");
         }
 
         private static void EnsureMinimumCtrlAttributes(SelectorLevel level, IList<string> attrs)
@@ -214,53 +228,6 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
             }
         }
 
-        private static string DeriveRoleFromTag(string tag, string type)
-        {
-            tag = (tag ?? string.Empty).Trim().ToLowerInvariant();
-            type = (type ?? string.Empty).Trim().ToLowerInvariant();
-
-            if (tag == "button")
-                return "button";
-            if (tag == "textarea")
-                return "edit";
-            if (tag == "select")
-                return "combobox";
-            if (tag == "a")
-                return "link";
-            if (tag == "img")
-                return "image";
-            if (tag == "iframe" || tag == "frame")
-                return "frm";
-            if (tag == "input")
-            {
-                if (type == "checkbox")
-                    return "checkbox";
-                if (type == "radio")
-                    return "radiobutton";
-                if (type == "button" || type == "submit" || type == "reset" || type == "image")
-                    return "button";
-                return "edit";
-            }
-
-            if (tag == "li")
-                return "listitem";
-            if (tag == "ul" || tag == "ol")
-                return "list";
-
-            return "pane";
-        }
-
-        private static bool LevelUsesLocator(SelectorLevel level)
-        {
-            if (level?.Properties == null)
-                return false;
-
-            return level.Properties.Any(property =>
-                property.IsSelected &&
-                (string.Equals(property.Name, "xpath", StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(property.Name, "css-selector", StringComparison.OrdinalIgnoreCase)));
-        }
-
         private static string EscapeValue(string value)
         {
             return (value ?? string.Empty).Replace("'", "&apos;");
@@ -280,7 +247,8 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
 
             if (!string.Equals(element.Name.LocalName, "wnd", StringComparison.OrdinalIgnoreCase) &&
                 !string.Equals(element.Name.LocalName, "frm", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(element.Name.LocalName, "ctrl", StringComparison.OrdinalIgnoreCase))
+                !string.Equals(element.Name.LocalName, "ctrl", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(element.Name.LocalName, "parent", StringComparison.OrdinalIgnoreCase))
                 return null;
 
             var level = new SelectorLevel(element.Name.LocalName.ToLowerInvariant());
@@ -290,9 +258,6 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
                 var isRegex = attrName.EndsWith(RegexSuffix, StringComparison.OrdinalIgnoreCase);
                 if (isRegex)
                     attrName = attrName.Substring(0, attrName.Length - RegexSuffix.Length);
-
-                if (string.Equals(attrName, "role", StringComparison.OrdinalIgnoreCase))
-                    continue;
 
                 if (!WireToHtmlMap.TryGetValue(attrName, out var propertyName))
                 {
@@ -332,20 +297,6 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
             }
 
             return level;
-        }
-
-        private static string ParseRole(string role)
-        {
-            if (string.IsNullOrEmpty(role))
-                return role;
-
-            var parts = role.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            return string.Concat(parts.Select(part =>
-            {
-                if (part.Length == 0)
-                    return part;
-                return char.ToUpperInvariant(part[0]) + (part.Length > 1 ? part.Substring(1) : string.Empty);
-            }));
         }
 
         private static string UnescapeValue(string value)

@@ -62,8 +62,9 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
 
             RefreshConnectionCommand = new RelayCommand(ReconnectAndRefreshStatus);
             IndicateCommand = new RelayCommand(() => _ = StartIndicateAsync(), () => _session.IsConnected && !IsIndicating && !IsHighlighting && !IsValidating);
-            ValidateCommand = new RelayCommand(() => _ = ValidateSelectorAsync(), () => _hasCapturedElement && SelectorLevels.Count > 0 && !IsValidating && !IsHighlighting);
-            HighlightCommand = new RelayCommand(() => _ = HighlightAsync(), () => !IsHighlighting && !IsIndicating && !IsValidating && SelectorLevels.Count > 0);
+            ValidateCommand = new RelayCommand(() => _ = ValidateSelectorAsync(), () => !string.IsNullOrWhiteSpace(SelectorXml) && !IsValidating && !IsHighlighting);
+            HighlightCommand = new RelayCommand(() => _ = HighlightAsync(), () => !string.IsNullOrWhiteSpace(SelectorXml) && !IsHighlighting && !IsIndicating && !IsValidating);
+            InsertParentStepCommand = new RelayCommand(InsertParentStep, () => SelectorLevels.Count > 0 || !string.IsNullOrWhiteSpace(SelectorXml));
         }
 
         public ObservableCollection<InspectorSelectorLevel> SelectorLevels { get; }
@@ -73,6 +74,7 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
         public RelayCommand IndicateCommand { get; }
         public RelayCommand ValidateCommand { get; }
         public RelayCommand HighlightCommand { get; }
+        public RelayCommand InsertParentStepCommand { get; }
 
         public string ConnectionStatus
         {
@@ -417,6 +419,8 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             if (string.IsNullOrWhiteSpace(SelectorXml))
                 return;
 
+            SyncSelectorLevelsFromXml();
+
             if (!_session.IsConnected)
             {
                 ValidationState = ValidationState.Invalid;
@@ -528,6 +532,8 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             if (string.IsNullOrWhiteSpace(SelectorXml))
                 return;
 
+            SyncSelectorLevelsFromXml();
+
             IsHighlighting = true;
             try
             {
@@ -588,6 +594,55 @@ namespace F2B.Browser.Chromium.Inspector.ViewModels
             SelectorXml = InspectorSelectorSerializer.Serialize(SelectorLevels);
             _suppressSelectorUpdate = false;
             MarkValidationStale();
+        }
+
+        private void SyncSelectorLevelsFromXml()
+        {
+            if (string.IsNullOrWhiteSpace(SelectorXml))
+                return;
+
+            var parsed = SelectorXmlSerializer.Deserialize(SelectorXml);
+            if (parsed.Count == 0)
+                return;
+
+            _suppressSelectorUpdate = true;
+            SelectorLevels.Clear();
+            SelectedItemProperties.Clear();
+
+            foreach (var level in InspectorSelectorSerializer.FromBridgeLevels(parsed))
+            {
+                AttachSelectorHandlers(level);
+                SelectorLevels.Add(level);
+            }
+
+            if (SelectedSelectorLevel == null || !SelectorLevels.Contains(SelectedSelectorLevel))
+                SelectedSelectorLevel = SelectorLevels.LastOrDefault();
+
+            _suppressSelectorUpdate = false;
+        }
+
+        private void InsertParentStep()
+        {
+            if (SelectorLevels.Count == 0 && !string.IsNullOrWhiteSpace(SelectorXml))
+                SyncSelectorLevelsFromXml();
+
+            if (SelectorLevels.Count == 0)
+                return;
+
+            var insertIndex = SelectedSelectorLevel != null
+                ? SelectorLevels.IndexOf(SelectedSelectorLevel) + 1
+                : SelectorLevels.Count;
+
+            var parentLevel = InspectorSelectorSerializer.CreateParentLevel(1);
+            AttachSelectorHandlers(parentLevel);
+
+            if (insertIndex >= SelectorLevels.Count)
+                SelectorLevels.Add(parentLevel);
+            else
+                SelectorLevels.Insert(insertIndex, parentLevel);
+
+            SelectedSelectorLevel = parentLevel;
+            UpdateSelectorXmlFromLevels();
         }
 
         private void MarkValidationStale()

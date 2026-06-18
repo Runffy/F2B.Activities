@@ -62,6 +62,9 @@ namespace F2B.Browser.Chromium.Inspector.Services
             if (level == null)
                 return string.Empty;
 
+            if (string.Equals(level.TagName, "parent", StringComparison.OrdinalIgnoreCase))
+                return SerializeParentLevelTag(level, truncateForDisplay: true);
+
             var attrs = new List<string>();
             var properties = level.Properties
                 .Where(item => !string.IsNullOrEmpty(item.Value)
@@ -80,6 +83,9 @@ namespace F2B.Browser.Chromium.Inspector.Services
             if (level == null)
                 return string.Empty;
 
+            if (string.Equals(level.TagName, "parent", StringComparison.OrdinalIgnoreCase))
+                return SerializeParentLevelTag(level, truncateForDisplay);
+
             var attrs = new List<string>();
             foreach (var property in level.Properties.Where(item => item.IsSelected && !string.IsNullOrEmpty(item.Value)))
             {
@@ -91,8 +97,56 @@ namespace F2B.Browser.Chromium.Inspector.Services
             {
                 EnsureMinimumCtrlAttributes(level, attrs);
             }
+            else if (selectedOnly &&
+                     string.Equals(level.TagName, "parent", StringComparison.OrdinalIgnoreCase))
+            {
+                EnsureMinimumParentAttributes(level, attrs);
+            }
 
             return "<" + level.TagName + (attrs.Count == 0 ? " />" : " " + string.Join(" ", attrs) + " />");
+        }
+
+        public static InspectorSelectorLevel CreateParentLevel(int level = 1)
+        {
+            var parentLevel = new InspectorSelectorLevel("parent");
+            parentLevel.Properties.Add(new InspectorPropertyItem
+            {
+                Name = "level",
+                Value = Math.Max(1, level).ToString(),
+                IsSelected = true,
+                CanToggle = true
+            });
+            parentLevel.RefreshTagLine();
+            return parentLevel;
+        }
+
+        public static IList<InspectorSelectorLevel> FromSelectorXml(string selectorXml)
+        {
+            return FromBridgeLevels(SelectorXmlSerializer.Deserialize(selectorXml));
+        }
+
+        private static string SerializeParentLevelTag(InspectorSelectorLevel level, bool truncateForDisplay)
+        {
+            var attrs = new List<string>();
+            EnsureMinimumParentAttributes(level, attrs, truncateForDisplay);
+            return "<parent " + string.Join(" ", attrs) + " />";
+        }
+
+        private static void EnsureMinimumParentAttributes(InspectorSelectorLevel level, IList<string> attrs, bool truncateForDisplay = false)
+        {
+            if (attrs.Any(item => item.StartsWith("level=", StringComparison.OrdinalIgnoreCase)))
+                return;
+
+            var levelProperty = level.Properties.FirstOrDefault(item =>
+                string.Equals(item.Name, "level", StringComparison.OrdinalIgnoreCase) &&
+                item.IsSelected &&
+                !string.IsNullOrEmpty(item.Value));
+
+            var value = EscapeValue(truncateForDisplay
+                ? FormatDisplayValue(levelProperty?.Value ?? "1")
+                : (levelProperty?.Value ?? "1"));
+
+            attrs.Add("level='" + value + "'");
         }
 
         private static void AppendAttribute(
@@ -163,8 +217,9 @@ namespace F2B.Browser.Chromium.Inspector.Services
                 case "IndexInParent":
                     return "idx";
                 case "ControlType":
-                case "role":
                     return string.Empty;
+                case "role":
+                    return "role";
             }
 
             if (string.Equals(tagName, "frm", StringComparison.OrdinalIgnoreCase) &&

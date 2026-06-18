@@ -750,6 +750,86 @@
     return candidates.filter((candidate) => matchLevel(candidate, level));
   }
 
+  function getSelectedLevelProperty(level, name) {
+    const selected = getSelectedProperties(level);
+    for (let i = 0; i < selected.length; i += 1) {
+      const property = selected[i];
+      if (String(property.name || '').toLowerCase() === name) {
+        return property;
+      }
+    }
+
+    return null;
+  }
+
+  function isParentNavigationLevel(level) {
+    if (!level) {
+      return false;
+    }
+
+    const tagName = String(level.tagName || '').toLowerCase();
+    if (tagName === 'parent') {
+      return true;
+    }
+
+    if (tagName !== 'ctrl') {
+      return false;
+    }
+
+    const roleProperty = getSelectedLevelProperty(level, 'role') ||
+      getSelectedLevelProperty(level, 'controltype');
+    return roleProperty && String(roleProperty.value || '').toLowerCase() === 'parent';
+  }
+
+  function getParentStepCount(level) {
+    const levelProperty = getSelectedLevelProperty(level, 'level');
+    let steps = parseInt(levelProperty && levelProperty.value != null ? levelProperty.value : '1', 10);
+    if (!Number.isFinite(steps) || steps < 1) {
+      steps = 1;
+    }
+
+    return steps;
+  }
+
+  function walkUpParentElement(element, steps) {
+    let node = element;
+    for (let i = 0; i < steps; i += 1) {
+      if (!node || !node.parentElement) {
+        return null;
+      }
+
+      node = node.parentElement;
+    }
+
+    return node;
+  }
+
+  function applyParentNavigationLevel(current, level, maxResults) {
+    const steps = getParentStepCount(level);
+    const next = [];
+    const seen = new Set();
+    const limit = maxResults || Number.MAX_SAFE_INTEGER;
+
+    for (let i = 0; i < current.length; i += 1) {
+      const parent = walkUpParentElement(current[i], steps);
+      if (!parent || typeof parent.isConnected === 'boolean' && !parent.isConnected) {
+        continue;
+      }
+
+      if (seen.has(parent)) {
+        continue;
+      }
+
+      seen.add(parent);
+      next.push(parent);
+      if (next.length >= limit) {
+        break;
+      }
+    }
+
+    return next;
+  }
+
   function findElements(levels, root, maxResults) {
     const enabledLevels = parseSelectorLevels(levels).filter((level) => level.isEnabled !== false);
     if (enabledLevels.length === 0) {
@@ -760,6 +840,16 @@
     for (let i = 0; i < enabledLevels.length; i += 1) {
       const level = enabledLevels[i];
       const next = [];
+
+      if (isParentNavigationLevel(level)) {
+        current = applyParentNavigationLevel(current, level, maxResults);
+        if (current.length === 0) {
+          break;
+        }
+
+        continue;
+      }
+
       const locator = getLocatorProperty(level);
 
       if (locator) {
