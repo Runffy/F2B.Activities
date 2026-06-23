@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "SpiderAgent Recorder",
+  "version": "0.2.3",
+  "description": "录制 Chrome 网络请求与 JS 资源，供 SpiderAgent 分析。",
+  "key": "MIIBCgKCAQEAnWqvE1bZWjUf0HjNpDZHR6kEg+FxteY0NmzuHr92dt37F25fKgmi2rnxYVz5gRTtRCgHTlGnvBgCSxIHOZlwijaxOVr0pYeqLWPe75RqHdapDz3YTF05eLRac1QaGe1Xrd+rfjRHxxOWoexaHwjnKlxKwJQyLXnlaXLvfsmw1gb9DTslshHt/8Y3xBNRBNGqmzG6cYyc2DbUC25nnn4DdIZVz+pZjLy7WPJmRMMM4hIU1ETMCMkW54QC22F9EqU4xdeC5s2yTKUKj0UTaH/D7XYHe2IilTrMQHNJLxK44CVc9cBomPbIXSEac2KbrsmC/AuzSjf6zjWR09fOfNxN7QIDAQAB",
+  "permissions": [
+    "debugger",
+    "tabs",
+    "scripting",
+    "activeTab",
+    "alarms",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "SpiderAgent Recorder",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

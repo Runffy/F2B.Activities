@@ -1,0 +1,47 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\SpiderAgent.Core\SpiderAgent.Core.csproj" />
+    <ProjectReference Include="..\SpiderAgent.Chat\SpiderAgent.Chat.csproj" />
+    <ProjectReference Include="..\SpiderAgent.Recording\SpiderAgent.Recording.csproj" />
+    <ProjectReference Include="..\SpiderAgent.NativeHost\SpiderAgent.NativeHost.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <Target Name="CopyNativeHost" AfterTargets="Build">
+    <ItemGroup>
+      <NativeHostOutput Include="..\SpiderAgent.NativeHost\bin\$(Configuration)\net9.0\SpiderAgent.NativeHost.*" />
+      <NativeHostOutput Include="..\SpiderAgent.NativeHost\bin\$(Configuration)\net9.0\SpiderAgent.Core.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NativeHostOutput)"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('..\SpiderAgent.NativeHost\bin\$(Configuration)\net9.0\SpiderAgent.NativeHost.exe')" />
+  </Target>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="appsettings.local.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
