@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Activities;
 using System.ComponentModel;
 using Microsoft.Playwright;
@@ -31,7 +31,7 @@ namespace F2B.Browser.Chromium.Playwright
         [DefaultValue(1)]
         public InArgument<int> Count { get; set; } = 1;
 
-        [DisplayName("Interval")]
+        [DisplayName("Interval (ms)")]
         [Description("Delay in milliseconds between consecutive clicks when Count is greater than 1.")]
         [Category("Input.D")]
         [DefaultValue(0)]
@@ -68,7 +68,7 @@ namespace F2B.Browser.Chromium.Playwright
         [Category("Input.E")]
         public InArgument<string> ValidationSelector { get; set; }
 
-        [DisplayName("Wait Before Validate")]
+        [DisplayName("Wait Before Validate (ms)")]
         [Description("Wait time in milliseconds after clicking before each validation check.")]
         [Category("Input.E")]
         [DefaultValue(1000)]

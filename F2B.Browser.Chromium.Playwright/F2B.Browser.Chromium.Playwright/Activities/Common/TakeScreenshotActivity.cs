@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Activities;
 using System.ComponentModel;
 
@@ -84,7 +84,7 @@ namespace F2B.Browser.Chromium.Playwright
         [TypeConverter("F2B.Browser.Chromium.Playwright.BooleanTypeConverter, F2B.Browser.Chromium.Playwright")]
         public bool FullPage { get; set; } = true;
 
-        [DisplayName("Delay Before")]
+        [DisplayName("Delay Before (ms)")]
         [Description("Wait time in milliseconds before locating the target element.")]
         [Category("Input.Z")]
         [DefaultValue(300)]

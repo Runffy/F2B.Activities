@@ -61,6 +61,8 @@
     <Compile Include="Activities\ReadSingleRowActivity.cs" />
     <Compile Include="Activities\SendKeyActivity.cs" />
     <Compile Include="Activities\SetCursorPosActivity.cs" />
+    <Compile Include="Activities\ParallelFindTextActivity.cs" />
+    <Compile Include="Activities\ParallelFindTextInRowActivity.cs" />
     <Compile Include="Activities\WaitForTextInRowActivity.cs" />
     <Compile Include="Activities\WaitForTextActivity.cs" />
     <Compile Include="PcommClient.cs" />

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>c4e8f2a1-6b3d-4f9e-a7c2-1d5e8b9f0a3c</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>F2B.File</RootNamespace>
+    <AssemblyName>F2B.File</AssemblyName>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System.Activities" />
+    <Reference Include="System.Activities.Presentation" />
+    <Reference Include="System.Core" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Activities\Designers\FileRequiredFieldsActivityDesigner.cs" />
+    <Compile Include="Activities\AppendTextActivity.cs" />
+    <Compile Include="Activities\BrowseForFileActivity.cs" />
+    <Compile Include="Activities\BrowseForFolderActivity.cs" />
+    <Compile Include="Activities\CompressZipFilesActivity.cs" />
+    <Compile Include="Activities\CopyFileActivity.cs" />
+    <Compile Include="Activities\CopyFolderActivity.cs" />
+    <Compile Include="Activities\CreateFolderActivity.cs" />
+    <Compile Include="Activities\DeleteFileActivity.cs" />
+    <Compile Include="Activities\DeleteFolderActivity.cs" />
+    <Compile Include="Activities\ExtractUnzipFilesActivity.cs" />
+    <Compile Include="Activities\FileExistsActivity.cs" />
+    <Compile Include="Activities\FolderExistsActivity.cs" />
+    <Compile Include="Activities\ListFilesActivity.cs" />
+    <Compile Include="Activities\ListFoldersActivity.cs" />
+    <Compile Include="Activities\ListItemsActivity.cs" />
+    <Compile Include="Activities\GetFileInfoActivity.cs" />
+    <Compile Include="Activities\GetFolderInfoActivity.cs" />
+    <Compile Include="Activities\MoveFileActivity.cs" />
+    <Compile Include="Activities\MoveFolderActivity.cs" />
+    <Compile Include="Activities\ReadTextFileActivity.cs" />
+    <Compile Include="Activities\RenameFileActivity.cs" />
+    <Compile Include="Activities\RenameFolderActivity.cs" />
+    <Compile Include="Activities\WriteTextFileActivity.cs" />
+    <Compile Include="FileActivityHelper.cs" />
+    <Compile Include="TextFileShareMode.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

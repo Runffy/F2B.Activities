@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Activities;
 using System.ComponentModel;
 
@@ -48,7 +48,7 @@ namespace F2B.Browser.Chromium.Playwright
         [Category("Input.E")]
         public InArgument<PwElement> InputElement { get; set; }
 
-        [DisplayName("Delay Before")]
+        [DisplayName("Delay Before (ms)")]
         [Description("Wait time in milliseconds before locating element.")]
         [Category("Input.Z")]
         [DefaultValue(300)]
@@ -71,6 +71,12 @@ namespace F2B.Browser.Chromium.Playwright
         [Category("Input.G")]
         public InArgument<object> Arg { get; set; }
 
+        [DisplayName("Is Async")]
+        [Description("When true, starts script execution without waiting for the result.")]
+        [Category("Input.G")]
+        [DefaultValue(false)]
+        public InArgument<bool> IsAsync { get; set; } = false;
+
         [DisplayName("Result")]
         [Description("Outputs the script execution result.")]
         [Category("Output")]
@@ -80,6 +86,7 @@ namespace F2B.Browser.Chromium.Playwright
         {
             var script = Script.Get(context);
             var arg = Arg == null ? null : Arg.Get(context);
+            var isAsync = ActivityArgumentHelper.GetOrDefault(IsAsync, context, false);
             object result;
 
             switch (BaseOn)
@@ -91,7 +98,15 @@ namespace F2B.Browser.Chromium.Playwright
                         throw new InvalidOperationException("InputTab must be provided when BaseOn=Tab.");
                     }
 
-                    result = tab.RunJs<object>(script, arg);
+                    var tabTotalMs = ActivityArgumentHelper.GetOrDefault(Timeout, context, 15000);
+                    var tabBudget = new TimeoutBudget(tabTotalMs);
+                    PlaywrightSyncClient.ApplyDelay(ActivityArgumentHelper.GetOrDefault(DelayBefore, context, 300));
+                    if (tabBudget.RemainingMs <= 0)
+                    {
+                        throw new TimeoutException("RunJs timeout before execution.");
+                    }
+
+                    result = tab.RunJs<object>(script, arg, tabBudget.RemainingMs, isAsync);
                     break;
                 default:
                     var totalMs = ActivityArgumentHelper.GetOrDefault(Timeout, context, 15000);
@@ -103,7 +118,7 @@ namespace F2B.Browser.Chromium.Playwright
                         throw new TimeoutException("RunJs timeout before execution: no remaining timeout budget after locating target.");
                     }
 
-                    result = element.RunJs<object>(script, arg, remaining);
+                    result = element.RunJs<object>(script, arg, remaining, isAsync);
                     break;
             }
 

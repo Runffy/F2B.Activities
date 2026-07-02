@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Activities;
 using System.ComponentModel;
 
@@ -60,7 +60,7 @@ namespace F2B.Browser.Chromium.Playwright
         [DefaultValue(FindElementWaitState.None)]
         public FindElementWaitState WaitState { get; set; } = FindElementWaitState.None;
 
-        [DisplayName("Delay Before")]
+        [DisplayName("Delay Before (ms)")]
         [Description("Wait time in milliseconds before starting search.")]
         [Category("Input.Z")]
         [DefaultValue(300)]

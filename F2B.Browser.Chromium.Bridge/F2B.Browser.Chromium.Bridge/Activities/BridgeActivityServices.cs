@@ -159,7 +159,9 @@ namespace F2B.Browser.Chromium.Bridge
             EnsureStarted();
 
             var timeout = connectTimeout ?? TimeSpan.FromSeconds(60);
-            if (!TryWaitForExtension(timeout, out _))
+            var deadline = DateTime.UtcNow.Add(timeout);
+
+            if (!TryWaitForExtensionUntil(deadline, out _))
             {
                 throw new TimeoutException(
                     "No Chromium extension connected to Bridge within "
@@ -167,7 +169,41 @@ namespace F2B.Browser.Chromium.Bridge
                     + " seconds.");
             }
 
-            return Host.AttachByWndSelector(selectorXml);
+            var remainingMs = Math.Max(0, (int)(deadline - DateTime.UtcNow).TotalMilliseconds);
+            return Host.AttachByWndSelector(selectorXml, remainingMs);
+        }
+
+        private static bool TryWaitForExtensionUntil(DateTime deadline, out string instanceId, string preferredInstanceId = null)
+        {
+            EnsureStarted();
+            instanceId = null;
+
+            while (DateTime.UtcNow < deadline)
+            {
+                var clients = _session.GetConnectedClients();
+                if (clients.Count > 0)
+                {
+                    if (!string.IsNullOrWhiteSpace(preferredInstanceId))
+                    {
+                        var matched = clients.FirstOrDefault(
+                            item => string.Equals(item.InstanceId, preferredInstanceId, StringComparison.OrdinalIgnoreCase));
+                        if (matched != null)
+                        {
+                            instanceId = matched.InstanceId;
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        instanceId = clients[0].InstanceId;
+                        return true;
+                    }
+                }
+
+                Thread.Sleep(250);
+            }
+
+            return false;
         }
     }
 }

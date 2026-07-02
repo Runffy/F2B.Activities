@@ -1123,6 +1123,16 @@ function executeUserScriptInMainWorld(script, arg) {
 
 async function runTabJs(message) {
   const tab = message.tabId ? await chrome.tabs.get(message.tabId) : await resolveTargetTab(message);
+  if (message.isAsync) {
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      world: 'MAIN',
+      func: executeUserScriptInMainWorld,
+      args: [message.script, message.arg == null ? null : message.arg]
+    }).catch(() => {});
+    return { tabId: tab.id, result: null };
+  }
+
   const results = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     world: 'MAIN',

@@ -5,7 +5,7 @@ using System.Activities.Presentation;
 namespace F2B.Browser.Chromium.Bridge
 {
     [DisplayName("Close Browser")]
-    [Description("Close the browser window opened by Open Browser.")]
+    [Description("Close the browser window associated with this browser instance.")]
     [Designer(typeof(BridgeCanvasFieldsActivityDesigner))]
     public sealed class BrowserCloseActivity : CodeActivity
     {

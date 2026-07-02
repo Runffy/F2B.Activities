@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Activities;
 using System.ComponentModel;
 
@@ -53,7 +53,7 @@ namespace F2B.Browser.Chromium.Playwright
 
         
 
-        [DisplayName("Delay Before")]
+        [DisplayName("Delay Before (ms)")]
         [Description("Wait time in milliseconds before execution.")]
         [Category("Input.Z")]
         [DefaultValue(300)]

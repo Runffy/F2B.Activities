@@ -197,7 +197,7 @@ namespace F2B.Browser.Chromium.Bridge
             return GetClient(context.InstanceId).GetAttribute(context, name, RemainingMs(deadline));
         }
 
-        public BridgeAttachResult AttachByWndSelector(string selectorXml)
+        public BridgeAttachResult AttachByWndSelector(string selectorXml, int timeoutMs = 0)
         {
             if (string.IsNullOrWhiteSpace(selectorXml))
                 throw new ArgumentException("Attach Browser requires a selector XML with <wnd>.");
@@ -205,14 +205,48 @@ namespace F2B.Browser.Chromium.Bridge
             BridgeTabResolver.EnsureWndOnlySelector(selectorXml);
             var scope = SelectorXmlSerializer.SplitScope(selectorXml);
 
-            var picked = TryPickWndMatch(scope);
-            if (picked == null)
-                throw new InvalidOperationException("No tab matched the attach <wnd> selector.");
+            if (timeoutMs <= 0)
+            {
+                var picked = TryPickWndMatch(scope);
+                if (picked == null)
+                    throw new InvalidOperationException("No tab matched the attach <wnd> selector.");
+                return AttachPickedWndMatch(picked);
+            }
 
+            var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+            Exception lastError = null;
+
+            while (true)
+            {
+                var picked = TryPickWndMatch(scope);
+                if (picked != null)
+                    return AttachPickedWndMatch(picked);
+
+                lastError = new InvalidOperationException("No tab matched the attach <wnd> selector.");
+
+                var remaining = deadline - DateTime.UtcNow;
+                if (remaining <= TimeSpan.Zero)
+                {
+                    throw new TimeoutException(
+                        "No tab matched the attach <wnd> selector within " + timeoutMs + " ms.",
+                        lastError);
+                }
+
+                var delayMs = Math.Min(
+                    DefaultWndPollIntervalMs,
+                    Math.Max(1, (int)Math.Ceiling(remaining.TotalMilliseconds)));
+                Thread.Sleep(delayMs);
+            }
+        }
+
+        private BridgeAttachResult AttachPickedWndMatch(BwTabMatch picked)
+        {
             if (!picked.Tab.Active)
                 picked.Tab.Activate();
 
-            return new BridgeAttachResult(GetClient(picked.InstanceId).GetBrowser(), picked.Tab);
+            var browser = GetClient(picked.InstanceId).GetBrowser();
+            browser.BindWindow(picked.Tab.WindowId);
+            return new BridgeAttachResult(browser, picked.Tab);
         }
 
         public BridgeSyncClient GetClient(string instanceId)

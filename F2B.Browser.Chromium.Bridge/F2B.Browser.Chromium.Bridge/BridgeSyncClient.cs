@@ -415,6 +415,12 @@ namespace F2B.Browser.Chromium.Bridge
 
         public int WindowId { get; private set; }
 
+        internal void BindWindow(int windowId)
+        {
+            if (windowId > 0)
+                WindowId = windowId;
+        }
+
         public BwBrowser BrowserOpen(out BwTab initialTab, string url = null, int timeoutMs = 15000)
         {
             var response = Invoke("browser.open", new Dictionary<string, object>
@@ -431,7 +437,19 @@ namespace F2B.Browser.Chromium.Bridge
         public void BrowserClose()
         {
             if (WindowId <= 0)
-                throw new InvalidOperationException("No browser window is open. Call BrowserOpen() first.");
+            {
+                var windowIds = CollectWindowIds();
+                if (windowIds.Count == 1)
+                    WindowId = windowIds.First();
+                else if (windowIds.Count > 1)
+                    throw new InvalidOperationException(
+                        "Multiple browser windows are associated with this browser instance. " +
+                        "Attach Browser must match a single window, or call BrowserOpen() first.");
+            }
+
+            if (WindowId <= 0)
+                throw new InvalidOperationException(
+                    "No browser window is associated with this browser instance. Call BrowserOpen() or Attach Browser first.");
 
             Invoke("browser.close", new Dictionary<string, object>
             {
@@ -508,12 +526,6 @@ namespace F2B.Browser.Chromium.Bridge
             }
 
             throw new TimeoutException("Tab with expected URL was not found within " + timeoutMs + "ms: " + url);
-        }
-
-        internal void BindWindow(int windowId)
-        {
-            if (windowId > 0)
-                WindowId = windowId;
         }
 
         public BwTab GetActivatedTab()
@@ -793,14 +805,15 @@ namespace F2B.Browser.Chromium.Bridge
             return BridgeJson.GetInt(response.Data, "matchedIndex", -1);
         }
 
-        public object RunJs(string script, object arg = null, int timeoutMs = 15000)
+        public object RunJs(string script, object arg = null, int timeoutMs = 15000, bool isAsync = false)
         {
             var response = Invoke("tab.runJs", WithTab(new Dictionary<string, object>
             {
                 { "script", script },
                 { "arg", arg },
-                { "timeout", timeoutMs }
-            }), timeoutMs);
+                { "timeout", timeoutMs },
+                { "isAsync", isAsync }
+            }), isAsync ? 5000 : timeoutMs);
 
             return response.Data.ContainsKey("result") ? response.Data["result"] : null;
         }
@@ -1372,14 +1385,15 @@ namespace F2B.Browser.Chromium.Bridge
             }), timeoutMs);
         }
 
-        public object RunJs(string script, object arg = null, int timeoutMs = 15000)
+        public object RunJs(string script, object arg = null, int timeoutMs = 15000, bool isAsync = false)
         {
             var response = Invoke("element.runJs", WithSelector(new Dictionary<string, object>
             {
                 { "script", script },
                 { "arg", arg },
-                { "timeout", timeoutMs }
-            }), timeoutMs);
+                { "timeout", timeoutMs },
+                { "isAsync", isAsync }
+            }), isAsync ? 5000 : timeoutMs);
 
             return response.Data.ContainsKey("result") ? response.Data["result"] : null;
         }

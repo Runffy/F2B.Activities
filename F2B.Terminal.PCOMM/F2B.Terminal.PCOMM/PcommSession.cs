@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 
 namespace F2B.Terminal.PCOMM
 {
@@ -125,6 +127,94 @@ namespace F2B.Terminal.PCOMM
 
             throw new TimeoutException(
                 "Timed out after " + timeoutMs + " ms waiting for text: " + text);
+        }
+
+        public int ParallelFindText(IList<string> texts, int timeoutMs, int intervalMs)
+        {
+            if (texts == null || texts.Count == 0)
+            {
+                throw new ArgumentException("At least one candidate text is required.", nameof(texts));
+            }
+
+            if (timeoutMs < 0)
+            {
+                timeoutMs = 0;
+            }
+
+            if (intervalMs < 1)
+            {
+                intervalMs = 1;
+            }
+
+            var stopwatch = Stopwatch.StartNew();
+            while (stopwatch.ElapsedMilliseconds <= timeoutMs)
+            {
+                var screen = ReadAllRows();
+                for (var i = 0; i < texts.Count; i++)
+                {
+                    var candidate = texts[i];
+                    if (!string.IsNullOrEmpty(candidate) &&
+                        screen.IndexOf(candidate, StringComparison.Ordinal) >= 0)
+                    {
+                        return i;
+                    }
+                }
+
+                Thread.Sleep(intervalMs);
+            }
+
+            throw new TimeoutException(
+                "Timed out after " + timeoutMs + " ms waiting for any candidate text on screen.");
+        }
+
+        public int ParallelFindTextInRow(object[,] candidates, int timeoutMs, int intervalMs)
+        {
+            if (candidates == null || candidates.GetLength(0) == 0)
+            {
+                throw new ArgumentException("At least one row/text candidate is required.", nameof(candidates));
+            }
+
+            if (timeoutMs < 0)
+            {
+                timeoutMs = 0;
+            }
+
+            if (intervalMs < 1)
+            {
+                intervalMs = 1;
+            }
+
+            var pairs = new List<KeyValuePair<int, string>>();
+            for (var i = 0; i < candidates.GetLength(0); i++)
+            {
+                var row = Convert.ToInt32(candidates[i, 0]);
+                var text = candidates[i, 1]?.ToString() ?? string.Empty;
+                pairs.Add(new KeyValuePair<int, string>(row, text));
+            }
+
+            var stopwatch = Stopwatch.StartNew();
+            while (stopwatch.ElapsedMilliseconds <= timeoutMs)
+            {
+                for (var i = 0; i < pairs.Count; i++)
+                {
+                    var pair = pairs[i];
+                    if (string.IsNullOrEmpty(pair.Value))
+                    {
+                        continue;
+                    }
+
+                    var rowText = ReadSingleRow(pair.Key);
+                    if (rowText.IndexOf(pair.Value, StringComparison.Ordinal) >= 0)
+                    {
+                        return i;
+                    }
+                }
+
+                Thread.Sleep(intervalMs);
+            }
+
+            throw new TimeoutException(
+                "Timed out after " + timeoutMs + " ms waiting for any candidate text in the specified rows.");
         }
 
         public bool WaitForTextInRow(string text, int row, int? startCol, int? endCol, int timeoutMs, int intervalMs)

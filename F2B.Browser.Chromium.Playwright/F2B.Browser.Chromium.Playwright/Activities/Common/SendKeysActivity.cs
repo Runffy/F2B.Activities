@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Activities;
 using System.ComponentModel;
 
@@ -48,7 +48,7 @@ namespace F2B.Browser.Chromium.Playwright
         [Category("Input.E")]
         public InArgument<PwElement> InputElement { get; set; }
 
-        [DisplayName("Delay Before")]
+        [DisplayName("Delay Before (ms)")]
         [Description("Wait time in milliseconds before locating element.")]
         [Category("Input.Z")]
         [DefaultValue(300)]
@@ -66,7 +66,7 @@ namespace F2B.Browser.Chromium.Playwright
         [Category("Input.F")]
         public InArgument<string> Keys { get; set; }
 
-        [DisplayName("Interval")]
+        [DisplayName("Interval (ms)")]
         [Description("Delay in milliseconds between key presses.")]
         [Category("Input.Z")]
         public InArgument<int?> Delay { get; set; }

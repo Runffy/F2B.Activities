@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Activities;
 using System.ComponentModel;
 
@@ -24,7 +24,7 @@ namespace F2B.Browser.Chromium.Playwright
         [TypeConverter("F2B.Browser.Chromium.Playwright.InputMethodTypeConverter, F2B.Browser.Chromium.Playwright")]
         public InputMethod InputMethod { get; set; } = F2B.Browser.Chromium.Playwright.InputMethod.Fill;
 
-        [DisplayName("Type Interval")]
+        [DisplayName("Type Interval (ms)")]
         [Description("Delay in milliseconds between characters.(Only will be used when Input Method = Type)")]
         [Category("Input.Z")]
         public InArgument<float?> TypeDelay { get; set; }
@@ -36,7 +36,7 @@ namespace F2B.Browser.Chromium.Playwright
         [TypeConverter("F2B.Browser.Chromium.Playwright.BooleanTypeConverter, F2B.Browser.Chromium.Playwright")]
         public bool ValidateContentAfterInputted { get; set; } = false;
 
-        [DisplayName("Wait Before Validate")]
+        [DisplayName("Wait Before Validate (ms)")]
         [Description("Retry interval in milliseconds for validation.")]
         [Category("Input.E")]
         [DefaultValue(500)]

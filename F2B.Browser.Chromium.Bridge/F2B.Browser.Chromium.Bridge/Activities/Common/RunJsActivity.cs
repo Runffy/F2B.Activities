@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Activities;
 using System.ComponentModel;
-using System.Activities.Presentation;
 
 namespace F2B.Browser.Chromium.Bridge
 {
@@ -58,6 +57,12 @@ namespace F2B.Browser.Chromium.Bridge
         [Category("Input.G")]
         public InArgument<object> Arg { get; set; }
 
+        [DisplayName("Is Async")]
+        [Description("When true, starts script execution without waiting for the result.")]
+        [Category("Input.G")]
+        [DefaultValue(false)]
+        public InArgument<bool> IsAsync { get; set; } = false;
+
         [DisplayName("Result")]
         [Category("Output")]
         public OutArgument<object> Result { get; set; }
@@ -68,12 +73,21 @@ namespace F2B.Browser.Chromium.Bridge
             var arg = Arg == null ? null : Arg.Get(context);
             object result;
 
+            var isAsync = BridgeActivityArgumentHelper.GetOrDefault(IsAsync, context, false);
+
             if (BaseOn == BridgeRunJsBaseOn.Tab)
             {
                 var tab = InputTab == null ? null : InputTab.Get(context);
                 if (tab == null)
                     throw new InvalidOperationException("InputTab must be provided when BaseOn=Tab.");
-                result = tab.RunJs(script, arg, BridgeActivityArgumentHelper.GetOrDefault(Timeout, context, 15000));
+
+                var totalMs = BridgeActivityArgumentHelper.GetOrDefault(Timeout, context, 15000);
+                var budget = new TimeoutBudget(totalMs);
+                BridgeDelay.Apply(BridgeActivityArgumentHelper.GetOrDefault(DelayBefore, context, 300));
+                if (budget.RemainingMs <= 0)
+                    throw new TimeoutException("RunJs timeout before execution.");
+
+                result = tab.RunJs(script, arg, budget.RemainingMs, isAsync);
             }
             else
             {
@@ -82,7 +96,7 @@ namespace F2B.Browser.Chromium.Bridge
                     context, TargetType, InputElement, Selector, InputTab, DelayBefore, budget.RemainingMs);
                 if (budget.RemainingMs <= 0)
                     throw new TimeoutException("RunJs timeout before execution.");
-                result = element.RunJs(script, arg, budget.RemainingMs);
+                result = element.RunJs(script, arg, budget.RemainingMs, isAsync);
             }
 
             Result?.Set(context, result);

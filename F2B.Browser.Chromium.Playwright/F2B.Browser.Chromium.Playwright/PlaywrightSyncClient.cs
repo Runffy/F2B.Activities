@@ -1225,10 +1225,22 @@ namespace F2B.Browser.Chromium.Playwright
             return count > index;
         }
 
-        public T RunJs<T>(string script, object arg = null)
+        public T RunJs<T>(string script, object arg = null, float? timeoutMs = null, bool isAsync = false)
         {
             _client.EnsureTabAlive(_page);
-            return _page.EvaluateAsync<T>(script, arg).GetAwaiter().GetResult();
+            var task = _page.EvaluateAsync<T>(script, arg);
+
+            if (isAsync)
+                return default;
+
+            if (timeoutMs.HasValue && timeoutMs.Value > 0)
+            {
+                if (!task.Wait(TimeSpan.FromMilliseconds(timeoutMs.Value)))
+                    throw new TimeoutException("RunJs timed out after " + timeoutMs.Value + " ms.");
+                return task.Result;
+            }
+
+            return task.GetAwaiter().GetResult();
         }
 
         public Cookies GetCookies()
@@ -1938,11 +1950,18 @@ namespace F2B.Browser.Chromium.Playwright
             };
         }
 
-        public T RunJs<T>(string script, object arg = null, float? timeoutMs = null)
+        public T RunJs<T>(string script, object arg = null, float? timeoutMs = null, bool isAsync = false)
         {
             var options = timeoutMs.HasValue
                 ? new LocatorEvaluateOptions { Timeout = timeoutMs.Value }
                 : null;
+
+            if (isAsync)
+            {
+                _ = _locator.EvaluateAsync<T>(script, arg, options);
+                return default;
+            }
+
             return _locator.EvaluateAsync<T>(script, arg, options).GetAwaiter().GetResult();
         }
 

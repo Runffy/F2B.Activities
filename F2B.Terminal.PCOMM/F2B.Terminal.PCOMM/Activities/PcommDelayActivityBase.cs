@@ -1,4 +1,4 @@
-using System.Activities;
+﻿using System.Activities;
 using System.ComponentModel;
 
 namespace F2B.Terminal.PCOMM
@@ -10,7 +10,7 @@ namespace F2B.Terminal.PCOMM
             DisplayName = displayName;
         }
 
-        [DisplayName("Delay Before")]
+        [DisplayName("Delay Before (ms)")]
         [Description("Wait time in milliseconds before execution.")]
         [Category("Input.Z")]
         [DefaultValue(300)]

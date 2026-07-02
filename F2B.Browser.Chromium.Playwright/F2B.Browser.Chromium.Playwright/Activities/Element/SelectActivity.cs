@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Activities;
 using System.ComponentModel;
 
@@ -55,7 +55,7 @@ namespace F2B.Browser.Chromium.Playwright
         [TypeConverter("F2B.Browser.Chromium.Playwright.BooleanTypeConverter, F2B.Browser.Chromium.Playwright")]
         public bool ValidateContentAfterSelected { get; set; } = false;
 
-        [DisplayName("Wait Before Validate")]
+        [DisplayName("Wait Before Validate (ms)")]
         [Description("Retry interval in milliseconds for validation.")]
         [Category("Input.F")]
         [DefaultValue(500)]
