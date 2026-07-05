@@ -4,7 +4,7 @@ using System.ComponentModel;
 namespace F2B.DesktopApplication.FlaUI
 {
     [DisplayName("Window Exists")]
-    [Description("Instantly check whether a window matching the <wnd> selector exists.")]
+    [Description("Instantly check whether a visible window matching the <wnd> selector exists. Hidden or off-screen windows are ignored.")]
     public sealed class WindowExistsActivity : FlaUiWindowSelectorActivityBase
     {
         public WindowExistsActivity()

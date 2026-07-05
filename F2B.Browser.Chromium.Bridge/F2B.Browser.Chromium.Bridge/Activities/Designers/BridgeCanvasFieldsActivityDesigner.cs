@@ -27,6 +27,7 @@ namespace F2B.Browser.Chromium.Bridge
         private readonly ExpressionTextBox _elementFindSelectorExpressionBox;
         private readonly ExpressionTextBox _tabExistsSelectorExpressionBox;
         private readonly ExpressionTextBox _tabFindSelectorExpressionBox;
+        private readonly ExpressionTextBox _tabNavigateSelectorExpressionBox;
         private readonly ExpressionTextBox _tabNavigateUrlExpressionBox;
         private readonly ExpressionTextBox _runJsInputTabExpressionBox;
         private readonly ExpressionTextBox _runJsInputElementExpressionBox;
@@ -52,6 +53,7 @@ namespace F2B.Browser.Chromium.Bridge
         private readonly FrameworkElement _elementFindSelectorRow;
         private readonly FrameworkElement _tabExistsSelectorRow;
         private readonly FrameworkElement _tabFindSelectorRow;
+        private readonly FrameworkElement _tabNavigateSelectorRow;
         private readonly FrameworkElement _tabNavigateUrlRow;
         private readonly FrameworkElement _runJsBaseOnRow;
         private readonly FrameworkElement _runJsTargetTypeRow;
@@ -83,6 +85,7 @@ namespace F2B.Browser.Chromium.Bridge
         private readonly Border _findElementTabEditorBorder;
         private readonly Border _tabExistsSelectorEditorBorder;
         private readonly Border _tabFindSelectorEditorBorder;
+        private readonly Border _tabNavigateSelectorEditorBorder;
         private readonly Border _tabNavigateUrlEditorBorder;
         private readonly Border _runJsInputTabEditorBorder;
         private readonly Border _runJsInputElementEditorBorder;
@@ -159,6 +162,7 @@ namespace F2B.Browser.Chromium.Bridge
             _elementFindSelectorExpressionBox = CreateExpressionTextBox("Selector", typeof(string));
             _tabExistsSelectorExpressionBox = CreateExpressionTextBox("Selector", typeof(string));
             _tabFindSelectorExpressionBox = CreateExpressionTextBox("Selector", typeof(string));
+            _tabNavigateSelectorExpressionBox = CreateExpressionTextBox("Selector", typeof(string));
             _tabNavigateUrlExpressionBox = CreateExpressionTextBox("Url", typeof(string));
             _runJsInputTabExpressionBox = CreateExpressionTextBox("InputTab", typeof(BwTab));
             _runJsInputElementExpressionBox = CreateExpressionTextBox("InputElement", typeof(BwElement));
@@ -187,7 +191,8 @@ namespace F2B.Browser.Chromium.Bridge
             _elementFindSelectorRow = SelectorDesignerSupport.CreateSelectorRow("Selector", _elementFindSelectorExpressionBox, "Selector", () => ModelItem, "CanvasFieldLabelColumn", EditorMinWidth, out _elementFindSelectorEditorBorder, RowSpacing);
             _tabExistsSelectorRow = SelectorDesignerSupport.CreateSelectorRow("Selector", _tabExistsSelectorExpressionBox, "Selector", () => ModelItem, "CanvasFieldLabelColumn", EditorMinWidth, out _tabExistsSelectorEditorBorder);
             _tabFindSelectorRow = SelectorDesignerSupport.CreateSelectorRow("Selector", _tabFindSelectorExpressionBox, "Selector", () => ModelItem, "CanvasFieldLabelColumn", EditorMinWidth, out _tabFindSelectorEditorBorder);
-            _tabNavigateUrlRow = CreateRow("Url", _tabNavigateUrlExpressionBox, out _tabNavigateUrlEditorBorder);
+            _tabNavigateSelectorRow = SelectorDesignerSupport.CreateSelectorRow("Selector", _tabNavigateSelectorExpressionBox, "Selector", () => ModelItem, "CanvasFieldLabelColumn", EditorMinWidth, out _tabNavigateSelectorEditorBorder);
+            _tabNavigateUrlRow = CreateRow("Url", _tabNavigateUrlExpressionBox, out _tabNavigateUrlEditorBorder, RowSpacing);
             _runJsBaseOnComboBox = BuildBridgeRunJsBaseOnComboBox();
             _runJsBaseOnComboBox.SelectionChanged += OnBridgeRunJsBaseOnSelectionChanged;
             _runJsBaseOnRow = CreateRow("BaseOn", _runJsBaseOnComboBox);
@@ -241,6 +246,7 @@ namespace F2B.Browser.Chromium.Bridge
             body.Children.Add(_elementFindSelectorRow);
             body.Children.Add(_tabExistsSelectorRow);
             body.Children.Add(_tabFindSelectorRow);
+            body.Children.Add(_tabNavigateSelectorRow);
             body.Children.Add(_tabNavigateUrlRow);
             body.Children.Add(_runJsBaseOnRow);
             body.Children.Add(_runJsTargetTypeRow);
@@ -507,6 +513,7 @@ namespace F2B.Browser.Chromium.Bridge
             _elementFindSelectorRow.Visibility = IsFindElementLikeMode(_designerMode) ? Visibility.Visible : Visibility.Collapsed;
             _tabExistsSelectorRow.Visibility = _designerMode == DesignerMode.TabElementExists ? Visibility.Visible : Visibility.Collapsed;
             _tabFindSelectorRow.Visibility = Visibility.Collapsed;
+            _tabNavigateSelectorRow.Visibility = _designerMode == DesignerMode.TabNavigateUrl ? Visibility.Visible : Visibility.Collapsed;
             _tabNavigateUrlRow.Visibility = _designerMode == DesignerMode.TabNavigateUrl ? Visibility.Visible : Visibility.Collapsed;
             _runJsBaseOnRow.Visibility = _designerMode == DesignerMode.RunJs ? Visibility.Visible : Visibility.Collapsed;
             _runJsScriptRow.Visibility = _designerMode == DesignerMode.RunJs ? Visibility.Visible : Visibility.Collapsed;
@@ -1547,12 +1554,16 @@ namespace F2B.Browser.Chromium.Bridge
             var takeScreenshotBaseOn = ReadBridgeTakeScreenshotBaseOn(ModelItem);
             var takeScreenshotTargetType = ReadRunJsTargetType(ModelItem);
 
+            var navigateUsesWndSelector = _designerMode == DesignerMode.TabNavigateUrl &&
+                BridgeDesignerSelectorHelper.SelectorHasWnd(ModelItem, "Selector");
+
             SetRequiredBorder(_browserEditorBorder, IsBrowserMode(_designerMode), IsArgumentFilled(ModelItem, "Browser", _browserExpressionBox));
             SetRequiredBorder(_tabEditorBorder, IsTabMode(_designerMode) && ResolveGeneralTabRowVisibility() == Visibility.Visible, IsArgumentFilled(ModelItem, "Tab", _tabExpressionBox));
             SetRequiredBorder(_findElementTabEditorBorder, IsFindElementLikeMode(_designerMode) && findElementBaseOn == BridgeFindElementBaseOn.Tab && _findElementTabRow.Visibility == Visibility.Visible, IsArgumentFilled(ModelItem, "Tab", _findElementTabExpressionBox));
             SetRequiredBorder(_elementFindElementEditorBorder, IsFindElementLikeMode(_designerMode) && findElementBaseOn == BridgeFindElementBaseOn.Element, IsArgumentFilled(ModelItem, "Element", _elementFindElementExpressionBox));
             SetRequiredBorder(_elementFindSelectorEditorBorder, IsFindElementLikeMode(_designerMode), IsArgumentFilled(ModelItem, "Selector", _elementFindSelectorExpressionBox));
             SetRequiredBorder(_tabExistsSelectorEditorBorder, _designerMode == DesignerMode.TabElementExists, IsArgumentFilled(ModelItem, "Selector", _tabExistsSelectorExpressionBox));
+            SetRequiredBorder(_tabNavigateSelectorEditorBorder, navigateUsesWndSelector, IsArgumentFilled(ModelItem, "Selector", _tabNavigateSelectorExpressionBox));
             SetRequiredBorder(_tabNavigateUrlEditorBorder, _designerMode == DesignerMode.TabNavigateUrl, IsArgumentFilled(ModelItem, "Url", _tabNavigateUrlExpressionBox));
             var isRunJsTab = _designerMode == DesignerMode.RunJs && runJsBaseOn == BridgeRunJsBaseOn.Tab;
             var isRunJsElementByElement = _designerMode == DesignerMode.RunJs && runJsBaseOn == BridgeRunJsBaseOn.Element && runJsTargetType == BridgeElementTargetType.Element;
@@ -1676,6 +1687,7 @@ namespace F2B.Browser.Chromium.Bridge
             _elementFindSelectorExpressionBox.OwnerActivity = owner;
             _tabExistsSelectorExpressionBox.OwnerActivity = owner;
             _tabFindSelectorExpressionBox.OwnerActivity = owner;
+            _tabNavigateSelectorExpressionBox.OwnerActivity = owner;
             _tabNavigateUrlExpressionBox.OwnerActivity = owner;
             _runJsInputTabExpressionBox.OwnerActivity = owner;
             _runJsInputElementExpressionBox.OwnerActivity = owner;
@@ -1745,11 +1757,11 @@ namespace F2B.Browser.Chromium.Bridge
             if (!IsTabMode(_designerMode) || _designerMode == DesignerMode.GetCookies || IsFindElementLikeMode(_designerMode))
                 return Visibility.Collapsed;
 
-            if (_designerMode == DesignerMode.TabElementExists)
+            if (_designerMode == DesignerMode.TabElementExists || _designerMode == DesignerMode.TabNavigateUrl)
             {
-                return BridgeDesignerSelectorHelper.ShouldShowOptionalInputTab(ModelItem, "Selector")
-                    ? Visibility.Visible
-                    : Visibility.Collapsed;
+                return BridgeDesignerSelectorHelper.SelectorHasWnd(ModelItem, "Selector")
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
             }
 
             return Visibility.Visible;

@@ -103,7 +103,7 @@ namespace F2B.Browser.Chromium.Bridge
                 {
                     return ResolveWndContext(scope);
                 }
-                catch (InvalidOperationException ex) when (IsNoTabMatchedError(ex))
+                catch (Exception ex)
                 {
                     lastError = ex;
                 }

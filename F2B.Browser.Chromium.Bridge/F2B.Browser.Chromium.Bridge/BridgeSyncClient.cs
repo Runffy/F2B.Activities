@@ -196,19 +196,25 @@ namespace F2B.Browser.Chromium.Bridge
             if (tab == null)
                 throw new ArgumentNullException(nameof(tab));
 
-            Invoke(
-                "element.find",
-                BridgeRpcHost.WithScopeForTab(scope, tab, new Dictionary<string, object>
+            return BridgeFindElementRetry.Execute(
+                timeoutMs,
+                delayBefore,
+                (remainingMs, attemptDelay) =>
                 {
-                    { "index", index },
-                    { "timeout", timeoutMs },
-                    { "waitState", waitState.ToString() },
-                    { "delayBefore", delayBefore }
-                }),
-                timeoutMs);
+                    Invoke(
+                        "element.find",
+                        BridgeRpcHost.WithScopeForTab(scope, tab, new Dictionary<string, object>
+                        {
+                            { "index", index },
+                            { "timeout", remainingMs },
+                            { "waitState", waitState.ToString() },
+                            { "delayBefore", attemptDelay }
+                        }),
+                        remainingMs);
 
-            var operationXml = SelectorXmlSerializer.ToOperationXml(scope);
-            return new BwElement(_rpc, _instanceId, tab.TabId, operationXml, index);
+                    var operationXml = SelectorXmlSerializer.ToOperationXml(scope);
+                    return new BwElement(_rpc, _instanceId, tab.TabId, operationXml, index);
+                });
         }
 
         public BwElement[] FindElements(string selectorXml, BwTab tab = null)
@@ -703,15 +709,30 @@ namespace F2B.Browser.Chromium.Bridge
             return info;
         }
 
-        public void NavigateUrl(string url, bool waitForLoad = false, int timeoutMs = 15000)
+        public void NavigateUrl(string url, bool waitForLoad = true, int timeoutMs = 15000)
         {
-            var rpcTimeoutMs = waitForLoad ? timeoutMs : 5000;
-            Invoke("tab.navigate", WithTab(new Dictionary<string, object>
+            try
             {
-                { "url", url },
-                { "waitForLoad", waitForLoad },
-                { "timeout", waitForLoad ? timeoutMs : 0 }
-            }), rpcTimeoutMs);
+                var rpcTimeoutMs = waitForLoad ? timeoutMs + 3000 : 5000;
+                Invoke("tab.navigate", WithTab(new Dictionary<string, object>
+                {
+                    { "url", url },
+                    { "waitForLoad", waitForLoad },
+                    { "timeout", waitForLoad ? timeoutMs : 0 }
+                }), rpcTimeoutMs);
+            }
+            catch (InvalidOperationException ex) when (waitForLoad && IsNavigateLoadTimeout(ex))
+            {
+                throw new TimeoutException(
+                    "Page did not finish loading within " + timeoutMs + " ms.",
+                    ex);
+            }
+        }
+
+        private static bool IsNavigateLoadTimeout(Exception ex)
+        {
+            var message = ex?.Message ?? string.Empty;
+            return message.IndexOf("did not finish loading", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         public void Back()
@@ -756,15 +777,21 @@ namespace F2B.Browser.Chromium.Bridge
             BridgeFindElementWaitState waitState = BridgeFindElementWaitState.Attached,
             int delayBefore = 300)
         {
-            Invoke("element.find", WithSelector(selectorXml, new Dictionary<string, object>
-            {
-                { "index", index },
-                { "timeout", timeoutMs },
-                { "waitState", waitState.ToString() },
-                { "delayBefore", delayBefore }
-            }), timeoutMs);
+            return BridgeFindElementRetry.Execute(
+                timeoutMs,
+                delayBefore,
+                (remainingMs, attemptDelay) =>
+                {
+                    Invoke("element.find", WithSelector(selectorXml, new Dictionary<string, object>
+                    {
+                        { "index", index },
+                        { "timeout", remainingMs },
+                        { "waitState", waitState.ToString() },
+                        { "delayBefore", attemptDelay }
+                    }), remainingMs);
 
-            return new BwElement(_rpc, _instanceId, TabId, selectorXml, index);
+                    return new BwElement(_rpc, _instanceId, TabId, selectorXml, index);
+                });
         }
 
         public BwElement[] FindElements(string selectorXml)
@@ -1428,16 +1455,22 @@ namespace F2B.Browser.Chromium.Bridge
             BridgeFindElementWaitState waitState = BridgeFindElementWaitState.Attached,
             int delayBefore = 300)
         {
-            Invoke("element.findScoped", WithSelector(new Dictionary<string, object>
-            {
-                { "scopedSelectorLevels", BridgeRpcHost.BuildSelectorLevelsPayload(SelectorXmlSerializer.Deserialize(selectorXml)) },
-                { "index", index },
-                { "timeout", timeoutMs },
-                { "waitState", waitState.ToString() },
-                { "delayBefore", delayBefore }
-            }), timeoutMs);
+            return BridgeFindElementRetry.Execute(
+                timeoutMs,
+                delayBefore,
+                (remainingMs, attemptDelay) =>
+                {
+                    Invoke("element.findScoped", WithSelector(new Dictionary<string, object>
+                    {
+                        { "scopedSelectorLevels", BridgeRpcHost.BuildSelectorLevelsPayload(SelectorXmlSerializer.Deserialize(selectorXml)) },
+                        { "index", index },
+                        { "timeout", remainingMs },
+                        { "waitState", waitState.ToString() },
+                        { "delayBefore", attemptDelay }
+                    }), remainingMs);
 
-            return new BwElement(_rpc, _instanceId, _tabId, _selectorXml + "\n" + selectorXml, index);
+                    return new BwElement(_rpc, _instanceId, _tabId, _selectorXml + "\n" + selectorXml, index);
+                });
         }
 
         public BwElement[] FindElements(string scopedSelectorXml)

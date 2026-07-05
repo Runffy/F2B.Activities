@@ -4,7 +4,7 @@ using System.ComponentModel;
 namespace F2B.DesktopApplication.FlaUI
 {
     [DisplayName("Find Windows")]
-    [Description("Instantly find all windows matching the <wnd> selector XML.")]
+    [Description("Instantly find all visible windows matching the <wnd> selector XML. Hidden or off-screen windows are ignored.")]
     public sealed class FindWindowsActivity : FlaUiWindowSelectorActivityBase
     {
         public FindWindowsActivity()

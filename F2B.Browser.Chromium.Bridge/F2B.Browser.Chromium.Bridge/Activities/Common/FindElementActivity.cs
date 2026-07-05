@@ -13,7 +13,7 @@ namespace F2B.Browser.Chromium.Bridge
     }
 
     [DisplayName("Find Element")]
-    [Description("Find a matching element in a tab or parent element using selector XML.")]
+    [Description("Find a matching element in a tab or parent element using selector XML. Retries within the timeout when the page is still loading or transient errors occur.")]
     [Designer(typeof(BridgeCanvasFieldsActivityDesigner))]
     public sealed class FindElementActivity : CodeActivity
     {

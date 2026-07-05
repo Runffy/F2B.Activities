@@ -4,7 +4,7 @@ using System.ComponentModel;
 namespace F2B.DesktopApplication.FlaUI
 {
     [DisplayName("Find Element")]
-    [Description("Find the first element matching the selector within the timeout.")]
+    [Description("Find the first element matching the selector within the timeout. Retries on transient errors while the UI is still changing.")]
     public sealed class FindElementActivity : FlaUiSelectorActivityBase
     {
         [Category("Input.Z")]

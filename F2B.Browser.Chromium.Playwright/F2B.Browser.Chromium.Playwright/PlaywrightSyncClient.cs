@@ -1167,22 +1167,36 @@ namespace F2B.Browser.Chromium.Playwright
 
         public PwElement FindElement(string selector, int index = 0, double? timeout = null, string waitState = null, int delayBefore = 300)
         {
+            if (index < 0)
+                throw new ArgumentOutOfRangeException(nameof(index), "index must not be less than 0.");
+
+            if (!timeout.HasValue || timeout.Value <= 0)
+                return FindElementOnce(selector, index, timeout, waitState, delayBefore);
+
+            return PlaywrightFindElementRetry.Execute(
+                timeout.Value,
+                delayBefore,
+                (remainingMs, attemptDelay) => FindElementOnce(
+                    selector,
+                    index,
+                    remainingMs,
+                    waitState,
+                    attemptDelay));
+        }
+
+        private PwElement FindElementOnce(string selector, int index, double? timeout, string waitState, int delayBefore)
+        {
             _client.EnsureTabAlive(_page);
             PlaywrightSyncClient.ApplyDelay(delayBefore);
 
             var locatorSet = _page.Locator(selector);
-            if (index < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(index), "index must not be less than 0.");
-            }
-
             var target = locatorSet.Nth(index);
             var parsedState = PlaywrightSyncClient.ParseWaitState(waitState);
             if (parsedState.HasValue || timeout.HasValue)
             {
                 target.WaitForAsync(new LocatorWaitForOptions
                 {
-                    Timeout = timeout.HasValue ? (float?)timeout.Value : null,
+                    Timeout = timeout.HasValue ? (float?)Math.Max(0, timeout.Value) : null,
                     State = parsedState
                 }).GetAwaiter().GetResult();
             }
@@ -1820,20 +1834,36 @@ namespace F2B.Browser.Chromium.Playwright
 
         public PwElement FindElement(string selector, int index = 0, double? timeout = null, string waitState = null, int delayBefore = 300)
         {
-            PlaywrightSyncClient.ApplyDelay(delayBefore);
-            var locatorSet = _locator.Locator(selector);
             if (index < 0)
-            {
                 throw new ArgumentOutOfRangeException(nameof(index), "index must not be less than 0.");
-            }
 
+            if (!timeout.HasValue || timeout.Value <= 0)
+                return FindElementOnce(selector, index, timeout, waitState, delayBefore);
+
+            return PlaywrightFindElementRetry.Execute(
+                timeout.Value,
+                delayBefore,
+                (remainingMs, attemptDelay) => FindElementOnce(
+                    selector,
+                    index,
+                    remainingMs,
+                    waitState,
+                    attemptDelay));
+        }
+
+        private PwElement FindElementOnce(string selector, int index, double? timeout, string waitState, int delayBefore)
+        {
+            _client.EnsureTabAlive(_page);
+            PlaywrightSyncClient.ApplyDelay(delayBefore);
+
+            var locatorSet = _locator.Locator(selector);
             var target = locatorSet.Nth(index);
             var parsedState = PlaywrightSyncClient.ParseWaitState(waitState);
             if (parsedState.HasValue || timeout.HasValue)
             {
                 target.WaitForAsync(new LocatorWaitForOptions
                 {
-                    Timeout = timeout.HasValue ? (float?)timeout.Value : null,
+                    Timeout = timeout.HasValue ? (float?)Math.Max(0, timeout.Value) : null,
                     State = parsedState
                 }).GetAwaiter().GetResult();
             }

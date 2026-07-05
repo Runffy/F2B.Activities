@@ -4,7 +4,7 @@ using System.ComponentModel;
 namespace F2B.DesktopApplication.FlaUI
 {
     [DisplayName("Find Window")]
-    [Description("Find a window using <wnd> selector XML within the timeout.")]
+    [Description("Find a visible window using <wnd> selector XML within the timeout. Hidden or off-screen windows are ignored.")]
     public sealed class FindWindowActivity : FlaUiWindowSelectorActivityBase
     {
         [Category("Input.Z")]

@@ -128,30 +128,44 @@ namespace F2B.DesktopApplication.FlaUI
             if (string.IsNullOrWhiteSpace(selectorXml))
                 throw new ArgumentException("Selector XML is required.", nameof(selectorXml));
 
-            var levels = ParseElementSelector(selectorXml, inputWindow);
-            IList<AutomationElement> matches;
-
-            if (timeoutMilliseconds > 0)
+            if (timeoutMilliseconds <= 0)
             {
-                matches = SelectorResolveRetry.FindElementsWithRetry(
-                    _selectorResolver,
-                    levels,
-                    maxResults,
-                    timeoutMilliseconds,
-                    intervalMilliseconds,
-                    searchRoot: inputWindow?.Element,
-                    scopeFromProvidedRoot: inputWindow != null);
-            }
-            else
-            {
-                matches = _selectorResolver.FindElements(
+                var levels = ParseElementSelector(selectorXml, inputWindow);
+                var matches = _selectorResolver.FindElements(
                     levels,
                     inputWindow?.Element,
                     scopeFromProvidedRoot: inputWindow != null,
                     maxResults);
+                return matches.Select(e => new UiElement(e, Automation)).ToList();
             }
 
-            return matches.Select(e => new UiElement(e, Automation)).ToList();
+            var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMilliseconds);
+
+            while (true)
+            {
+                try
+                {
+                    var levels = ParseElementSelector(selectorXml, inputWindow);
+                    var matches = _selectorResolver.FindElements(
+                        levels,
+                        inputWindow?.Element,
+                        scopeFromProvidedRoot: inputWindow != null,
+                        maxResults);
+
+                    if (matches.Count != 0)
+                        return matches.Select(e => new UiElement(e, Automation)).ToList();
+                }
+                catch
+                {
+                }
+
+                var remaining = deadline - DateTime.UtcNow;
+                if (remaining <= TimeSpan.Zero)
+                    return new List<UiElement>();
+
+                var delayMs = Math.Min(intervalMilliseconds, (int)Math.Ceiling(remaining.TotalMilliseconds));
+                System.Threading.Thread.Sleep(delayMs);
+            }
         }
 
         public bool ElementExists(string selectorXml, UiWindow inputWindow = null)

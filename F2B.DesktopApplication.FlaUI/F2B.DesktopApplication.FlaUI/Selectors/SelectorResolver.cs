@@ -145,6 +145,9 @@ namespace F2B.DesktopApplication.FlaUI.Selectors
 
             var filtered = candidates.Where(c => MatchLevel(c, level)).ToList();
 
+            if (WindowVisibilityHelper.IsWindowLevel(level))
+                filtered = filtered.Where(WindowVisibilityHelper.IsVisibleWindow).ToList();
+
             if (processProperty != null)
                 filtered = filtered.Where(c => MatchProcessName(c, processProperty)).ToList();
 
@@ -154,7 +157,11 @@ namespace F2B.DesktopApplication.FlaUI.Selectors
                 {
                     var siblings = parent.FindAllChildren();
                     if (indexInParent < siblings.Length && MatchLevel(siblings[indexInParent], level))
-                        return new List<AutomationElement> { siblings[indexInParent] };
+                    {
+                        var match = siblings[indexInParent];
+                        if (!WindowVisibilityHelper.IsWindowLevel(level) || WindowVisibilityHelper.IsVisibleWindow(match))
+                            return new List<AutomationElement> { match };
+                    }
                 }
                 catch
                 {
@@ -162,7 +169,14 @@ namespace F2B.DesktopApplication.FlaUI.Selectors
             }
 
             if (isRootLevel && filtered.Count == 0 && candidates.Length > 0)
-                return candidates.Take(1).ToList();
+            {
+                var visibleCandidates = WindowVisibilityHelper.IsWindowLevel(level)
+                    ? candidates.Where(WindowVisibilityHelper.IsVisibleWindow).ToArray()
+                    : candidates;
+
+                if (visibleCandidates.Length > 0)
+                    return visibleCandidates.Take(1).ToList();
+            }
 
             return filtered;
         }
