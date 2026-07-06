@@ -5,9 +5,11 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "F2B.DesktopApplication.FlaUI", "F2B.DesktopApplication.FlaUI\F2B.DesktopApplication.FlaUI.csproj", "{BE7EAD15-F84A-4CCD-B766-66588C694056}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlaUI.Demo.App", "FlaUI.Demo.App\FlaUI.Demo.App.csproj", "{166979B4-8775-4D55-BB41-18CF4A338105}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "F2B.OpenRpa.Design", "..\F2B.OpenRpa.Design\F2B.OpenRpa.Design.csproj", "{873BB519-8C93-4327-9295-DE14A0DA2C1B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "FlaUI.Inspector", "FlaUI.Inspector", "{A9C5B885-5801-8D28-1FA6-D0939DA7E52C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlaUI.Inspector", "FlaUI.Inspector\FlaUI.Inspector\FlaUI.Inspector.csproj", "{EA452ED2-3AAB-400D-9BFA-E8D8CF690404}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,18 +33,6 @@ Global
 		{BE7EAD15-F84A-4CCD-B766-66588C694056}.Release|x64.Build.0 = Release|Any CPU
 		{BE7EAD15-F84A-4CCD-B766-66588C694056}.Release|x86.ActiveCfg = Release|Any CPU
 		{BE7EAD15-F84A-4CCD-B766-66588C694056}.Release|x86.Build.0 = Release|Any CPU
-		{166979B4-8775-4D55-BB41-18CF4A338105}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{166979B4-8775-4D55-BB41-18CF4A338105}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{166979B4-8775-4D55-BB41-18CF4A338105}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{166979B4-8775-4D55-BB41-18CF4A338105}.Debug|x64.Build.0 = Debug|Any CPU
-		{166979B4-8775-4D55-BB41-18CF4A338105}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{166979B4-8775-4D55-BB41-18CF4A338105}.Debug|x86.Build.0 = Debug|Any CPU
-		{166979B4-8775-4D55-BB41-18CF4A338105}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{166979B4-8775-4D55-BB41-18CF4A338105}.Release|Any CPU.Build.0 = Release|Any CPU
-		{166979B4-8775-4D55-BB41-18CF4A338105}.Release|x64.ActiveCfg = Release|Any CPU
-		{166979B4-8775-4D55-BB41-18CF4A338105}.Release|x64.Build.0 = Release|Any CPU
-		{166979B4-8775-4D55-BB41-18CF4A338105}.Release|x86.ActiveCfg = Release|Any CPU
-		{166979B4-8775-4D55-BB41-18CF4A338105}.Release|x86.Build.0 = Release|Any CPU
 		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -55,8 +45,23 @@ Global
 		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Release|x64.Build.0 = Release|Any CPU
 		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Release|x86.ActiveCfg = Release|Any CPU
 		{873BB519-8C93-4327-9295-DE14A0DA2C1B}.Release|x86.Build.0 = Release|Any CPU
+		{EA452ED2-3AAB-400D-9BFA-E8D8CF690404}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA452ED2-3AAB-400D-9BFA-E8D8CF690404}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA452ED2-3AAB-400D-9BFA-E8D8CF690404}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{EA452ED2-3AAB-400D-9BFA-E8D8CF690404}.Debug|x64.Build.0 = Debug|Any CPU
+		{EA452ED2-3AAB-400D-9BFA-E8D8CF690404}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{EA452ED2-3AAB-400D-9BFA-E8D8CF690404}.Debug|x86.Build.0 = Debug|Any CPU
+		{EA452ED2-3AAB-400D-9BFA-E8D8CF690404}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA452ED2-3AAB-400D-9BFA-E8D8CF690404}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EA452ED2-3AAB-400D-9BFA-E8D8CF690404}.Release|x64.ActiveCfg = Release|Any CPU
+		{EA452ED2-3AAB-400D-9BFA-E8D8CF690404}.Release|x64.Build.0 = Release|Any CPU
+		{EA452ED2-3AAB-400D-9BFA-E8D8CF690404}.Release|x86.ActiveCfg = Release|Any CPU
+		{EA452ED2-3AAB-400D-9BFA-E8D8CF690404}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{EA452ED2-3AAB-400D-9BFA-E8D8CF690404} = {A9C5B885-5801-8D28-1FA6-D0939DA7E52C}
 	EndGlobalSection
 EndGlobal

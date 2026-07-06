@@ -1,81 +1,30 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Conditions;
 using FlaUI.Core.Definitions;
-using FlaUI.UIA3;
+using FlaUI.Inspector.Helpers;
+using FlaUI.Inspector.Models;
 
-namespace F2B.DesktopApplication.FlaUI.Selectors
+namespace FlaUI.Inspector.Services
 {
-    internal static class SelectorConditionBuilder
-    {
-        public static ConditionBase[] BuildConditions(AutomationBase automation, IEnumerable<SelectorProperty> properties)
-        {
-            var conditions = new List<ConditionBase>();
-            var elementProperties = automation.PropertyLibrary.Element;
-
-            foreach (var property in properties.Where(p => p.IsSelected && !string.IsNullOrEmpty(p.Value) && !p.IsRegex))
-            {
-                switch (property.Name)
-                {
-                    case "ControlType":
-                        if (Enum.TryParse(property.Value, out ControlType controlType))
-                            conditions.Add(new PropertyCondition(elementProperties.ControlType, controlType));
-                        break;
-                    case "Name":
-                    case "Title":
-                        conditions.Add(new PropertyCondition(elementProperties.Name, property.Value));
-                        break;
-                    case "AutomationId":
-                        conditions.Add(new PropertyCondition(elementProperties.AutomationId, property.Value));
-                        break;
-                    case "ClassName":
-                        conditions.Add(new PropertyCondition(elementProperties.ClassName, property.Value));
-                        break;
-                    case "FrameworkId":
-                        conditions.Add(new PropertyCondition(elementProperties.FrameworkId, property.Value));
-                        break;
-                }
-            }
-
-            return conditions.ToArray();
-        }
-    }
-
     public sealed class SelectorResolver
     {
-        private readonly UIA3Automation _automation;
-
-        public SelectorResolver(UIA3Automation automation)
-        {
-            _automation = automation ?? throw new ArgumentNullException(nameof(automation));
-        }
-
         public IList<AutomationElement> FindElements(IEnumerable<SelectorLevel> levels, int maxResults = int.MaxValue)
-        {
-            return FindElements(levels, searchRoot: null, scopeFromProvidedRoot: false, maxResults);
-        }
-
-        public IList<AutomationElement> FindElements(
-            IEnumerable<SelectorLevel> levels,
-            AutomationElement searchRoot,
-            bool scopeFromProvidedRoot,
-            int maxResults = int.MaxValue)
         {
             var enabledLevels = levels?.Where(l => l.IsEnabled).ToList() ?? new List<SelectorLevel>();
             if (enabledLevels.Count == 0)
                 return new List<AutomationElement>();
 
-            var scoped = scopeFromProvidedRoot && searchRoot != null;
-            var current = new List<AutomationElement> { searchRoot ?? _automation.GetDesktop() };
+            var automation = AutomationContext.Instance.Automation;
+            var current = new List<AutomationElement> { automation.GetDesktop() };
 
             for (var i = 0; i < enabledLevels.Count; i++)
             {
                 var level = enabledLevels[i];
                 var next = new List<AutomationElement>();
-                var searchDescendants = scoped || i > 0;
+                var searchDescendants = i > 0;
 
                 foreach (var parent in current)
                 {
@@ -93,30 +42,17 @@ namespace F2B.DesktopApplication.FlaUI.Selectors
             return current;
         }
 
-        public IList<AutomationElement> FindElements(
-            string selectorXml,
-            AutomationElement searchRoot,
-            bool scopeFromProvidedRoot,
-            int maxResults = int.MaxValue)
-        {
-            return FindElements(SelectorXmlSerializer.Deserialize(selectorXml), searchRoot, scopeFromProvidedRoot, maxResults);
-        }
-
-        public IList<AutomationElement> FindElements(string selectorXml, int maxResults = int.MaxValue)
-        {
-            return FindElements(SelectorXmlSerializer.Deserialize(selectorXml), maxResults);
-        }
-
-        private IList<AutomationElement> FindMatchingElements(
+        public static IList<AutomationElement> FindMatchingElements(
             AutomationElement parent,
             SelectorLevel level,
             bool searchDescendants)
         {
+            var automation = AutomationContext.Instance.Automation;
             var selectedProperties = level.Properties.Where(p => p.IsSelected).ToList();
             var processProperty = selectedProperties.FirstOrDefault(p => p.Name == "ProcessName" && !string.IsNullOrEmpty(p.Value));
             var indexInParentText = selectedProperties.FirstOrDefault(p => p.Name == "IndexInParent")?.Value;
 
-            var conditions = SelectorConditionBuilder.BuildConditions(_automation, selectedProperties);
+            var conditions = SelectorBuilder.BuildConditions(automation, selectedProperties);
             AutomationElement[] candidates;
 
             try
@@ -169,7 +105,7 @@ namespace F2B.DesktopApplication.FlaUI.Selectors
             return filtered;
         }
 
-        private static bool MatchLevel(AutomationElement element, SelectorLevel level)
+        public static bool MatchLevel(AutomationElement element, SelectorLevel level)
         {
             foreach (var property in level.Properties.Where(p => p.IsSelected && !string.IsNullOrEmpty(p.Value)))
             {
@@ -180,7 +116,7 @@ namespace F2B.DesktopApplication.FlaUI.Selectors
             return true;
         }
 
-        private static bool MatchProcessName(AutomationElement element, SelectorProperty property)
+        private static bool MatchProcessName(AutomationElement element, ElementPropertyItem property)
         {
             try
             {
@@ -200,7 +136,7 @@ namespace F2B.DesktopApplication.FlaUI.Selectors
             }
         }
 
-        private static bool MatchProperty(AutomationElement element, SelectorProperty property)
+        private static bool MatchProperty(AutomationElement element, ElementPropertyItem property)
         {
             try
             {
@@ -244,7 +180,7 @@ namespace F2B.DesktopApplication.FlaUI.Selectors
             return true;
         }
 
-        private static bool MatchString(string actual, SelectorProperty property)
+        private static bool MatchString(string actual, ElementPropertyItem property)
         {
             if (property.IsRegex)
                 return PropertyMatcher.IsRegexMatch(actual, property.Value);

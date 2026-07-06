@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace FlaUI.Demo.App
+namespace FlaUI.Inspector
 {
     public partial class App : Application
     {

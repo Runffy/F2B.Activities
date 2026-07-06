@@ -2,8 +2,9 @@ using System;
 using System.Runtime.InteropServices;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
+using FlaUI.Inspector.Models;
 
-namespace F2B.DesktopApplication.FlaUI.Selectors
+namespace FlaUI.Inspector.Helpers
 {
     internal static class WindowVisibilityHelper
     {
