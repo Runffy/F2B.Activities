@@ -88,6 +88,7 @@
   <ItemGroup>
     <Compile Include="BrowserWindowCloser.cs" />
     <Compile Include="PlaywrightSyncClient.cs" />
+    <Compile Include="PlaywrightFindElementRetry.cs" />
     <Compile Include="Activities\ActivityArgumentHelper.cs" />
     <Compile Include="Activities\TimeoutBudget.cs" />
     <Compile Include="Activities\Common\ElementLocatorActivity.cs" />
@@ -118,6 +119,10 @@
     <Compile Include="Activities\Designers\MouseButtonTypeConverter.cs" />
     <Compile Include="Activities\Designers\NullableBooleanTypeConverter.cs" />
     <Compile Include="Activities\Designers\ParentSelectorActivityDesigner.cs" />
+    <Compile Include="..\..\F2B.OpenRpa.Design\SelectorDesignerSupport.cs" Link="OpenRpa.Design\SelectorDesignerSupport.cs" />
+    <Compile Include="..\..\F2B.OpenRpa.Design\VbStringArrayExpression.cs" Link="OpenRpa.Design\VbStringArrayExpression.cs" />
+    <Compile Include="..\..\F2B.OpenRpa.Design\SelectorXmlEditorDialog.cs" Link="OpenRpa.Design\SelectorXmlEditorDialog.cs" />
+    <Compile Include="..\..\F2B.OpenRpa.Design\SelectorsEditorDialog.cs" Link="OpenRpa.Design\SelectorsEditorDialog.cs" />
     <Compile Include="Activities\Designers\SelectValTypeTypeConverter.cs" />
     <Compile Include="Activities\Designers\TakeScreenshotTypeDescriptionProvider.cs" />
     <Compile Include="Activities\Element\CheckActivity.cs" />

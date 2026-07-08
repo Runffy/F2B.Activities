@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace F2B.Browser.Chromium.Bridge.Selectors
@@ -12,6 +13,9 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
     public static class SelectorXmlSerializer
     {
         private const string RegexSuffix = "-re";
+        private static readonly Regex LevelTagRegex = new Regex(
+            @"<(wnd|frm|ctrl|parent)\b[^>]*/>",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
         private static readonly Dictionary<string, string> AttributeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -59,18 +63,35 @@ namespace F2B.Browser.Chromium.Bridge.Selectors
             if (string.IsNullOrWhiteSpace(xml))
                 return levels;
 
-            foreach (var line in xml.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            foreach (var tag in ExtractLevelTags(xml))
             {
-                var trimmed = line.Trim();
-                if (string.IsNullOrEmpty(trimmed))
-                    continue;
-
-                var level = ParseLevelTag(trimmed);
+                var level = ParseLevelTag(tag);
                 if (level != null)
                     levels.Add(level);
             }
 
             return levels;
+        }
+
+        private static IEnumerable<string> ExtractLevelTags(string xml)
+        {
+            if (string.IsNullOrWhiteSpace(xml))
+                yield break;
+
+            var matches = LevelTagRegex.Matches(xml);
+            if (matches.Count > 0)
+            {
+                foreach (Match match in matches)
+                    yield return match.Value;
+                yield break;
+            }
+
+            foreach (var line in xml.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var trimmed = line.Trim();
+                if (!string.IsNullOrEmpty(trimmed))
+                    yield return trimmed;
+            }
         }
 
         public static bool HasWndLevel(string selectorXml)

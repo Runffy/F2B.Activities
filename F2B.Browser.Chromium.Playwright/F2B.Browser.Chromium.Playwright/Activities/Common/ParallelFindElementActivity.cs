@@ -1,6 +1,5 @@
 using System;
 using System.Activities;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Threading;
@@ -26,10 +25,10 @@ namespace F2B.Browser.Chromium.Playwright
         public InArgument<object> ParentObject { get; set; }
 
         [DisplayName("Selectors")]
-        [Description("Selector list to evaluate in parallel-like polling order.")]
+        [Description("Selector list as a VB.NET string array expression, e.g. New String() { \"...\" }. Edit via the activity designer ... button.")]
         [RequiredArgument]
         [Category("Input.B")]
-        public InArgument<List<string>> Selectors { get; set; }
+        public InArgument<string[]> Selectors { get; set; }
 
         [DisplayName("Wait State")]
         [Description("Element state that must be satisfied.")]
@@ -59,7 +58,7 @@ namespace F2B.Browser.Chromium.Playwright
             }
 
             var selectors = Selectors == null ? null : Selectors.Get(context);
-            if (selectors == null || selectors.Count == 0)
+            if (selectors == null || selectors.Length == 0)
             {
                 throw new InvalidOperationException("Selectors is required and cannot be empty.");
             }
@@ -75,7 +74,7 @@ namespace F2B.Browser.Chromium.Playwright
 
             while (sw.ElapsedMilliseconds <= timeoutMs)
             {
-                for (var i = 0; i < selectors.Count; i++)
+                for (var i = 0; i < selectors.Length; i++)
                 {
                     var selector = selectors[i];
                     if (string.IsNullOrWhiteSpace(selector))

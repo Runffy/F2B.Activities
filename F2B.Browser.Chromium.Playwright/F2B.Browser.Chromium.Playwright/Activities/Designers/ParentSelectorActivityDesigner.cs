@@ -3,13 +3,13 @@ using System.Activities.Presentation;
 using System.Activities.Presentation.Converters;
 using System.Activities.Presentation.Model;
 using System.Activities.Presentation.View;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
+using F2B.OpenRpa.Design;
 
 namespace F2B.Browser.Chromium.Playwright
 {
@@ -20,12 +20,14 @@ namespace F2B.Browser.Chromium.Playwright
         private const double RowSpacing = 4;
 
         private readonly Border _rootPanel;
+        private readonly StackPanel _body;
         private readonly Border _parentEditorBorder;
-        private readonly Border _selectorEditorBorder;
+        private Border _selectorEditorBorder;
         private readonly ExpressionTextBox _parentExpressionBox;
         private readonly ExpressionTextBox _selectorExpressionBox;
 
         private string _selectorPropertyName;
+        private bool _selectorRowInitialized;
 
         public ParentSelectorActivityDesigner()
         {
@@ -42,19 +44,18 @@ namespace F2B.Browser.Chromium.Playwright
                 Padding = new Thickness(6, 5, 6, 5)
             };
 
-            var body = new StackPanel
+            _body = new StackPanel
             {
                 Orientation = Orientation.Vertical
             };
-            Grid.SetIsSharedSizeScope(body, true);
+            Grid.SetIsSharedSizeScope(_body, true);
 
             _parentExpressionBox = CreateExpressionTextBox("ParentObject", typeof(object));
-            body.Children.Add(CreateRow("ParentObject", _parentExpressionBox, out _parentEditorBorder));
+            _body.Children.Add(CreateRow("ParentObject", _parentExpressionBox, out _parentEditorBorder));
 
             _selectorExpressionBox = CreateExpressionTextBox("Selector", typeof(string));
-            body.Children.Add(CreateRow("Selector", _selectorExpressionBox, out _selectorEditorBorder, RowSpacing));
 
-            _rootPanel.Child = body;
+            _rootPanel.Child = _body;
             host.Children.Add(_rootPanel);
             Content = host;
 
@@ -71,12 +72,10 @@ namespace F2B.Browser.Chromium.Playwright
             BindExpressionOwner(_rootPanel, ModelItem);
 
             _selectorPropertyName = ResolveSelectorPropertyName(ModelItem);
-            var selectorType = string.Equals(_selectorPropertyName, "Selectors", StringComparison.Ordinal)
-                ? typeof(List<string>)
-                : typeof(string);
-
             _selectorExpressionBox.PathToArgument = _selectorPropertyName;
-            _selectorExpressionBox.ExpressionType = selectorType;
+            _selectorExpressionBox.ExpressionType = string.Equals(_selectorPropertyName, "Selectors", StringComparison.Ordinal)
+                ? typeof(string[])
+                : typeof(string);
             BindingOperations.SetBinding(_selectorExpressionBox, ExpressionTextBox.ExpressionProperty, new Binding("ModelItem." + _selectorPropertyName)
             {
                 Mode = BindingMode.TwoWay,
@@ -84,8 +83,39 @@ namespace F2B.Browser.Chromium.Playwright
                 ConverterParameter = "In"
             });
 
+            EnsureSelectorRow();
+
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
             RefreshRequiredBorders();
+        }
+
+        private void EnsureSelectorRow()
+        {
+            if (_selectorRowInitialized)
+            {
+                return;
+            }
+
+            FrameworkElement selectorRow;
+            if (string.Equals(_selectorPropertyName, "Selectors", StringComparison.Ordinal))
+            {
+                selectorRow = SelectorDesignerSupport.CreateSelectorsRow(
+                    "Selectors",
+                    _selectorExpressionBox,
+                    _selectorPropertyName,
+                    () => ModelItem,
+                    "ParentSelectorLabelColumn",
+                    EditorMinWidth,
+                    out _selectorEditorBorder,
+                    RowSpacing);
+            }
+            else
+            {
+                selectorRow = CreateRow(_selectorPropertyName, _selectorExpressionBox, out _selectorEditorBorder, RowSpacing);
+            }
+
+            _body.Children.Add(selectorRow);
+            _selectorRowInitialized = true;
         }
 
         private void OnModelItemPropertyChanged(object sender, PropertyChangedEventArgs e)

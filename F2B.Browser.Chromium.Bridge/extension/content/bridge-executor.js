@@ -24,6 +24,155 @@
     };
   }
 
+  const MAX_HTML_ATTRIBUTE_LENGTH = 512 * 1024;
+
+  function formatAttributeValue(value) {
+    if (value == null) {
+      return '';
+    }
+
+    if (typeof value === 'boolean') {
+      return value ? 'True' : 'False';
+    }
+
+    if (typeof value === 'number') {
+      return String(value);
+    }
+
+    return String(value);
+  }
+
+  function truncateHtmlValue(value) {
+    const text = value == null ? '' : String(value);
+    if (text.length <= MAX_HTML_ATTRIBUTE_LENGTH) {
+      return text;
+    }
+
+    return text.substring(0, MAX_HTML_ATTRIBUTE_LENGTH);
+  }
+
+  function readClassName(element) {
+    const className = element.className;
+    if (typeof className === 'string') {
+      return className;
+    }
+
+    if (className && typeof className.baseVal === 'string') {
+      return className.baseVal;
+    }
+
+    const attr = element.getAttribute('class');
+    return attr == null ? '' : attr;
+  }
+
+  function readBooleanProperty(element, propertyName) {
+    if (!element || !propertyName || !(propertyName in element)) {
+      return 'False';
+    }
+
+    return formatAttributeValue(!!element[propertyName]);
+  }
+
+  function readDomProperty(element, name) {
+    if (!element || !name) {
+      return undefined;
+    }
+
+    if (name in element) {
+      const value = element[name];
+      if (typeof value === 'function') {
+        return undefined;
+      }
+
+      if (value != null && typeof value === 'object') {
+        if (typeof value.baseVal === 'string') {
+          return value.baseVal;
+        }
+
+        return undefined;
+      }
+
+      return value;
+    }
+
+    const camelCaseName = name.charAt(0).toLowerCase() + name.slice(1);
+    if (camelCaseName !== name && camelCaseName in element) {
+      return readDomProperty(element, camelCaseName);
+    }
+
+    return undefined;
+  }
+
+  function readElementAttributeValue(element, name) {
+    if (!element) {
+      return '';
+    }
+
+    const key = String(name || '').trim();
+    if (!key) {
+      return '';
+    }
+
+    const lower = key.toLowerCase();
+
+    switch (lower) {
+      case 'tag':
+      case 'tagname':
+        return formatAttributeValue((element.tagName || '').toLowerCase());
+      case 'outerhtml':
+      case 'html':
+        return truncateHtmlValue(element.outerHTML || '');
+      case 'innerhtml':
+        return truncateHtmlValue(element.innerHTML || '');
+      case 'innertext':
+        return formatAttributeValue((element.innerText || '').trim());
+      case 'textcontent':
+        return formatAttributeValue((element.textContent || '').trim());
+      case 'text':
+        return formatAttributeValue((element.innerText || element.textContent || '').trim());
+      case 'value':
+        return formatAttributeValue(element.value != null ? element.value : '');
+      case 'classname':
+        return readClassName(element);
+      case 'disabled':
+        return readBooleanProperty(element, 'disabled');
+      case 'checked':
+        return readBooleanProperty(element, 'checked');
+      case 'readonly':
+        return readBooleanProperty(element, 'readOnly');
+      case 'selected':
+        return readBooleanProperty(element, 'selected');
+      case 'hidden':
+        return readBooleanProperty(element, 'hidden');
+      case 'required':
+        return readBooleanProperty(element, 'required');
+      case 'multiple':
+        return readBooleanProperty(element, 'multiple');
+      case 'open':
+        return readBooleanProperty(element, 'open');
+      case 'autofocus':
+        return readBooleanProperty(element, 'autofocus');
+      case 'contenteditable':
+        return readBooleanProperty(element, 'contentEditable');
+      case 'indeterminate':
+        return readBooleanProperty(element, 'indeterminate');
+      default:
+        break;
+    }
+
+    const attributeValue = element.getAttribute(key);
+    if (attributeValue !== null) {
+      return attributeValue;
+    }
+
+    const propertyValue = readDomProperty(element, key);
+    if (propertyValue !== undefined) {
+      return formatAttributeValue(propertyValue);
+    }
+
+    return '';
+  }
+
   function usesClickEventMethod(clickMethod) {
     return String(clickMethod || 'Javascript').toLowerCase() === 'clickevent';
   }
@@ -165,11 +314,33 @@
     throw new Error('Click validation failed: ' + validate);
   }
 
+  async function resolveTargetWithRetry(message) {
+    const timeout = message.findTimeout || message.timeout || 5000;
+    const started = Date.now();
+    let lastError = null;
+
+    while (Date.now() - started < timeout) {
+      const remaining = Math.max(1, timeout - (Date.now() - started));
+      try {
+        return await resolveTarget(Object.assign({}, message, {
+          findTimeout: remaining,
+          timeout: remaining
+        }));
+      } catch (error) {
+        lastError = error;
+        pageTrace('resolveTargetWithRetry error: ' + (error.message || error));
+        await sleep(Math.min(100, Math.max(1, timeout - (Date.now() - started))));
+      }
+    }
+
+    throw lastError || new Error('Element not found for selector within timeout.');
+  }
+
   async function executeBridgeCommand(message) {
     switch (message.action) {
       case 'element.find':
       case 'element.findScoped':
-        await resolveTarget(message);
+        await resolveTargetWithRetry(message);
         return {};
 
       case 'element.click':
@@ -277,7 +448,7 @@
 
       case 'element.getAttribute': {
         const element = await resolveTarget(message);
-        return { value: element.getAttribute(message.name || '') || '' };
+        return { value: readElementAttributeValue(element, message.name || '') };
       }
 
       case 'element.getInputValue': {

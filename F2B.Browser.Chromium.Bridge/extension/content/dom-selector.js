@@ -941,11 +941,15 @@
           return null;
         }
 
-        const matches = findElements(levels, searchRoot);
-        const element = matches[index];
-        if (element && matchWaitState(element, waitState)) {
-          scrollIntoViewIfNeeded(element);
-          return element;
+        try {
+          const matches = findElements(levels, searchRoot);
+          const element = matches[index];
+          if (element && matchWaitState(element, waitState)) {
+            scrollIntoViewIfNeeded(element);
+            return element;
+          }
+        } catch (error) {
+          pageTrace('waitForElements tryFind error: ' + (error.message || error));
         }
 
         return null;
@@ -1214,20 +1218,24 @@
       let frameDocument = null;
 
       while (Date.now() - started < waitMs) {
-        const matches = findFrameCandidates(
-          current,
-          level
-        );
+        try {
+          const matches = findFrameCandidates(
+            current,
+            level
+          );
 
-        if (matches.length > 0) {
-          const remaining = Math.max(500, waitMs - (Date.now() - started));
-          frameDocument = await waitForFrameDocument(matches[0], remaining);
-          if (frameDocument) {
-            current = frameDocument;
-            break;
+          if (matches.length > 0) {
+            const remaining = Math.max(500, waitMs - (Date.now() - started));
+            frameDocument = await waitForFrameDocument(matches[0], remaining);
+            if (frameDocument) {
+              current = frameDocument;
+              break;
+            }
+          } else if (current === document || current === document.documentElement) {
+            window.scrollBy(0, Math.min(window.innerHeight, 600));
           }
-        } else if (current === document || current === document.documentElement) {
-          window.scrollBy(0, Math.min(window.innerHeight, 600));
+        } catch (error) {
+          pageTrace('resolveSearchRootAsync level=' + (i + 1) + ' error: ' + (error.message || error));
         }
 
         await new Promise((resolve) => setTimeout(resolve, 100));

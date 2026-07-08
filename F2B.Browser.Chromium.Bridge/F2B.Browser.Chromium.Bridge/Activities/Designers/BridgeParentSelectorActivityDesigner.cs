@@ -73,12 +73,10 @@ namespace F2B.Browser.Chromium.Bridge
             BindExpressionOwner(_rootPanel, ModelItem);
 
             _selectorPropertyName = ResolveSelectorPropertyName(ModelItem);
-            var selectorType = string.Equals(_selectorPropertyName, "Selectors", StringComparison.Ordinal)
-                ? typeof(List<string>)
-                : typeof(string);
-
             _selectorExpressionBox.PathToArgument = _selectorPropertyName;
-            _selectorExpressionBox.ExpressionType = selectorType;
+            _selectorExpressionBox.ExpressionType = string.Equals(_selectorPropertyName, "Selectors", StringComparison.Ordinal)
+                ? typeof(string[])
+                : typeof(string);
             BindingOperations.SetBinding(_selectorExpressionBox, ExpressionTextBox.ExpressionProperty, new Binding("ModelItem." + _selectorPropertyName)
             {
                 Mode = BindingMode.TwoWay,
@@ -102,7 +100,15 @@ namespace F2B.Browser.Chromium.Bridge
             FrameworkElement selectorRow;
             if (string.Equals(_selectorPropertyName, "Selectors", StringComparison.Ordinal))
             {
-                selectorRow = CreateRow("Selectors", _selectorExpressionBox, out _selectorEditorBorder, RowSpacing);
+                selectorRow = SelectorDesignerSupport.CreateSelectorsRow(
+                    "Selectors",
+                    _selectorExpressionBox,
+                    _selectorPropertyName,
+                    () => ModelItem,
+                    "ParentSelectorLabelColumn",
+                    EditorMinWidth,
+                    out _selectorEditorBorder,
+                    RowSpacing);
             }
             else
             {
@@ -133,7 +139,7 @@ namespace F2B.Browser.Chromium.Bridge
                 return;
             }
 
-            SetRequiredBorder(_parentEditorBorder, IsArgumentFilled(ModelItem, "ParentObject", _parentExpressionBox));
+            SetRequiredBorder(_parentEditorBorder, true);
             SetRequiredBorder(_selectorEditorBorder, IsArgumentFilled(ModelItem, _selectorPropertyName, _selectorExpressionBox));
         }
 

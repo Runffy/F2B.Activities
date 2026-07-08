@@ -19,6 +19,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\..\F2B.OpenRpa.Design\SelectorDesignerSupport.cs" Link="OpenRpa.Design\SelectorDesignerSupport.cs" />
+    <Compile Include="..\..\F2B.OpenRpa.Design\VbStringArrayExpression.cs" Link="OpenRpa.Design\VbStringArrayExpression.cs" />
     <Compile Include="..\..\F2B.OpenRpa.Design\SelectorXmlEditorDialog.cs" Link="OpenRpa.Design\SelectorXmlEditorDialog.cs" />
+    <Compile Include="..\..\F2B.OpenRpa.Design\SelectorsEditorDialog.cs" Link="OpenRpa.Design\SelectorsEditorDialog.cs" />
   </ItemGroup>
 </Project>

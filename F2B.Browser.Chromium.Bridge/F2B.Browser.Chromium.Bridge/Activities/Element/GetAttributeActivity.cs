@@ -4,7 +4,7 @@ using System.ComponentModel;
 namespace F2B.Browser.Chromium.Bridge
 {
     [DisplayName("Get Attribute")]
-    [Description("Get an attribute value from the target element.")]
+    [Description("Get an HTML attribute, DOM property, or known alias (tag, outerHTML, innerHTML, disabled, checked, value, text, etc.) from the target element.")]
     [TypeDescriptionProvider(typeof(BridgeElementTargetTypeDescriptionProvider))]
     public sealed class GetAttributeActivity : BridgeElementTargetActivityBase
     {

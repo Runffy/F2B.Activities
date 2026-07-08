@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Activities;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Activities.Presentation;
 
@@ -17,15 +16,15 @@ namespace F2B.Browser.Chromium.Bridge
         }
 
         [DisplayName("Parent Object")]
-        [Description("Root object for query. Accepts BwTab or BwElement.")]
-        [RequiredArgument]
+        [Description("Root object for query. Accepts BwTab or BwElement. Optional when every selector contains <wnd>.")]
         [Category("Input.A")]
         public InArgument<object> ParentObject { get; set; }
 
         [DisplayName("Selectors")]
+        [Description("Selector XML list as a VB.NET string array expression, e.g. New String() { \"...\" }. Edit via the activity designer ... button.")]
         [RequiredArgument]
         [Category("Input.B")]
-        public InArgument<List<string>> Selectors { get; set; }
+        public InArgument<string[]> Selectors { get; set; }
 
         [DisplayName("Wait State")]
         [Category("Input.C")]
@@ -46,22 +45,23 @@ namespace F2B.Browser.Chromium.Bridge
             var parent = ParentObject == null ? null : ParentObject.Get(context);
             var tab = parent as BwTab;
             var element = parent as BwElement;
-            if (tab == null && element == null)
-                throw new InvalidOperationException("ParentObject must be BwTab or BwElement.");
+            if (parent != null && tab == null && element == null)
+            {
+                throw new InvalidOperationException("ParentObject must be BwTab or BwElement when provided.");
+            }
 
             var selectors = Selectors == null ? null : Selectors.Get(context);
-            if (selectors == null || selectors.Count == 0)
+            if (selectors == null || selectors.Length == 0)
+            {
                 throw new InvalidOperationException("Selectors is required and cannot be empty.");
+            }
 
             var timeoutMs = BridgeActivityArgumentHelper.GetOrDefault(Timeout, context, 15000);
-            int idx;
-            if (tab != null)
-                idx = tab.ParallelFindElement(selectors, timeoutMs, WaitState);
-            else
-                idx = element.ParallelFindElement(selectors, timeoutMs, WaitState);
-
+            var idx = BridgeParallelFindHelper.Find(tab, element, selectors, timeoutMs, WaitState);
             if (idx < 0)
+            {
                 throw new TimeoutException("ParallelFindElement timed out. No selector matched.");
+            }
 
             MatchedIndex?.Set(context, idx);
         }

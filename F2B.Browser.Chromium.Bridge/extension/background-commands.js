@@ -1153,8 +1153,9 @@ async function runTabJs(message) {
 }
 
 async function waitForTabComplete(tabId, timeout) {
+  const waitMs = timeout || 15000;
   const started = Date.now();
-  while (Date.now() - started < timeout) {
+  while (Date.now() - started < waitMs) {
     const tab = await chrome.tabs.get(tabId);
     if (tab.status === 'complete') {
       return;
@@ -1162,6 +1163,8 @@ async function waitForTabComplete(tabId, timeout) {
 
     await sleep(100);
   }
+
+  throw new Error('Tab did not finish loading within ' + waitMs + ' ms.');
 }
 
 function isErrorPageUrl(url) {
