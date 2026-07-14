@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>F2B.Browser.Chromium.Cdp.Launcher</RootNamespace>
+    <AssemblyName>CdpBrowserLauncher</AssemblyName>
+    <ApplicationIcon>CdpBrowserLauncher.ico</ApplicationIcon>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Deterministic>true</Deterministic>
+    <LangVersion>latest</LangVersion>
+    <ProjectGuid>{E5F6A7B8-C9D0-1234-EF01-345678901234}</ProjectGuid>
+    <!-- Keep RID/self-contained OFF for normal Build/F5 so VS IntelliSense finds
+         obj\...\MainWindow.g.cs (x:Name fields). Publish target supplies -r win-x64. -->
+    <DebugType>embedded</DebugType>
+    <!-- Windows-only WPF app; CA1416 platform warnings are noise. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\F2B.Browser.Chromium.Cdp\F2B.Browser.Chromium.Cdp.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Keep icon as Resource for Window.Icon; ApplicationIcon still embeds into the EXE. -->
+    <Resource Include="CdpBrowserLauncher.ico" />
+  </ItemGroup>
+
+  <!-- Solution/project Build also materializes a single EXE under artifacts/Launcher. -->
+  <Target Name="PublishSingleExeDeliverable"
+          AfterTargets="Build"
+          Condition="'$(DesignTimeBuild)' != 'true' And '$(SkipLauncherPublish)' != 'true'">
+    <PropertyGroup>
+      <_LauncherPublishDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\artifacts\Launcher'))</_LauncherPublishDir>
+      <_LauncherPublishStaging>$(_LauncherPublishDir)\_publish_staging</_LauncherPublishStaging>
+      <_IconPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)CdpBrowserLauncher.ico'))</_IconPath>
+      <_FinalExe>$(_LauncherPublishDir)\$(AssemblyName).exe</_FinalExe>
+    </PropertyGroup>
+    <RemoveDir Directories="$(_LauncherPublishStaging)" Condition="Exists('$(_LauncherPublishStaging)')" />
+    <MakeDir Directories="$(_LauncherPublishDir)" />
+    <!-- Nested publish UTF-8 logs mojibake in VS Output; use English UI and quiet verbosity. -->
+    <Exec Command="dotnet publish &quot;$(MSBuildProjectFullPath)&quot; -c $(Configuration) -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=embedded -p:ApplicationIcon=&quot;$(_IconPath)&quot; -p:SkipLauncherPublish=true -v:q -nologo -o &quot;$(_LauncherPublishStaging)&quot;"
+          EnvironmentVariables="DOTNET_CLI_UI_LANGUAGE=en"
+          StandardOutputImportance="low"
+          StandardErrorImportance="high" />
+    <Delete Files="$(_FinalExe)" Condition="Exists('$(_FinalExe)')" TreatErrorsAsWarnings="true" />
+    <Copy SourceFiles="$(_LauncherPublishStaging)\$(AssemblyName).exe" DestinationFiles="$(_FinalExe)" OverwriteReadOnlyFiles="true" />
+    <RemoveDir Directories="$(_LauncherPublishStaging)" />
+    <ItemGroup>
+      <_LauncherExtras Include="$(_LauncherPublishDir)\**\*" Exclude="$(_FinalExe)" />
+    </ItemGroup>
+    <Delete Files="@(_LauncherExtras)" TreatErrorsAsWarnings="true" />
+    <Message Importance="high" Text="Launcher single-file EXE: $(_FinalExe) (icon=$(_IconPath))" />
+  </Target>
+</Project>

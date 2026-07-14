@@ -4,6 +4,7 @@ using System.Activities.Presentation;
 using System.Activities.Presentation.Converters;
 using System.Activities.Presentation.Model;
 using System.Activities.Presentation.View;
+using System.Activities.Presentation.ViewState;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -15,10 +16,16 @@ namespace F2B.Basic
 {
     public sealed class LogMessageDesigner : ActivityDesigner
     {
+        private const int MaxIdRefRetryCount = 10;
+
         private readonly ComboBox levelComboBox;
         private readonly Border messageEditorBorder;
         private readonly ExpressionTextBox messageExpressionBox;
         private bool isSyncingLevel;
+        private int idRefRetryCount;
+        private bool logEntryIdEnsured;
+        private bool viewStateHooked;
+        private ViewStateService viewStateService;
 
         public LogMessageDesigner()
         {
@@ -43,6 +50,7 @@ namespace F2B.Basic
             border.Child = panel;
             Content = border;
             Loaded += OnLoaded;
+            Unloaded += OnUnloaded;
         }
 
         private static FrameworkElement CreateLabeledExpressionEditor(
@@ -173,11 +181,237 @@ namespace F2B.Basic
             isSyncingLevel = false;
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
             RefreshRequiredBorders();
+            HookViewStateService();
+            EnsureLogEntryIdIdentity();
+        }
+
+        private void OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            UnhookViewStateService();
         }
 
         private void OnModelItemPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             Dispatcher.BeginInvoke(new Action(RefreshRequiredBorders), DispatcherPriority.Background);
+        }
+
+        private void HookViewStateService()
+        {
+            if (viewStateHooked)
+            {
+                return;
+            }
+
+            try
+            {
+                viewStateService = Context?.Services.GetService<ViewStateService>();
+                if (viewStateService == null)
+                {
+                    return;
+                }
+
+                viewStateService.ViewStateChanged += OnViewStateChanged;
+                viewStateHooked = true;
+            }
+            catch
+            {
+                viewStateService = null;
+                viewStateHooked = false;
+            }
+        }
+
+        private void UnhookViewStateService()
+        {
+            if (!viewStateHooked || viewStateService == null)
+            {
+                return;
+            }
+
+            try
+            {
+                viewStateService.ViewStateChanged -= OnViewStateChanged;
+            }
+            catch
+            {
+                // Ignore detach failures during designer teardown.
+            }
+
+            viewStateService = null;
+            viewStateHooked = false;
+        }
+
+        private void OnViewStateChanged(object sender, ViewStateChangedEventArgs e)
+        {
+            if (logEntryIdEnsured || e == null || ModelItem == null)
+            {
+                return;
+            }
+
+            if (!string.Equals(e.Key, "IdRef", StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            if (e.ParentModelItem != ModelItem)
+            {
+                return;
+            }
+
+            Dispatcher.BeginInvoke(new Action(EnsureLogEntryIdIdentity), DispatcherPriority.ContextIdle);
+        }
+
+        private void EnsureLogEntryIdIdentity()
+        {
+            if (logEntryIdEnsured || ModelItem == null)
+            {
+                return;
+            }
+
+            string idRef = TryGetIdRef();
+            string currentEntryId = ReadLogEntryId(ModelItem);
+
+            if (string.IsNullOrWhiteSpace(idRef))
+            {
+                if (idRefRetryCount < MaxIdRefRetryCount)
+                {
+                    idRefRetryCount++;
+                    Dispatcher.BeginInvoke(new Action(EnsureLogEntryIdIdentity), DispatcherPriority.ContextIdle);
+                    return;
+                }
+
+                // Last resort: backfill empty EntryId even without IdRef so XAML can persist it.
+                if (string.IsNullOrWhiteSpace(currentEntryId))
+                {
+                    string generated = LogMessageActivity.CreateNewLogEntryId();
+                    if (TryWriteLogEntryId(generated))
+                    {
+                        logEntryIdEnsured = true;
+                    }
+                }
+                else
+                {
+                    logEntryIdEnsured = true;
+                }
+
+                return;
+            }
+
+            string resolved = LogEntryIdIdentity.Resolve(currentEntryId, idRef, out bool changed);
+            if (changed)
+            {
+                if (!TryWriteLogEntryId(resolved))
+                {
+                    return;
+                }
+            }
+
+            LogEntryIdIdentity.Bind(resolved, idRef);
+            logEntryIdEnsured = true;
+        }
+
+        private bool TryWriteLogEntryId(string value)
+        {
+            if (ModelItem == null || value == null)
+            {
+                return false;
+            }
+
+            var property = ModelItem.Properties["LogEntryId"];
+            if (property == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (property.IsReadOnly)
+                {
+                    var activity = ModelItem.GetCurrentValue() as LogMessageActivity;
+                    if (activity == null)
+                    {
+                        return false;
+                    }
+
+                    activity.LogEntryId = value;
+                }
+
+                using (ModelEditingScope scope = ModelItem.BeginEdit("Assign LogEntryId"))
+                {
+                    property.SetValue(value);
+                    scope.Complete();
+                }
+
+                string written = ReadLogEntryId(ModelItem);
+                return string.Equals((written ?? string.Empty).Trim(), value.Trim(), StringComparison.Ordinal);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private string TryGetIdRef()
+        {
+            if (ModelItem == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                object instance = ModelItem.GetCurrentValue();
+                if (instance != null)
+                {
+                    string attached = WorkflowViewState.GetIdRef(instance);
+                    if (!string.IsNullOrWhiteSpace(attached))
+                    {
+                        return attached.Trim();
+                    }
+                }
+            }
+            catch
+            {
+                // Fall through to ViewStateService.
+            }
+
+            try
+            {
+                var service = viewStateService ?? Context?.Services.GetService<ViewStateService>();
+                object value = service?.RetrieveViewState(ModelItem, "IdRef");
+                string text = value as string;
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    return text.Trim();
+                }
+            }
+            catch
+            {
+                // Designer host may not expose view state yet.
+            }
+
+            return null;
+        }
+
+        private static string ReadLogEntryId(ModelItem modelItem)
+        {
+            var property = modelItem?.Properties["LogEntryId"];
+            if (property == null)
+            {
+                return null;
+            }
+
+            if (property.ComputedValue is string computed)
+            {
+                return computed;
+            }
+
+            if (property.Value != null)
+            {
+                return property.Value.GetCurrentValue() as string;
+            }
+
+            var activity = modelItem.GetCurrentValue() as LogMessageActivity;
+            return activity?.LogEntryId;
         }
 
         private void RefreshRequiredBorders()

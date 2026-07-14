@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <RootNamespace>F2B.Browser.Chromium.Cdp.Activities</RootNamespace>
+    <AssemblyName>F2B.Browser.Chromium.Cdp.Activities</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Activities" />
+    <Reference Include="System.Activities.Presentation" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\F2B.Browser.Chromium.Cdp\**\*.cs"
+               Link="Cdp\%(RecursiveDir)%(Filename)%(Extension)"
+               Exclude="..\F2B.Browser.Chromium.Cdp\Properties\AssemblyInfo.cs;..\F2B.Browser.Chromium.Cdp\obj\**;..\F2B.Browser.Chromium.Cdp\bin\**" />
+    <Compile Include="..\..\..\F2B.OpenRpa.Design\SelectorDesignerSupport.cs" Link="OpenRpa.Design\SelectorDesignerSupport.cs" />
+    <Compile Include="..\..\..\F2B.OpenRpa.Design\VbStringArrayExpression.cs" Link="OpenRpa.Design\VbStringArrayExpression.cs" />
+    <Compile Include="..\..\..\F2B.OpenRpa.Design\SelectorXmlEditorDialog.cs" Link="OpenRpa.Design\SelectorXmlEditorDialog.cs" />
+    <Compile Include="..\..\..\F2B.OpenRpa.Design\SelectorsEditorDialog.cs" Link="OpenRpa.Design\SelectorsEditorDialog.cs" />
+  </ItemGroup>
+</Project>

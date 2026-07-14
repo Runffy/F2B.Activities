@@ -1,7 +1,6 @@
 using System;
 using System.Activities.Presentation;
 using System.Activities.Presentation.Converters;
-using System.Activities.Presentation.Model;
 using System.Activities.Presentation.View;
 using System.ComponentModel;
 using System.Windows;
@@ -12,16 +11,12 @@ using System.Windows.Threading;
 
 namespace F2B.Basic
 {
-    /// <summary>
-    /// Shows only Path on the activity canvas; Operation, Arguments, WorkingDirectory,
-    /// WaitForExit, ShowWindow, and Result are edited in the property grid.
-    /// </summary>
-    public sealed class StartFileDesigner : ActivityDesigner
+    public sealed class OnlyIfDesigner : ActivityDesigner
     {
-        private readonly Border _pathEditorBorder;
-        private readonly ExpressionTextBox _pathExpressionBox;
+        private readonly Border _conditionEditorBorder;
+        private readonly ExpressionTextBox _conditionExpressionBox;
 
-        public StartFileDesigner()
+        public OnlyIfDesigner()
         {
             var border = new Border
             {
@@ -32,12 +27,32 @@ namespace F2B.Basic
 
             var panel = new StackPanel();
             panel.Children.Add(CreateLabeledExpressionEditor(
-                "Path",
-                "ModelItem.Path",
-                typeof(string),
-                "File / folder / URL",
-                out _pathEditorBorder,
-                out _pathExpressionBox));
+                "Condition",
+                "ModelItem.Condition",
+                typeof(bool),
+                "Boolean expression",
+                out _conditionEditorBorder,
+                out _conditionExpressionBox));
+
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Then",
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 8, 0, 2)
+            });
+
+            var thenPresenter = new WorkflowItemPresenter
+            {
+                HintText = "Drop activity here",
+                MinWidth = 280,
+                MinHeight = 40,
+                Margin = new Thickness(0, 0, 0, 0)
+            };
+            BindingOperations.SetBinding(thenPresenter, WorkflowItemPresenter.ItemProperty, new Binding("ModelItem.Then")
+            {
+                Mode = BindingMode.TwoWay
+            });
+            panel.Children.Add(thenPresenter);
 
             border.Child = panel;
             Content = border;
@@ -62,7 +77,6 @@ namespace F2B.Basic
 
             expressionTextBox = new ExpressionTextBox
             {
-                Margin = new Thickness(0, 0, 0, 0),
                 Width = 200,
                 MaxWidth = 200,
                 HintText = hint,
@@ -94,7 +108,9 @@ namespace F2B.Basic
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             if (ModelItem == null)
+            {
                 return;
+            }
 
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
             RefreshRequiredBorders();
@@ -107,49 +123,16 @@ namespace F2B.Basic
 
         private void RefreshRequiredBorders()
         {
-            SetRequiredBorder(_pathEditorBorder, IsArgumentFilled(ModelItem, "Path", _pathExpressionBox));
-        }
-
-        private static bool IsArgumentFilled(ModelItem modelItem, string propertyName, ExpressionTextBox editor)
-        {
-            var property = modelItem?.Properties[propertyName];
-            if (property == null)
-                return HasEditorInput(editor);
-
-            if (property.IsSet)
-                return true;
-
-            if (property.Value == null)
-                return HasEditorInput(editor);
-
-            var expressionProperty = property.Value.Properties["Expression"];
-            if (expressionProperty == null)
-                return HasEditorInput(editor);
-
-            if (expressionProperty.Value == null && expressionProperty.ComputedValue == null)
-                return HasEditorInput(editor);
-
-            if (expressionProperty.ComputedValue is string text)
-                return !string.IsNullOrWhiteSpace(text);
-
-            if (expressionProperty.Value != null)
-            {
-                string expressionText = expressionProperty.Value.ToString();
-                return !string.IsNullOrWhiteSpace(expressionText);
-            }
-
-            return HasEditorInput(editor);
-        }
-
-        private static bool HasEditorInput(ExpressionTextBox editor)
-        {
-            return editor != null && editor.Expression != null;
+            // Condition is optional (false/empty skips Then); no required red border.
+            SetRequiredBorder(_conditionEditorBorder, true);
         }
 
         private static void SetRequiredBorder(Border border, bool filled)
         {
             if (border == null)
+            {
                 return;
+            }
 
             if (filled)
             {

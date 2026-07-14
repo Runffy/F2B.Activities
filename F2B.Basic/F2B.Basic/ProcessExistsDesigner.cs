@@ -12,16 +12,14 @@ using System.Windows.Threading;
 
 namespace F2B.Basic
 {
-    /// <summary>
-    /// Shows only Path on the activity canvas; Operation, Arguments, WorkingDirectory,
-    /// WaitForExit, ShowWindow, and Result are edited in the property grid.
-    /// </summary>
-    public sealed class StartFileDesigner : ActivityDesigner
+    public sealed class ProcessExistsDesigner : ActivityDesigner
     {
-        private readonly Border _pathEditorBorder;
-        private readonly ExpressionTextBox _pathExpressionBox;
+        private readonly Border _processNameBorder;
+        private readonly Border _filePathBorder;
+        private readonly ExpressionTextBox _processNameBox;
+        private readonly ExpressionTextBox _filePathBox;
 
-        public StartFileDesigner()
+        public ProcessExistsDesigner()
         {
             var border = new Border
             {
@@ -32,12 +30,28 @@ namespace F2B.Basic
 
             var panel = new StackPanel();
             panel.Children.Add(CreateLabeledExpressionEditor(
-                "Path",
-                "ModelItem.Path",
+                "Process Name",
+                "ModelItem.ProcessName",
                 typeof(string),
-                "File / folder / URL",
-                out _pathEditorBorder,
-                out _pathExpressionBox));
+                "e.g. chrome",
+                out _processNameBorder,
+                out _processNameBox));
+            panel.Children.Add(CreateLabeledExpressionEditor(
+                "File Path",
+                "ModelItem.FilePath",
+                typeof(string),
+                "Full path (priority)",
+                out _filePathBorder,
+                out _filePathBox));
+            panel.Children.Add(new TextBlock
+            {
+                Text = "File Path takes priority when both are set.",
+                Foreground = Brushes.DimGray,
+                FontSize = 11,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 4, 0, 0),
+                MaxWidth = 300
+            });
 
             border.Child = panel;
             Content = border;
@@ -56,13 +70,12 @@ namespace F2B.Basic
             row.Children.Add(new TextBlock
             {
                 Text = label,
-                Width = 80,
+                Width = 90,
                 VerticalAlignment = VerticalAlignment.Center
             });
 
             expressionTextBox = new ExpressionTextBox
             {
-                Margin = new Thickness(0, 0, 0, 0),
                 Width = 200,
                 MaxWidth = 200,
                 HintText = hint,
@@ -94,7 +107,9 @@ namespace F2B.Basic
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             if (ModelItem == null)
+            {
                 return;
+            }
 
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
             RefreshRequiredBorders();
@@ -107,30 +122,48 @@ namespace F2B.Basic
 
         private void RefreshRequiredBorders()
         {
-            SetRequiredBorder(_pathEditorBorder, IsArgumentFilled(ModelItem, "Path", _pathExpressionBox));
+            bool hasName = IsArgumentFilled(ModelItem, "ProcessName", _processNameBox);
+            bool hasPath = IsArgumentFilled(ModelItem, "FilePath", _filePathBox);
+            bool ok = hasName || hasPath;
+
+            // Either input is enough; highlight both when neither is filled.
+            SetRequiredBorder(_processNameBorder, ok);
+            SetRequiredBorder(_filePathBorder, ok);
         }
 
         private static bool IsArgumentFilled(ModelItem modelItem, string propertyName, ExpressionTextBox editor)
         {
             var property = modelItem?.Properties[propertyName];
             if (property == null)
+            {
                 return HasEditorInput(editor);
+            }
 
             if (property.IsSet)
+            {
                 return true;
+            }
 
             if (property.Value == null)
+            {
                 return HasEditorInput(editor);
+            }
 
             var expressionProperty = property.Value.Properties["Expression"];
             if (expressionProperty == null)
+            {
                 return HasEditorInput(editor);
+            }
 
             if (expressionProperty.Value == null && expressionProperty.ComputedValue == null)
+            {
                 return HasEditorInput(editor);
+            }
 
             if (expressionProperty.ComputedValue is string text)
+            {
                 return !string.IsNullOrWhiteSpace(text);
+            }
 
             if (expressionProperty.Value != null)
             {
@@ -149,7 +182,9 @@ namespace F2B.Basic
         private static void SetRequiredBorder(Border border, bool filled)
         {
             if (border == null)
+            {
                 return;
+            }
 
             if (filled)
             {

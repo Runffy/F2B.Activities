@@ -73,6 +73,12 @@
     <Compile Include="LogMessageDesigner.cs" />
     <Compile Include="MessageBoxActivity.cs" />
     <Compile Include="MessageBoxDesigner.cs" />
+    <Compile Include="NumberIncrementActivity.cs" />
+    <Compile Include="NumberIncrementDesigner.cs" />
+    <Compile Include="OnlyIfActivity.cs" />
+    <Compile Include="OnlyIfDesigner.cs" />
+    <Compile Include="ProcessExistsActivity.cs" />
+    <Compile Include="ProcessExistsDesigner.cs" />
     <Compile Include="RunCmdCommandActivity.cs" />
     <Compile Include="RunCmdCommandDesigner.cs" />
     <Compile Include="StartFileActivity.cs" />

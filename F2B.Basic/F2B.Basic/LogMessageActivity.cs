@@ -30,10 +30,14 @@ namespace F2B.Basic
 
         [Category("Identity")]
         [DisplayName("Log entry ID")]
-        [Description("Unique ID for this activity instance (read-only); auto-generated when dragged from the toolbox.")]
-        [ReadOnly(true)]
+        [Description("Unique ID for this activity instance. Auto-generated from the toolbox, backfilled when empty, and regenerated on paste when IdRef changes. Do not edit manually.")]
         [Browsable(true)]
         public string LogEntryId { get; set; }
+
+        internal static string CreateNewLogEntryId()
+        {
+            return Guid.NewGuid().ToString("D");
+        }
 
         [Editor(typeof(LogLevelOptionsEditor), typeof(global::System.Activities.Presentation.PropertyEditing.ExtendedPropertyValueEditor))]
         [RequiredArgument]
@@ -48,7 +52,7 @@ namespace F2B.Basic
         {
             return new LogMessageActivity
             {
-                LogEntryId = Guid.NewGuid().ToString("D"),
+                LogEntryId = CreateNewLogEntryId(),
                 Level = new InArgument<string>("INFO")
             };
         }
@@ -248,6 +252,59 @@ namespace F2B.Basic
             public string ProjectName { get; private set; }
 
             public string WorkflowName { get; private set; }
+        }
+    }
+
+    /// <summary>
+    /// Binds LogEntryId to WorkflowViewState.IdRef for the current designer process.
+    /// Same EntryId + new IdRef means paste; same IdRef means move/reload.
+    /// Registry is updated only via Bind() after the model value is successfully written.
+    /// </summary>
+    internal static class LogEntryIdIdentity
+    {
+        private static readonly ConcurrentDictionary<string, string> EntryIdToIdRef =
+            new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+
+        public static string Resolve(string entryId, string idRef, out bool changed)
+        {
+            changed = false;
+            string normalizedEntryId = string.IsNullOrWhiteSpace(entryId) ? string.Empty : entryId.Trim();
+            string normalizedIdRef = string.IsNullOrWhiteSpace(idRef) ? string.Empty : idRef.Trim();
+
+            if (normalizedEntryId.Length == 0)
+            {
+                changed = true;
+                return LogMessageActivity.CreateNewLogEntryId();
+            }
+
+            if (normalizedIdRef.Length == 0)
+            {
+                return normalizedEntryId;
+            }
+
+            string existingIdRef;
+            if (EntryIdToIdRef.TryGetValue(normalizedEntryId, out existingIdRef))
+            {
+                if (string.Equals(existingIdRef, normalizedIdRef, StringComparison.Ordinal))
+                {
+                    return normalizedEntryId;
+                }
+
+                changed = true;
+                return LogMessageActivity.CreateNewLogEntryId();
+            }
+
+            return normalizedEntryId;
+        }
+
+        public static void Bind(string entryId, string idRef)
+        {
+            if (string.IsNullOrWhiteSpace(entryId) || string.IsNullOrWhiteSpace(idRef))
+            {
+                return;
+            }
+
+            EntryIdToIdRef[entryId.Trim()] = idRef.Trim();
         }
     }
 

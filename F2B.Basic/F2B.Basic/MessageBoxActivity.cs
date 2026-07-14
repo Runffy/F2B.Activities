@@ -12,11 +12,16 @@ namespace F2B.Basic
     [DisplayName("Message Box")]
     public sealed class MessageBoxActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {
+        private const uint MbOk = 0x00000000;
+        private const uint MbIconInformation = 0x00000040;
+        private const uint MbTopmost = 0x00040000;
+
         public MessageBoxActivity()
         {
             DisplayName = "Message Box";
             Title = new InArgument<string>("OpenRPA");
             Timeout = new InArgument<int>(0);
+            TopMost = new InArgument<bool>(true);
         }
 
         [RequiredArgument]
@@ -33,12 +38,18 @@ namespace F2B.Basic
         [Category("Input.Z")]
         public InArgument<int> Timeout { get; set; }
 
+        [DisplayName("Top Most")]
+        [Description("When true, the message box is displayed at the top-most level.")]
+        [Category("Input.A")]
+        public InArgument<bool> TopMost { get; set; }
+
         public Activity Create(DependencyObject target)
         {
             return new MessageBoxActivity
             {
                 Title = new InArgument<string>("OpenRPA"),
-                Timeout = new InArgument<int>(0)
+                Timeout = new InArgument<int>(0),
+                TopMost = new InArgument<bool>(true)
             };
         }
 
@@ -57,10 +68,11 @@ namespace F2B.Basic
                 timeoutMs = 0;
             }
 
-            ShowMessageBoxOnStaThread(message, title, timeoutMs);
+            bool topMost = TopMost.Get(context);
+            ShowMessageBoxOnStaThread(message, title, timeoutMs, topMost);
         }
 
-        private static void ShowMessageBoxOnStaThread(string message, string title, int timeoutMs)
+        private static void ShowMessageBoxOnStaThread(string message, string title, int timeoutMs, bool topMost)
         {
             Exception capturedException = null;
             var completed = new ManualResetEvent(false);
@@ -69,7 +81,7 @@ namespace F2B.Basic
             {
                 try
                 {
-                    ShowClassicMessageBox(message, title, timeoutMs);
+                    ShowClassicMessageBox(message, title, timeoutMs, topMost);
                 }
                 catch (Exception ex)
                 {
@@ -92,9 +104,9 @@ namespace F2B.Basic
             }
         }
 
-        private static void ShowClassicMessageBox(string message, string title, int timeoutMs)
+        private static void ShowClassicMessageBox(string message, string title, int timeoutMs, bool topMost)
         {
-            if (timeoutMs <= 0)
+            if (timeoutMs <= 0 && !topMost)
             {
                 WinForms.MessageBox.Show(
                     message,
@@ -104,14 +116,29 @@ namespace F2B.Basic
                 return;
             }
 
+            uint type = MbOk | MbIconInformation;
+            if (topMost)
+            {
+                type |= MbTopmost;
+            }
+
+            if (timeoutMs <= 0)
+            {
+                MessageBox(IntPtr.Zero, message, title, type);
+                return;
+            }
+
             MessageBoxTimeout(
                 IntPtr.Zero,
                 message,
                 title,
-                0,
+                type,
                 0,
                 timeoutMs);
         }
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern int MessageBoxTimeout(
