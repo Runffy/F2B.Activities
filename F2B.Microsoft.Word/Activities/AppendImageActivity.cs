@@ -2,6 +2,7 @@ using System;
 using System.Activities;
 using System.Activities.Presentation;
 using System.ComponentModel;
+using InteropWord = Microsoft.Office.Interop.Word;
 
 namespace F2B.Microsoft.Word
 {
@@ -15,55 +16,55 @@ namespace F2B.Microsoft.Word
             DisplayName = "Append Image";
             SizeMode = WordImageSizeMode.RegularSize;
             Unit = WordImageUnit.Cm;
-            Visible = false;
         }
 
         [DisplayName("Word File Path")]
         [Description("Path to the Word document. Creates a new .docx file when the path does not exist.")]
-        [RequiredArgument]
         [Category("Input.A")]
         public InArgument<string> WordFilePath { get; set; }
+
+        [DisplayName("Document")]
+        [Description("Word Document InOut. When WordFilePath is set, the opened/attached document is assigned here.")]
+        [Category("Input.B")]
+        public InOutArgument<InteropWord.Document> Document { get; set; }
 
         [DisplayName("Image Path")]
         [Description("One or more image file paths. Separate multiple paths with ';'.")]
         [RequiredArgument]
-        [Category("Input.B")]
+        [Category("Input.C")]
         public InArgument<string> ImagePath { get; set; }
 
         [DisplayName("Size Mode")]
-        [Description("Regular Size keeps original dimensions. Auto fit scales to printable page area. Custom uses Width/Height.")]
-        [Category("Input.C")]
+        [Category("Input.D")]
         [DefaultValue(WordImageSizeMode.RegularSize)]
         public WordImageSizeMode SizeMode { get; set; }
 
         [DisplayName("Width")]
-        [Description("Custom width. Used only when Size Mode is Custom.")]
-        [Category("Input.D")]
+        [Category("Input.E")]
         public InArgument<double> Width { get; set; }
 
         [DisplayName("Height")]
-        [Description("Custom height. Used only when Size Mode is Custom.")]
-        [Category("Input.E")]
+        [Category("Input.F")]
         public InArgument<double> Height { get; set; }
 
         [DisplayName("Unit")]
-        [Description("Unit for Width and Height when Size Mode is Custom.")]
-        [Category("Input.F")]
+        [Category("Input.G")]
         [DefaultValue(WordImageUnit.Cm)]
         public WordImageUnit Unit { get; set; }
 
         [DisplayName("Visible")]
-        [Description("Show the Word window when opening or creating a document. Ignored when attaching to an already open document.")]
-        [Category("Input.G")]
+        [Category("Input.H")]
         [DefaultValue(false)]
         public InArgument<bool> Visible { get; set; } = false;
 
         protected override void Execute(CodeActivityContext context)
         {
-            var wordFilePath = WordActivityHelper.RequireNonEmpty(WordFilePath, context, nameof(WordFilePath));
+            var path = WordActivityHelper.GetOptionalPath(WordFilePath, context);
+            var existing = WordActivityHelper.GetOptionalDocument(Document, context);
             var imagePath = WordActivityHelper.RequireNonEmpty(ImagePath, context, nameof(ImagePath));
             var imagePaths = WordActivityHelper.ParseAndValidateImagePaths(imagePath);
             var visible = WordActivityHelper.GetOrDefault(Visible, context, false);
+            var documentBound = WordActivityHelper.IsBound(Document);
 
             double width = 0;
             double height = 0;
@@ -77,14 +78,12 @@ namespace F2B.Microsoft.Word
                 }
             }
 
-            WordAppendImageService.AppendImages(
-                wordFilePath,
-                imagePaths,
-                SizeMode,
-                width,
-                height,
-                Unit,
-                visible);
+            using (var session = WordDocumentSession.Acquire(path, existing, visible, createIfMissing: true, documentBound))
+            {
+                WordDocumentOperations.AppendImages(session.Document, imagePaths, SizeMode, width, height, Unit);
+                WordActivityHelper.SetDocument(Document, context, session.Document);
+                session.Complete();
+            }
         }
     }
 }
