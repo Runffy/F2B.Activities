@@ -75,7 +75,7 @@
                         Command="{Binding ValidateCommand}" ToolTip="Validate selector" />
                 <Button Content="Indicate Element" Style="{StaticResource ToolbarButtonStyle}"
                         Command="{Binding IndicateCommand}"
-                        ToolTip="Select a UI element from the screen. Press F2 during indicate to pause for 3 seconds (for hover menus)." />
+                        ToolTip="Select a UI element from the screen. Press Esc to cancel. Press F2 during indicate to pause for 3 seconds (for hover menus)." />
                 <Button Content="Highlight" Style="{StaticResource ToolbarButtonStyle}"
                         Command="{Binding HighlightCommand}" ToolTip="Highlight the element matched by selector" />
             </StackPanel>

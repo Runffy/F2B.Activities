@@ -6,13 +6,15 @@ using FlaUI.Inspector.Helpers;
 namespace FlaUI.Inspector.Services
 {
     /// <summary>
-    /// 用 RegisterHotKey 在系统级注册 F2，不依赖低层键盘钩子，避免 F2 泄漏到 VS 等前台窗口。
+    /// 用 RegisterHotKey 在系统级注册 F2 / Esc，不依赖低层键盘钩子，避免热键泄漏到 VS 等前台窗口。
     /// </summary>
     internal sealed class F2HotKeyWindow : Form
     {
-        private const int HotKeyId = 0xF201;
+        private const int F2HotKeyId = 0xF201;
+        private const int EscHotKeyId = 0xF202;
 
         public event Action F2Pressed;
+        public event Action EscapePressed;
 
         public F2HotKeyWindow()
         {
@@ -37,25 +39,53 @@ namespace FlaUI.Inspector.Services
                 CreateHandle();
 
             Unregister();
-            return NativeMethods.RegisterHotKey(
+            var f2Ok = NativeMethods.RegisterHotKey(
                 Handle,
-                HotKeyId,
+                F2HotKeyId,
                 NativeMethods.MOD_NOREPEAT,
                 NativeMethods.VK_F2);
+            var escOk = NativeMethods.RegisterHotKey(
+                Handle,
+                EscHotKeyId,
+                NativeMethods.MOD_NOREPEAT,
+                NativeMethods.VK_ESCAPE);
+            return f2Ok && escOk;
+        }
+
+        /// <summary>
+        /// F2 暂停倒计时期间只注销 F2，保留 Esc 以便取消 Indicate。
+        /// </summary>
+        public void UnregisterF2()
+        {
+            if (IsHandleCreated)
+                NativeMethods.UnregisterHotKey(Handle, F2HotKeyId);
         }
 
         public void Unregister()
         {
-            if (IsHandleCreated)
-                NativeMethods.UnregisterHotKey(Handle, HotKeyId);
+            if (!IsHandleCreated)
+                return;
+
+            NativeMethods.UnregisterHotKey(Handle, F2HotKeyId);
+            NativeMethods.UnregisterHotKey(Handle, EscHotKeyId);
         }
 
         protected override void WndProc(ref Message m)
         {
-            if (m.Msg == NativeMethods.WM_HOTKEY && m.WParam.ToInt32() == HotKeyId)
+            if (m.Msg == NativeMethods.WM_HOTKEY)
             {
-                F2Pressed?.Invoke();
-                return;
+                var id = m.WParam.ToInt32();
+                if (id == F2HotKeyId)
+                {
+                    F2Pressed?.Invoke();
+                    return;
+                }
+
+                if (id == EscHotKeyId)
+                {
+                    EscapePressed?.Invoke();
+                    return;
+                }
             }
 
             base.WndProc(ref m);

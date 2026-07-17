@@ -218,6 +218,7 @@ namespace FlaUI.Inspector.ViewModels
         {
             _indicateService = new IndicateService(dispatcher);
             _indicateService.ElementSelected += OnElementIndicated;
+            _indicateService.Cancelled += OnIndicateCancelled;
         }
 
         public void AttachSelectorHandlers()
@@ -251,6 +252,17 @@ namespace FlaUI.Inspector.ViewModels
             _hasIndicatedElement = true;
             CommandManager.InvalidateRequerySuggested();
             ApplyIndicateCapture(capture, autoValidate: true);
+
+            var mainWindow = Application.Current.MainWindow;
+            Application.Current.Dispatcher.BeginInvoke(
+                new Action(() => WindowRestoreHelper.RestoreAfterIndicateComplete(mainWindow)),
+                DispatcherPriority.ApplicationIdle);
+        }
+
+        private void OnIndicateCancelled()
+        {
+            IsIndicating = false;
+            CommandManager.InvalidateRequerySuggested();
 
             var mainWindow = Application.Current.MainWindow;
             Application.Current.Dispatcher.BeginInvoke(

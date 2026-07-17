@@ -18,6 +18,7 @@ namespace FlaUI.Inspector.Helpers
         public const int WM_SYSKEYUP = 0x0105;
         public const int WM_HOTKEY = 0x0312;
         public const int VK_F2 = 0x71;
+        public const int VK_ESCAPE = 0x1B;
         public const uint MOD_NOREPEAT = 0x4000;
 
         public delegate IntPtr LowLevelHookProc(int nCode, IntPtr wParam, IntPtr lParam);
