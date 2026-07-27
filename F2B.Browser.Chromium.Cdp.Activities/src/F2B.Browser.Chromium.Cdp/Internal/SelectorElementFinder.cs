@@ -11,7 +11,8 @@ namespace F2B.Browser.Chromium.Cdp.Internal
     internal static class SelectorElementFinder
     {
         private const string FinderScript =
-            @"(function(levels, findAll, markPrefix) {
+            @"(function(levels, findAll, markPrefix, directFirstLevel) {
+    directFirstLevel = !!directFirstLevel;
     function getProp(level, name) {
         if (!level || !level.props) return null;
         var target = (name || '').toLowerCase();
@@ -120,6 +121,17 @@ namespace F2B.Browser.Chromium.Cdp.Internal
         return narrowMatches(matched, level, levelIndex);
     }
 
+    function applyCtrlOnDirectChildren(root, level, levelIndex) {
+        var searchRoot = getSearchRoot(root);
+        if (!searchRoot || !searchRoot.children) return [];
+        var matched = [];
+        var children = searchRoot.children;
+        for (var i = 0; i < children.length; i++) {
+            if (matchElement(children[i], level)) matched.push(children[i]);
+        }
+        return narrowMatches(matched, level, levelIndex);
+    }
+
     function applyParent(nodes, level) {
         var prop = getProp(level, 'level');
         var count = prop && prop.value ? parseInt(prop.value, 10) : 1;
@@ -154,7 +166,7 @@ namespace F2B.Browser.Chromium.Cdp.Internal
         var tag = (level.tag || '').toLowerCase();
         if (tag === 'frm') {
             var frameEls = applyFrm(doc, level, levelIndex);
-            // Terminal <frm> â†?host iframe/frame elements (needed by FindFrame / AsFrame).
+            // Terminal <frm> ?host iframe/frame elements (needed by FindFrame / AsFrame).
             if (levelIndex + 1 >= levels.length) return frameEls;
             var docs = [];
             for (var i = 0; i < frameEls.length; i++) {
@@ -236,7 +248,7 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                 if (matchElement(frameNodes[ff], level)) matched.push(frameNodes[ff]);
             }
             var frameEls = narrowMatches(matched, level, levelIndex);
-            // Terminal <frm> under an Element root â†?host iframe (not contentDocument body).
+            // Terminal <frm> under an Element root ?host iframe (not contentDocument body).
             if (levelIndex + 1 >= levels.length) return frameEls;
             var docs = [];
             for (var i2 = 0; i2 < frameEls.length; i2++) {
@@ -262,7 +274,9 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             return next2;
         }
         if (tag === 'ctrl') {
-            var ctrlMatches = applyCtrlOnRoot(node, level, levelIndex);
+            var ctrlMatches = (directFirstLevel && levelIndex === 0)
+                ? applyCtrlOnDirectChildren(node, level, levelIndex)
+                : applyCtrlOnRoot(node, level, levelIndex);
             var next3 = [];
             for (var c = 0; c < ctrlMatches.length; c++) {
                 var part3 = walkElement(ctrlMatches[c], levelIndex + 1);
@@ -315,6 +329,63 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             var array = new CdpElement[list.Count];
             list.CopyTo(array, 0);
             return array;
+        }
+
+        /// <summary>
+        /// Find matching elements under <paramref name="root"/> using Bridge GetChildren semantics:
+        /// the first ctrl level matches direct children only; subsequent levels search descendants.
+        /// </summary>
+        public static CdpElement[] FindChildElements(CdpElement root, string selectorXml)
+        {
+            if (root == null)
+            {
+                throw new ArgumentNullException("root");
+            }
+
+            var scope = SelectorXmlSerializer.SplitScopeForOperation(selectorXml);
+            var levels = CombineLevels(scope);
+            if (levels.Count == 0)
+            {
+                return new CdpElement[0];
+            }
+
+            root.Context.RefreshIds();
+            var levelsJson = SerializeLevels(levels);
+            var markPrefix = "f2b-" + Guid.NewGuid().ToString("N") + "-";
+            var functionDeclaration = BuildElementFinderFunction(
+                levelsJson,
+                "true",
+                markPrefix,
+                directFirstLevel: true);
+
+            IList<string> marks;
+            try
+            {
+                marks = ReadMarks(RunElementFinder(root.Tab.GetSession(), root.ObjectId, functionDeclaration));
+            }
+            catch
+            {
+                return new CdpElement[0];
+            }
+
+            var elements = new List<CdpElement>();
+            try
+            {
+                foreach (var mark in marks)
+                {
+                    var element = ResolveMarkedElement(root.Tab.GetSession(), root, mark);
+                    if (element != null)
+                    {
+                        elements.Add(element);
+                    }
+                }
+            }
+            finally
+            {
+                CleanupElementMarks(root.Tab.GetSession(), root, markPrefix);
+            }
+
+            return elements.ToArray();
         }
 
         public static bool TryFindElement(CdpTab tab, string selectorXml)
@@ -678,9 +749,13 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             return levels;
         }
 
-        private static string BuildElementFinderFunction(string levelsJson, string findAllLiteral, string markPrefix)
+        private static string BuildElementFinderFunction(
+            string levelsJson,
+            string findAllLiteral,
+            string markPrefix,
+            bool directFirstLevel = false)
         {
-            const string wrapperPrefix = "(function(levels, findAll, markPrefix) {";
+            const string wrapperPrefix = "(function(levels, findAll, markPrefix, directFirstLevel) {";
             const string wrapperSuffix = "})";
             if (!FinderScript.StartsWith(wrapperPrefix, StringComparison.Ordinal) ||
                 !FinderScript.EndsWith(wrapperSuffix, StringComparison.Ordinal))
@@ -701,7 +776,8 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             }
 
             return "function() { var levels = " + levelsJson + "; var findAll = " + findAllLiteral +
-                   "; var markPrefix = '" + markPrefix + "';" + body + "}";
+                   "; var markPrefix = '" + markPrefix + "'; var directFirstLevel = " +
+                   (directFirstLevel ? "true" : "false") + ";" + body + "}";
         }
 
         private static object RunElementFinder(CdpTabSession session, string objectId, string functionDeclaration)

@@ -231,7 +231,12 @@ namespace F2B.Browser.Chromium.Cdp.Browser
 
         public CdpElement[] Children()
         {
-            return RequireElement().Children();
+            return Children(null, false);
+        }
+
+        public CdpElement[] Children(string childSelectorXml, bool deepdive = false)
+        {
+            return RequireElement().Children(childSelectorXml, deepdive);
         }
 
         public void Click(

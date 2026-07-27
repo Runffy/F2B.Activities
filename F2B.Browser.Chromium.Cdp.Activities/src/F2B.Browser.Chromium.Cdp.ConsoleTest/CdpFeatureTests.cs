@@ -521,6 +521,9 @@ namespace F2B.Browser.Chromium.Cdp.ConsoleTest
             var container = tab.FindElement("<ctrl id=\"container\" />", 0);
             Assert("Element.ChildCount", container.ChildCount == 3);
             Assert("Element.Children length", container.Children().Length == 3);
+            Assert("Element.Children filter tag=div", container.Children("<ctrl tag=\"div\" />").Length == 3);
+            Assert("Element.Children filter class=item", container.Children("<ctrl class=\"item\" />").Length == 3);
+            Assert("Element.Children deepdive class=item", container.Children("<ctrl class=\"item\" />", true).Length == 3);
 
             var nonSelect = tab.FindElement("<ctrl id=\"txt-input\" />", 0);
             Assert("IsMultiSelect false on input", !nonSelect.IsMultiSelect);

@@ -134,7 +134,27 @@ namespace F2B.Browser.Chromium.Cdp.Browser
 
         public CdpElement[] Children()
         {
-            return Context.GetChildren();
+            return Children(null, false);
+        }
+
+        /// <summary>
+        /// Get child elements. When <paramref name="childSelectorXml"/> is empty, returns all direct children.
+        /// When provided and <paramref name="deepdive"/> is false, filters direct children (Bridge GetChildren semantics).
+        /// When <paramref name="deepdive"/> is true, searches all descendants matching the selector.
+        /// </summary>
+        public CdpElement[] Children(string childSelectorXml, bool deepdive = false)
+        {
+            if (string.IsNullOrWhiteSpace(childSelectorXml))
+            {
+                return Context.GetChildren();
+            }
+
+            if (deepdive)
+            {
+                return FindElements(childSelectorXml);
+            }
+
+            return SelectorElementFinder.FindChildElements(this, childSelectorXml);
         }
 
         public override object RunJs(

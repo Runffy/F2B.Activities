@@ -301,6 +301,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
                 _selectorRow.Visibility = Visibility.Visible;
                 _destinationParentObjectRow.Visibility = Visibility.Visible;
                 _destinationSelectorRow.Visibility = Visibility.Visible;
+                UpdateSelectorRowLabel("Selector");
                 return;
             }
 
@@ -309,6 +310,40 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             _destinationSelectorRow.Visibility = Visibility.Collapsed;
             _targetRow.Visibility = Visibility.Visible;
             _selectorRow.Visibility = Visibility.Visible;
+            UpdateSelectorRowLabel(
+                _designerMode == DesignerMode.GetChildren ? "Child Selector" : "Selector");
+        }
+
+        private void UpdateSelectorRowLabel(string label)
+        {
+            var textBlock = FindFirstTextBlock(_selectorRow);
+            if (textBlock == null)
+            {
+                return;
+            }
+
+            textBlock.Text = label;
+            textBlock.ToolTip = label;
+        }
+
+        private static TextBlock FindFirstTextBlock(FrameworkElement row)
+        {
+            var grid = row as Grid;
+            if (grid == null)
+            {
+                return null;
+            }
+
+            foreach (var child in grid.Children)
+            {
+                var textBlock = child as TextBlock;
+                if (textBlock != null)
+                {
+                    return textBlock;
+                }
+            }
+
+            return null;
         }
 
         private void RefreshSpecificRows()
@@ -460,6 +495,18 @@ namespace F2B.Browser.Chromium.Cdp.Activities
                     destNeedsSelector,
                     hasDestSelector);
             }
+            else if (_designerMode == DesignerMode.GetChildren)
+            {
+                // Target must be a CdpElement; Selector is an optional child filter.
+                CdpDesignerShared.SetRequiredBorder(
+                    _targetEditorBorder,
+                    true,
+                    CdpDesignerShared.IsArgumentFilled(ModelItem, "Target", _targetExpressionBox));
+                CdpDesignerShared.SetRequiredBorder(
+                    _selectorEditorBorder,
+                    false,
+                    CdpDesignerShared.IsArgumentFilled(ModelItem, "Selector", _selectorExpressionBox));
+            }
             else
             {
                 var needsTarget = !CdpDesignerShared.SelectorHasWnd(ModelItem);
@@ -550,6 +597,8 @@ namespace F2B.Browser.Chromium.Cdp.Activities
                     return DesignerMode.DragOffset;
                 case nameof(ElementDragToLocationActivity):
                     return DesignerMode.DragToLocation;
+                case nameof(ElementGetChildrenActivity):
+                    return DesignerMode.GetChildren;
                 default:
                     return DesignerMode.General;
             }
@@ -630,7 +679,8 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             Upload,
             DragToElement,
             DragOffset,
-            DragToLocation
+            DragToLocation,
+            GetChildren
         }
     }
 }

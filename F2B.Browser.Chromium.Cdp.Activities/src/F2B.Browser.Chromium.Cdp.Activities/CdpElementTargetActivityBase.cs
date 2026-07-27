@@ -15,7 +15,8 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         }
 
         /// <summary>
-        /// When true, Target must be a CdpElement (GetChildren / GetParent).
+        /// When true, Target must be a CdpElement (GetParent; GetChildren also requires CdpElement but
+        /// treats Selector as a child filter rather than a Target re-resolve).
         /// </summary>
         protected virtual bool RequireCdpElementTarget
         {
