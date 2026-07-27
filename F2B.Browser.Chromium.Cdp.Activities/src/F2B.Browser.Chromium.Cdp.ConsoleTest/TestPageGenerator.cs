@@ -33,6 +33,8 @@ namespace F2B.Browser.Chromium.Cdp.ConsoleTest
   body { font-family: sans-serif; margin: 20px; }
   #scroll-box { width: 200px; height: 80px; overflow: auto; border: 1px solid #ccc; }
   #scroll-inner { height: 400px; background: linear-gradient(#eee, #999); }
+  #long-scroll-host { width: 360px; height: 220px; overflow: scroll; border: 2px solid #336; margin: 12px 0; }
+  #long-scroll-body { height: 900px; background: linear-gradient(#cde, #f80); padding: 8px; }
   .item { padding: 4px; border-bottom: 1px solid #ddd; }
   #drag-source { width: 60px; height: 30px; background: #4af; cursor: move; }
   #drag-target { width: 120px; height: 60px; border: 2px dashed #888; margin-top: 8px; }
@@ -69,6 +71,7 @@ namespace F2B.Browser.Chromium.Cdp.ConsoleTest
 
   <a id=""lnk-test"" href=""https://example.com/test"">Example Link</a>
   <div id=""scroll-box""><div id=""scroll-inner"">Scroll Content</div></div>
+  <div id=""long-scroll-host""><div id=""long-scroll-body"">Long Scroll Body</div></div>
   <div id=""drag-source"" draggable=""true"">Drag</div>
   <div id=""drag-target"">Drop Here</div>
   <p id=""styled"">Styled paragraph</p>

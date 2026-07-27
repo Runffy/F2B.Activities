@@ -686,6 +686,28 @@ namespace F2B.Browser.Chromium.Cdp.ConsoleTest
             var elementPath = Path.Combine(Path.GetTempPath(), "f2b-element-" + Guid.NewGuid().ToString("N") + ".png");
             button.SaveScreenshot(elementPath);
             Assert("Element screenshot file", File.Exists(elementPath) && new FileInfo(elementPath).Length > 50);
+
+            var longHost = tab.FindElement("<ctrl id=\"long-scroll-host\" />", 0);
+            var longBytes = longHost.GetScreenshot(scrollIntoView: true);
+            var longW = 0;
+            var longH = 0;
+            Assert("Long scroll element screenshot bytes", longBytes != null && TryReadPngSize(longBytes, out longW, out longH));
+            Assert("Long scroll element screenshot taller than viewport host", longH >= 600);
+        }
+
+        private static bool TryReadPngSize(byte[] png, out int width, out int height)
+        {
+            width = 0;
+            height = 0;
+            if (png == null || png.Length < 24)
+            {
+                return false;
+            }
+
+            // PNG IHDR: bytes 16-23 are width/height big-endian.
+            width = (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
+            height = (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23];
+            return width > 0 && height > 0;
         }
 
         private void RunParallelFindTests(CdpTab tab)
