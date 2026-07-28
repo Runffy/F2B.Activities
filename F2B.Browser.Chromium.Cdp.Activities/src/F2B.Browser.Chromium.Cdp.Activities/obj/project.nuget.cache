@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "a0el5n9c2a0=",
+  "success": true,
+  "projectFilePath": "d:\\Projects\\CSharp Projects\\HSBC.F2B\\F2B.Browser.Chromium.Cdp\\src\\F2B.Browser.Chromium.Cdp.Activities\\F2B.Browser.Chromium.Cdp.Activities.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\zc\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

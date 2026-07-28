@@ -64,6 +64,7 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             {
                 if (_client != null)
                 {
+                    _client.ConnectionRestored -= OnClientConnectionRestored;
                     _client.Dispose();
                     _client = null;
                 }
@@ -576,14 +577,63 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             }
 
             _client = new CdpClient(_tab.WebSocketDebuggerUrl);
+            _client.ConnectionRestored += OnClientConnectionRestored;
             _client.Start();
             _initialized = true;
             RegisterEventHandlers(_client);
             _client.Enable("Page", "Runtime", "DOM", "Network");
 
-            var frameTree = SendCore("Page.getFrameTree", null, null);
-            var rootFrame = CdpValueConverter.GetDictionary(CdpValueConverter.GetDictionary(frameTree, "frameTree"), "frame");
-            _mainFrameId = CdpValueConverter.GetString(rootFrame, "id");
+            RestoreSessionStateAfterConnect();
+        }
+
+        private void OnClientConnectionRestored()
+        {
+            // Invoked from CdpClient.Send while locks may be held — only clear local cache here.
+            _rootObjectId = null;
+            _hasAlert = false;
+            _mainFrameId = null;
+            _readyState = "connecting";
+            _isLoading = true;
+
+            // Refresh frame/document state asynchronously after transport is usable again.
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    lock (_syncRoot)
+                    {
+                        if (_client == null || !_initialized)
+                        {
+                            return;
+                        }
+
+                        RestoreSessionStateAfterConnect();
+                    }
+                }
+                catch
+                {
+                    // Best-effort; subsequent commands will refresh as needed.
+                }
+            });
+        }
+
+        private void RestoreSessionStateAfterConnect()
+        {
+            _rootObjectId = null;
+            _hasAlert = false;
+
+            try
+            {
+                var frameTree = SendCore("Page.getFrameTree", null, null);
+                var rootFrame = CdpValueConverter.GetDictionary(
+                    CdpValueConverter.GetDictionary(frameTree, "frameTree"),
+                    "frame");
+                _mainFrameId = CdpValueConverter.GetString(rootFrame, "id");
+            }
+            catch
+            {
+                _mainFrameId = null;
+            }
 
             if (TryGetJsReadyStateCore() == "complete")
             {

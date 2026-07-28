@@ -14,6 +14,7 @@ namespace F2B.Browser.Chromium.Cdp.Internal
         private readonly string _webSocketUrl;
         private readonly TimeSpan _commandTimeout;
         private readonly CdpJsonSerializer _serializer = new CdpJsonSerializer();
+        private readonly object _connectLock = new object();
         private readonly object _sendLock = new object();
         private readonly ConcurrentDictionary<int, BlockingCollection<Dictionary<string, object>>> _pendingCommands =
             new ConcurrentDictionary<int, BlockingCollection<Dictionary<string, object>>>();
@@ -28,6 +29,14 @@ namespace F2B.Browser.Chromium.Cdp.Internal
         private volatile bool _disposed;
         private volatile bool _running;
         private volatile bool _alertFlag;
+        private volatile int _connectionGeneration;
+        private readonly List<string> _enabledDomains = new List<string>();
+
+        /// <summary>
+        /// Raised on the receive thread after a successful reconnect (domains not yet re-enabled).
+        /// Handlers should be quick and thread-safe.
+        /// </summary>
+        public event Action ConnectionRestored;
 
         public CdpClient(string webSocketUrl, TimeSpan? commandTimeout = null)
         {
@@ -45,21 +54,38 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             get { return _alertFlag; }
         }
 
+        public bool IsConnected
+        {
+            get
+            {
+                var socket = _socket;
+                return socket != null && socket.State == WebSocketState.Open;
+            }
+        }
+
         public void Start()
         {
-            if (_running)
+            if (_disposed)
             {
-                return;
+                throw new ObjectDisposedException("CdpClient");
             }
 
-            EnsureConnected();
-            _running = true;
-            _recvThread = new Thread(RecvLoop)
+            lock (_connectLock)
             {
-                IsBackground = true,
-                Name = "CdpClientRecv"
-            };
-            _recvThread.Start();
+                if (_running)
+                {
+                    return;
+                }
+
+                ConnectSocketUnlocked();
+                _running = true;
+                _recvThread = new Thread(RecvLoop)
+                {
+                    IsBackground = true,
+                    Name = "CdpClientRecv"
+                };
+                _recvThread.Start();
+            }
         }
 
         public void SetCallback(string eventName, Action<Dictionary<string, object>> handler, bool immediate = false)
@@ -86,6 +112,7 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             TimeSpan? commandTimeout)
         {
             EnsureStarted();
+            EnsureConnectedForSend();
 
             if (_alertFlag &&
                 (method.StartsWith("Runtime.", StringComparison.Ordinal) ||
@@ -94,6 +121,68 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                 throw new BrowserException("JavaScript dialog is open.");
             }
 
+            try
+            {
+                return SendOnce(method, parameters, commandTimeout);
+            }
+            catch (Exception ex)
+            {
+                if (!IsTransientTransportFailure(ex))
+                {
+                    throw;
+                }
+
+                // One automatic reconnect + retry for aborted / closed sockets.
+                EnsureConnectedForSend(forceReconnect: true);
+                return SendOnce(method, parameters, commandTimeout);
+            }
+        }
+
+        public void Enable(params string[] domains)
+        {
+            foreach (var domain in domains)
+            {
+                if (string.IsNullOrWhiteSpace(domain))
+                {
+                    continue;
+                }
+
+                lock (_enabledDomains)
+                {
+                    if (!_enabledDomains.Contains(domain))
+                    {
+                        _enabledDomains.Add(domain);
+                    }
+                }
+
+                Send(domain + ".enable");
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            _running = false;
+
+            FailPendingCommands("CDP client disposed.");
+            DisposeSocket();
+
+            if (_recvThread != null && _recvThread.IsAlive)
+            {
+                _recvThread.Join(TimeSpan.FromSeconds(2));
+            }
+        }
+
+        private Dictionary<string, object> SendOnce(
+            string method,
+            Dictionary<string, object> parameters,
+            TimeSpan? commandTimeout)
+        {
             var timeout = commandTimeout ?? _commandTimeout;
             var id = Interlocked.Increment(ref _messageId);
             var queue = new BlockingCollection<Dictionary<string, object>>();
@@ -110,7 +199,7 @@ namespace F2B.Browser.Chromium.Cdp.Internal
 
                 lock (_sendLock)
                 {
-                    SendText(payload);
+                    SendTextUnlocked(payload);
                 }
 
                 Dictionary<string, object> response;
@@ -145,64 +234,6 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             }
         }
 
-        public void Enable(params string[] domains)
-        {
-            foreach (var domain in domains)
-            {
-                if (string.IsNullOrWhiteSpace(domain))
-                {
-                    continue;
-                }
-
-                Send(domain + ".enable");
-            }
-        }
-
-        public void Dispose()
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            _disposed = true;
-            _running = false;
-
-            if (_socket != null)
-            {
-                try
-                {
-                    if (_socket.State == WebSocketState.Open)
-                    {
-                        _socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "close", CancellationToken.None)
-                            .GetAwaiter()
-                            .GetResult();
-                    }
-                }
-                catch
-                {
-                    // Ignore close errors.
-                }
-
-                _socket.Dispose();
-                _socket = null;
-            }
-
-            if (_recvThread != null && _recvThread.IsAlive)
-            {
-                _recvThread.Join(TimeSpan.FromSeconds(2));
-            }
-
-            foreach (var pair in _pendingCommands)
-            {
-                BlockingCollection<Dictionary<string, object>> queue;
-                if (_pendingCommands.TryRemove(pair.Key, out queue))
-                {
-                    queue.Dispose();
-                }
-            }
-        }
-
         private void EnsureStarted()
         {
             if (_disposed)
@@ -216,38 +247,125 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             }
         }
 
-        private void EnsureConnected()
+        private void EnsureConnectedForSend(bool forceReconnect = false)
         {
             if (_disposed)
             {
                 throw new ObjectDisposedException("CdpClient");
             }
 
-            if (_socket != null && _socket.State == WebSocketState.Open)
+            var restored = false;
+            lock (_connectLock)
             {
-                return;
+                if (!forceReconnect && IsConnected)
+                {
+                    return;
+                }
+
+                ConnectSocketUnlocked();
+                restored = true;
             }
 
-            _socket = new ClientWebSocket();
-            _socket.ConnectAsync(new Uri(_webSocketUrl), CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
+            if (restored)
+            {
+                // Must not wait for CDP responses while holding _connectLock (RecvLoop may need it).
+                ReEnableDomains();
+                RaiseConnectionRestored();
+            }
+        }
+
+        private void ConnectSocketUnlocked()
+        {
+            DisposeSocketUnlocked();
+
+            var socket = new ClientWebSocket();
+            try
+            {
+                socket.ConnectAsync(new Uri(_webSocketUrl), CancellationToken.None)
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    socket.Dispose();
+                }
+                catch
+                {
+                }
+
+                throw new BrowserException(
+                    string.Format("Failed to connect CDP WebSocket: {0}", ex.Message),
+                    ex);
+            }
+
+            _socket = socket;
+            Interlocked.Increment(ref _connectionGeneration);
+            _alertFlag = false;
+        }
+
+        private void ReEnableDomains()
+        {
+            string[] domains;
+            lock (_enabledDomains)
+            {
+                domains = _enabledDomains.ToArray();
+            }
+
+            foreach (var domain in domains)
+            {
+                try
+                {
+                    SendOnce(domain + ".enable", null, null);
+                }
+                catch
+                {
+                    // Domain enable will be retried by the next public Send/Enable.
+                }
+            }
+        }
+
+        private void RaiseConnectionRestored()
+        {
+            var handler = ConnectionRestored;
+            if (handler != null)
+            {
+                try
+                {
+                    handler();
+                }
+                catch
+                {
+                    // Session restore errors should not break transport.
+                }
+            }
         }
 
         private void RecvLoop()
         {
             while (_running && !_disposed)
             {
+                var generation = _connectionGeneration;
                 try
                 {
-                    if (_socket == null || _socket.State != WebSocketState.Open)
+                    if (!IsConnected)
                     {
-                        Thread.Sleep(10);
+                        Thread.Sleep(50);
                         continue;
                     }
 
-                    var responseText = ReceiveMessage(TimeSpan.FromSeconds(1));
-                    if (string.IsNullOrEmpty(responseText))
+                    // IMPORTANT: never cancel ReceiveAsync with a timeout token.
+                    // Canceling ClientWebSocket.ReceiveAsync transitions the socket to Aborted
+                    // and permanently kills the connection (.NET documented behavior).
+                    var responseText = ReceiveMessageBlocking();
+                    if (responseText == null)
+                    {
+                        HandleTransportLoss(generation);
+                        continue;
+                    }
+
+                    if (responseText.Length == 0)
                     {
                         continue;
                     }
@@ -291,13 +409,31 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                         queue.TryAdd(dict);
                     }
                 }
-                catch
+                catch (Exception)
                 {
                     if (!_running || _disposed)
                     {
                         break;
                     }
+
+                    HandleTransportLoss(generation);
                 }
+            }
+        }
+
+        private void HandleTransportLoss(int generation)
+        {
+            FailPendingCommands("CDP WebSocket disconnected.");
+
+            lock (_connectLock)
+            {
+                // Another thread may already have reconnected.
+                if (generation != _connectionGeneration && IsConnected)
+                {
+                    return;
+                }
+
+                DisposeSocketUnlocked();
             }
         }
 
@@ -317,40 +453,77 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             }
         }
 
-        private void SendText(string payload)
+        private void SendTextUnlocked(string payload)
         {
+            var socket = _socket;
+            if (socket == null || socket.State != WebSocketState.Open)
+            {
+                throw new WebSocketException(
+                    "The WebSocket is in an invalid state ('" +
+                    (socket == null ? "None" : socket.State.ToString()) +
+                    "') for this operation. Valid states are 'Open, CloseReceived'");
+            }
+
             var bytes = Encoding.UTF8.GetBytes(payload);
-            _socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None)
+            socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
         }
 
-        private string ReceiveMessage(TimeSpan timeout)
+        private string ReceiveMessageBlocking()
         {
-            using (var cancellation = new CancellationTokenSource(timeout))
-            {
-                try
-                {
-                    return ReceiveMessageAsync(cancellation.Token).GetAwaiter().GetResult();
-                }
-                catch (OperationCanceledException)
-                {
-                    return null;
-                }
-            }
+            return ReceiveMessageAsync(CancellationToken.None).GetAwaiter().GetResult();
         }
 
         private async Task<string> ReceiveMessageAsync(CancellationToken cancellationToken)
         {
+            var socket = _socket;
+            if (socket == null || socket.State != WebSocketState.Open)
+            {
+                return null;
+            }
+
             var buffer = new byte[16384];
             var builder = new StringBuilder();
 
-            while (_socket != null && _socket.State == WebSocketState.Open)
+            while (socket.State == WebSocketState.Open)
             {
                 var segment = new ArraySegment<byte>(buffer);
-                var result = await _socket.ReceiveAsync(segment, cancellationToken).ConfigureAwait(false);
-                builder.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
+                WebSocketReceiveResult result;
+                try
+                {
+                    result = await socket.ReceiveAsync(segment, cancellationToken).ConfigureAwait(false);
+                }
+                catch (WebSocketException)
+                {
+                    return null;
+                }
+                catch (ObjectDisposedException)
+                {
+                    return null;
+                }
 
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    try
+                    {
+                        if (socket.State == WebSocketState.CloseReceived)
+                        {
+                            await socket.CloseAsync(
+                                    WebSocketCloseStatus.NormalClosure,
+                                    "ack close",
+                                    CancellationToken.None)
+                                .ConfigureAwait(false);
+                        }
+                    }
+                    catch
+                    {
+                    }
+
+                    return null;
+                }
+
+                builder.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
                 if (result.EndOfMessage)
                 {
                     break;
@@ -358,6 +531,94 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             }
 
             return builder.ToString();
+        }
+
+        private void FailPendingCommands(string reason)
+        {
+            var error = new Dictionary<string, object>
+            {
+                {
+                    "error",
+                    new Dictionary<string, object>
+                    {
+                        { "code", -32001 },
+                        { "message", reason }
+                    }
+                }
+            };
+
+            foreach (var pair in _pendingCommands)
+            {
+                try
+                {
+                    pair.Value.TryAdd(error);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private void DisposeSocket()
+        {
+            lock (_connectLock)
+            {
+                DisposeSocketUnlocked();
+            }
+        }
+
+        private void DisposeSocketUnlocked()
+        {
+            var socket = _socket;
+            _socket = null;
+            if (socket == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (socket.State == WebSocketState.Open || socket.State == WebSocketState.CloseReceived)
+                {
+                    socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "close", CancellationToken.None)
+                        .GetAwaiter()
+                        .GetResult();
+                }
+            }
+            catch
+            {
+                // Ignore close errors (including Aborted sockets).
+            }
+
+            try
+            {
+                socket.Dispose();
+            }
+            catch
+            {
+            }
+        }
+
+        private static bool IsTransientTransportFailure(Exception ex)
+        {
+            for (var current = ex; current != null; current = current.InnerException)
+            {
+                var ws = current as WebSocketException;
+                if (ws != null)
+                {
+                    return true;
+                }
+
+                var message = current.Message ?? string.Empty;
+                if (message.IndexOf("invalid state", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    message.IndexOf("Aborted", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    message.IndexOf("WebSocket", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

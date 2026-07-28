@@ -1,0 +1,9 @@
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp.Activities\obj\Debug\net462\F2B.Browser.Chromium.Cdp.Activities.csproj.AssemblyReference.cache
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp.Activities\obj\Debug\net462\F2B.Browser.Chromium.Cdp.Activities.GeneratedMSBuildEditorConfig.editorconfig
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp.Activities\obj\Debug\net462\F2B.Browser.Chromium.Cdp.Activities.csproj.CoreCompileInputs.cache
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp.Activities\bin\Debug\net462\F2B.Browser.Chromium.Cdp.Activities.dll
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp.Activities\bin\Debug\net462\F2B.Browser.Chromium.Cdp.Activities.pdb
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp.Activities\obj\Debug\net462\F2B.Browser.Chromium.Cdp.Activities.dll
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp.Activities\obj\Debug\net462\F2B.Browser.Chromium.Cdp.Activities.pdb
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp.Activities\bin\Debug\net462\Newtonsoft.Json.dll
+d:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp.Activities\obj\Debug\net462\F2B.Brow.BBC5D0DC.Up2Date

@@ -1,0 +1,6 @@
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\bin\Debug\F2B.Browser.Chromium.Cdp.dll
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\bin\Debug\F2B.Browser.Chromium.Cdp.pdb
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\obj\Debug\F2B.Browser.Chromium.Cdp.csproj.AssemblyReference.cache
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\obj\Debug\F2B.Browser.Chromium.Cdp.csproj.CoreCompileInputs.cache
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\obj\Debug\F2B.Browser.Chromium.Cdp.dll
+D:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\obj\Debug\F2B.Browser.Chromium.Cdp.pdb
