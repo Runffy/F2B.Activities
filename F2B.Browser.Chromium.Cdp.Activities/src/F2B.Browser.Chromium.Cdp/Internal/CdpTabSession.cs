@@ -322,16 +322,19 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                 { "returnByValue", true }
             });
 
+            object exceptionDetails;
+            if (response.TryGetValue("exceptionDetails", out exceptionDetails) && exceptionDetails != null)
+            {
+                throw new BrowserException(
+                    string.Format(
+                        "JavaScript evaluation failed: {0}",
+                        CdpErrorFormatter.FormatExceptionDetails(exceptionDetails)));
+            }
+
             var inner = CdpValueConverter.GetDictionary(response, "result");
             if (inner == null)
             {
                 return null;
-            }
-
-            object exceptionDetails;
-            if (inner.TryGetValue("exceptionDetails", out exceptionDetails) && exceptionDetails != null)
-            {
-                throw new BrowserException(string.Format("JavaScript evaluation failed: {0}", exceptionDetails));
             }
 
             object value;

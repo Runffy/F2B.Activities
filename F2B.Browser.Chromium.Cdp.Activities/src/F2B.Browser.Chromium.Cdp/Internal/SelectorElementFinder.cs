@@ -27,7 +27,12 @@ namespace F2B.Browser.Chromium.Cdp.Internal
         var key = (name || '').toLowerCase();
         if (key === 'tag') return (el.tagName || '').toLowerCase();
         if (key === 'text') return (el.innerText || el.textContent || '').trim();
-        if (key === 'class') return el.className || '';
+        if (key === 'class') {
+            var cn = el.className;
+            // SVGElement.className is SVGAnimatedString, not a string.
+            if (cn && typeof cn === 'object' && cn.baseVal != null) return String(cn.baseVal);
+            return cn || '';
+        }
         if (el.hasAttribute && el.hasAttribute(name)) {
             var attr = el.getAttribute(name);
             return attr == null ? '' : String(attr);
@@ -288,6 +293,11 @@ namespace F2B.Browser.Chromium.Cdp.Internal
     }
 
     var roots = walk(document, 0);
+    // FindElement (findAll=false): return the node directly so CDP can resolve objectId
+    // without setAttribute/querySelector (more reliable for SVG elements such as <rect>).
+    if (!findAll) {
+        return roots.length > 0 ? roots[0] : null;
+    }
     var objectIds = [];
     for (var i = 0; i < roots.length; i++) {
         var el = roots[i];
@@ -537,7 +547,6 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             CdpFrame frameRoot = null)
         {
             var deadline = DateTime.UtcNow.AddMilliseconds(Math.Max(0, timeoutMs));
-            BrowserException lastError = null;
 
             do
             {
@@ -558,9 +567,10 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                         return elements[0];
                     }
                 }
-                catch (BrowserException ex)
+                catch (BrowserException)
                 {
-                    lastError = ex;
+                    // Transient CDP/JS/resolve failures are treated as "not found yet"
+                    // and retried until timeout (aligned with Bridge FindElement semantics).
                 }
 
                 if (timeoutMs <= 0)
@@ -575,11 +585,6 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             if (!throwException)
             {
                 return null;
-            }
-
-            if (lastError != null)
-            {
-                throw lastError;
             }
 
             throw new BrowserException(
@@ -659,6 +664,25 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             var findAllLiteral = findAll ? "true" : "false";
             var functionDeclaration = BuildElementFinderFunction(levelsJson, findAllLiteral, markPrefix);
 
+            if (!findAll)
+            {
+                try
+                {
+                    var objectId = RunElementFinderObjectId(session, root.ObjectId, functionDeclaration);
+                    var element = ResolveElementByObjectId(session, root.Tab, objectId);
+                    if (element == null)
+                    {
+                        return new List<CdpElement>();
+                    }
+
+                    return new List<CdpElement> { element };
+                }
+                catch (BrowserException)
+                {
+                    return new List<CdpElement>();
+                }
+            }
+
             IList<string> marks;
             try
             {
@@ -674,10 +698,17 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             {
                 foreach (var mark in marks)
                 {
-                    var element = ResolveMarkedElement(session, root, mark);
-                    if (element != null)
+                    try
                     {
-                        elements.Add(element);
+                        var element = ResolveMarkedElement(session, root, mark);
+                        if (element != null)
+                        {
+                            elements.Add(element);
+                        }
+                    }
+                    catch (BrowserException)
+                    {
+                        // Skip marks that cannot be resolved.
                     }
                 }
             }
@@ -699,6 +730,25 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             var findAllLiteral = findAll ? "true" : "false";
             var expression = FinderScript + "(" + levelsJson + ", " + findAllLiteral + ", '" + markPrefix + "')";
 
+            if (!findAll)
+            {
+                try
+                {
+                    var objectId = context.EvaluateObjectId(expression);
+                    var element = context.ResolveElement(objectId);
+                    if (element == null)
+                    {
+                        return new List<CdpElement>();
+                    }
+
+                    return new List<CdpElement> { element };
+                }
+                catch (BrowserException)
+                {
+                    return new List<CdpElement>();
+                }
+            }
+
             object rawResult;
             try
             {
@@ -715,13 +765,20 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             {
                 foreach (var mark in marks)
                 {
-                    var objectId = context.EvaluateObjectId(
-                        "document.querySelector('[data-cdp-f2b-mark=\"" + mark + "\"]')");
-
-                    var element = context.ResolveElement(objectId);
-                    if (element != null)
+                    try
                     {
-                        elements.Add(element);
+                        var objectId = context.EvaluateObjectId(
+                            "document.querySelector('[data-cdp-f2b-mark=\"" + mark + "\"]')");
+
+                        var element = context.ResolveElement(objectId);
+                        if (element != null)
+                        {
+                            elements.Add(element);
+                        }
+                    }
+                    catch (BrowserException)
+                    {
+                        // Skip marks that cannot be resolved (e.g. detached / SVG edge cases).
                     }
                 }
             }
@@ -794,12 +851,93 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             object exceptionDetails;
             if (response.TryGetValue("exceptionDetails", out exceptionDetails) && exceptionDetails != null)
             {
-                throw new BrowserException(string.Format("Element finder failed: {0}", exceptionDetails));
+                throw new BrowserException(
+                    string.Format(
+                        "Element finder failed: {0}",
+                        CdpErrorFormatter.FormatExceptionDetails(exceptionDetails)));
             }
 
             var inner = CdpValueConverter.GetDictionary(response, "result");
             object value;
             return inner != null && inner.TryGetValue("value", out value) ? value : null;
+        }
+
+        private static string RunElementFinderObjectId(
+            CdpTabSession session,
+            string objectId,
+            string functionDeclaration)
+        {
+            var response = session.Send("Runtime.callFunctionOn", new Dictionary<string, object>
+            {
+                { "functionDeclaration", functionDeclaration },
+                { "objectId", objectId },
+                { "returnByValue", false },
+                { "awaitPromise", true },
+                { "userGesture", true }
+            });
+
+            object exceptionDetails;
+            if (response.TryGetValue("exceptionDetails", out exceptionDetails) && exceptionDetails != null)
+            {
+                throw new BrowserException(
+                    string.Format(
+                        "Element finder failed: {0}",
+                        CdpErrorFormatter.FormatExceptionDetails(exceptionDetails)));
+            }
+
+            var inner = CdpValueConverter.GetDictionary(response, "result");
+            return inner != null ? CdpValueConverter.GetString(inner, "objectId") : null;
+        }
+
+        private static CdpElement ResolveElementByObjectId(CdpTabSession session, CdpTab tab, string objectId)
+        {
+            if (string.IsNullOrEmpty(objectId))
+            {
+                return null;
+            }
+
+            try
+            {
+                session.Send("DOM.getDocument", new Dictionary<string, object> { { "depth", 0 } });
+            }
+            catch
+            {
+            }
+
+            Dictionary<string, object> describe;
+            try
+            {
+                describe = session.Send("DOM.describeNode", new Dictionary<string, object>
+                {
+                    { "objectId", objectId }
+                });
+            }
+            catch (BrowserException)
+            {
+                var request = session.Send("DOM.requestNode", new Dictionary<string, object>
+                {
+                    { "objectId", objectId }
+                });
+
+                var nodeId = CdpValueConverter.GetInt(request, "nodeId");
+                describe = session.Send("DOM.describeNode", new Dictionary<string, object>
+                {
+                    { "nodeId", nodeId }
+                });
+            }
+
+            var node = CdpValueConverter.GetDictionary(describe, "node");
+            if (node == null)
+            {
+                return null;
+            }
+
+            return new CdpElement(
+                tab,
+                CdpValueConverter.GetString(node, "localName") ?? string.Empty,
+                CdpValueConverter.GetInt(node, "backendNodeId"),
+                CdpValueConverter.GetInt(node, "nodeId"),
+                objectId);
         }
 
         private static CdpElement ResolveMarkedElement(CdpTabSession session, CdpElement root, string mark)
@@ -814,31 +952,18 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                 { "returnByValue", false }
             });
 
-            var inner = CdpValueConverter.GetDictionary(response, "result");
-            var objectId = inner != null ? CdpValueConverter.GetString(inner, "objectId") : null;
-            if (string.IsNullOrEmpty(objectId))
+            object exceptionDetails;
+            if (response.TryGetValue("exceptionDetails", out exceptionDetails) && exceptionDetails != null)
             {
-                return null;
+                throw new BrowserException(
+                    string.Format(
+                        "Element mark resolve failed: {0}",
+                        CdpErrorFormatter.FormatExceptionDetails(exceptionDetails)));
             }
 
-            var request = session.Send("DOM.requestNode", new Dictionary<string, object>
-            {
-                { "objectId", objectId }
-            });
-
-            var nodeId = CdpValueConverter.GetInt(request, "nodeId");
-            var describe = session.Send("DOM.describeNode", new Dictionary<string, object>
-            {
-                { "nodeId", nodeId }
-            });
-
-            var node = CdpValueConverter.GetDictionary(describe, "node");
-            return new CdpElement(
-                root.Tab,
-                CdpValueConverter.GetString(node, "localName") ?? string.Empty,
-                CdpValueConverter.GetInt(node, "backendNodeId"),
-                nodeId,
-                objectId);
+            var inner = CdpValueConverter.GetDictionary(response, "result");
+            var objectId = inner != null ? CdpValueConverter.GetString(inner, "objectId") : null;
+            return ResolveElementByObjectId(session, root.Tab, objectId);
         }
 
         private static void CleanupElementMarks(CdpTabSession session, CdpElement root, string markPrefix)

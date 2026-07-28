@@ -179,16 +179,19 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             }
 
             var response = Send("Runtime.evaluate", parameters);
+            object exceptionDetails;
+            if (response.TryGetValue("exceptionDetails", out exceptionDetails) && exceptionDetails != null)
+            {
+                throw new BrowserException(
+                    string.Format(
+                        "JavaScript evaluation failed: {0}",
+                        CdpErrorFormatter.FormatExceptionDetails(exceptionDetails)));
+            }
+
             var inner = CdpValueConverter.GetDictionary(response, "result");
             if (inner == null)
             {
                 return null;
-            }
-
-            object exceptionDetails;
-            if (inner.TryGetValue("exceptionDetails", out exceptionDetails) && exceptionDetails != null)
-            {
-                throw new BrowserException(string.Format("JavaScript evaluation failed: {0}", exceptionDetails));
             }
 
             object value;
@@ -209,6 +212,15 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             }
 
             var response = Send("Runtime.evaluate", parameters);
+            object exceptionDetails;
+            if (response.TryGetValue("exceptionDetails", out exceptionDetails) && exceptionDetails != null)
+            {
+                throw new BrowserException(
+                    string.Format(
+                        "JavaScript evaluation failed: {0}",
+                        CdpErrorFormatter.FormatExceptionDetails(exceptionDetails)));
+            }
+
             var inner = CdpValueConverter.GetDictionary(response, "result");
             return inner != null ? CdpValueConverter.GetString(inner, "objectId") : null;
         }
@@ -220,22 +232,51 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                 return null;
             }
 
-            var request = Send("DOM.requestNode", new Dictionary<string, object>
+            // Ensure DOM document is synced before resolving nodes (required by some Chrome builds,
+            // and more reliable for SVG / namespaced elements than DOM.requestNode alone).
+            try
             {
-                { "objectId", objectId }
-            });
+                Send("DOM.getDocument", new Dictionary<string, object> { { "depth", 0 } });
+            }
+            catch
+            {
+                // Best-effort; describeNode may still succeed.
+            }
 
-            var nodeId = CdpValueConverter.GetInt(request, "nodeId");
-            var describe = Send("DOM.describeNode", new Dictionary<string, object>
+            Dictionary<string, object> describe;
+            try
             {
-                { "nodeId", nodeId }
-            });
+                describe = Send("DOM.describeNode", new Dictionary<string, object>
+                {
+                    { "objectId", objectId }
+                });
+            }
+            catch (BrowserException)
+            {
+                // Fallback for older protocol behavior.
+                var request = Send("DOM.requestNode", new Dictionary<string, object>
+                {
+                    { "objectId", objectId }
+                });
+
+                var nodeId = CdpValueConverter.GetInt(request, "nodeId");
+                describe = Send("DOM.describeNode", new Dictionary<string, object>
+                {
+                    { "nodeId", nodeId }
+                });
+            }
 
             var node = CdpValueConverter.GetDictionary(describe, "node");
+            if (node == null)
+            {
+                return null;
+            }
+
             var tag = CdpValueConverter.GetString(node, "localName") ?? string.Empty;
             var backendNodeId = CdpValueConverter.GetInt(node, "backendNodeId");
+            var resolvedNodeId = CdpValueConverter.GetInt(node, "nodeId");
 
-            return new CdpElement(Tab, tag, backendNodeId, nodeId, objectId);
+            return new CdpElement(Tab, tag, backendNodeId, resolvedNodeId, objectId);
         }
 
         public void Dispose()

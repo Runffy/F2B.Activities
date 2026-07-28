@@ -175,7 +175,8 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             object errorValue;
             if (response.TryGetValue("error", out errorValue) && errorValue != null)
             {
-                throw new BrowserException(string.Format("CDP command failed: {0}", errorValue));
+                throw new BrowserException(
+                    string.Format("CDP command failed: {0}", CdpErrorFormatter.Format(errorValue)));
             }
 
             object idValue;
