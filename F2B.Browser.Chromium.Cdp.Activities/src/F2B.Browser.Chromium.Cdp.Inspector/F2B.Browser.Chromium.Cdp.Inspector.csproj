@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net462</TargetFramework>
+    <RootNamespace>F2B.Browser.Chromium.Cdp.Inspector</RootNamespace>
+    <AssemblyName>F2B.Browser.Chromium.Cdp.Inspector</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\F2B.Browser.Chromium.Cdp\F2B.Browser.Chromium.Cdp.csproj" />
+  </ItemGroup>
+</Project>

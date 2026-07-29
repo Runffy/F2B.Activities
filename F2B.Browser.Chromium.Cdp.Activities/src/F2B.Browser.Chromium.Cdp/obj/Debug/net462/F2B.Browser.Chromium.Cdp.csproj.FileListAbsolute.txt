@@ -1,9 +1,0 @@
-d:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\bin\Debug\net462\F2B.Browser.Chromium.Cdp.dll
-d:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\bin\Debug\net462\F2B.Browser.Chromium.Cdp.pdb
-d:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\bin\Debug\net462\Newtonsoft.Json.dll
-d:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\obj\Debug\net462\F2B.Browser.Chromium.Cdp.csproj.AssemblyReference.cache
-d:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\obj\Debug\net462\F2B.Browser.Chromium.Cdp.GeneratedMSBuildEditorConfig.editorconfig
-d:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\obj\Debug\net462\F2B.Browser.Chromium.Cdp.csproj.CoreCompileInputs.cache
-d:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\obj\Debug\net462\F2B.Brow.2EE2CF88.Up2Date
-d:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\obj\Debug\net462\F2B.Browser.Chromium.Cdp.dll
-d:\Projects\CSharp Projects\HSBC.F2B\F2B.Browser.Chromium.Cdp\src\F2B.Browser.Chromium.Cdp\obj\Debug\net462\F2B.Browser.Chromium.Cdp.pdb

@@ -523,6 +523,20 @@ namespace F2B.Browser.Chromium.Cdp.Browser
             return true;
         }
 
+        /// <summary>
+        /// Returns CDP <c>Browser.getWindowForTarget</c> bounds for the tab's window
+        /// (keys typically include left/top/width/height/windowState).
+        /// </summary>
+        public Dictionary<string, object> GetWindowBoundsForTab(CdpTab tab)
+        {
+            if (tab == null)
+            {
+                throw new ArgumentNullException("tab");
+            }
+
+            return GetWindowBounds(tab.Id);
+        }
+
         internal Dictionary<string, object> GetWindowBounds(string targetId)
         {
             var result = _connection.GetWindowForTarget(targetId);
