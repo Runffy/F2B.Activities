@@ -107,19 +107,28 @@ namespace F2B.Microsoft.Word
 
         internal static InteropWord.Document Attach(
             string wordFilePath,
-            bool visible)
+            bool visible,
+            bool createIfMissing = false)
         {
             wordFilePath = WordActivityHelper.NormalizeWordFilePath(wordFilePath);
             var application = WordCom.GetOrCreateApplication(visible, out _);
             application.DisplayAlerts = (InteropWord.WdAlertLevel)WordCom.WdAlertsNone;
 
-            return WordCom.OpenOrCreateDocument(
+            var document = WordCom.OpenOrCreateDocument(
                 application,
                 wordFilePath,
                 visible,
-                createIfMissing: false,
+                createIfMissing,
                 out _,
-                out _);
+                out var createdNewDocument);
+
+            // Attach has no session Complete — persist new blank docs immediately so the path exists.
+            if (createdNewDocument)
+            {
+                WordCom.SaveAsDocx(document, wordFilePath);
+            }
+
+            return document;
         }
 
         internal void Complete()
