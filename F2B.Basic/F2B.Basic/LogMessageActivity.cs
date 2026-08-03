@@ -1,13 +1,17 @@
 using OpenRPA.Interfaces;
+using Newtonsoft.Json;
 using System;
 using System.Activities;
+using System.Collections;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Windows;
 
 namespace F2B.Basic
@@ -65,8 +69,7 @@ namespace F2B.Basic
                 level = "INFO";
             }
 
-            object raw = Message.Get(context);
-            string message = raw == null ? string.Empty : Convert.ToString(raw, CultureInfo.InvariantCulture);
+            string message = FormatLogMessage(Message.Get(context));
 
             WorkflowMetadata workflowMetadata = ResolveWorkflowMetadata(context);
             string projectName = workflowMetadata.ProjectName ?? "UnknownProject";
@@ -93,6 +96,104 @@ namespace F2B.Basic
 
             string consoleLine = $"[{level}] {message}";
             Console.WriteLine(consoleLine);
+        }
+
+        /// <summary>
+        /// Formats Message by type: DataTable (pretty) → DataRow (dict/JSON) → string → IEnumerable/DataColumn (JSON) → ToString.
+        /// </summary>
+        private static string FormatLogMessage(object raw)
+        {
+            if (raw == null)
+            {
+                return string.Empty;
+            }
+
+            if (raw is DataTable table)
+            {
+                return FormatDataTable(table);
+            }
+
+            if (raw is DataRow row)
+            {
+                return FormatAsJson(DataRowToDictionary(row));
+            }
+
+            if (raw is string text)
+            {
+                return text;
+            }
+
+            // string already handled above (string is IEnumerable of char).
+            if (raw is DataColumn || raw is IEnumerable)
+            {
+                return FormatAsJson(raw);
+            }
+
+            return raw.ToString() ?? string.Empty;
+        }
+
+        private static string FormatDataTable(DataTable table)
+        {
+            var builder = new StringBuilder();
+            builder.AppendLine(table.TableName ?? string.Empty);
+
+            string[] columnNames = table.Columns.Cast<DataColumn>()
+                .Select(column => column.ColumnName)
+                .ToArray();
+            builder.AppendLine(string.Join(" | ", columnNames));
+            builder.AppendLine("-------");
+
+            foreach (DataRow row in table.Rows)
+            {
+                string[] cells = new string[columnNames.Length];
+                for (int i = 0; i < columnNames.Length; i++)
+                {
+                    cells[i] = FormatCellValue(row[i]);
+                }
+
+                builder.AppendLine(string.Join(" | ", cells));
+            }
+
+            return builder.ToString().TrimEnd('\r', '\n');
+        }
+
+        private static IDictionary<string, object> DataRowToDictionary(DataRow row)
+        {
+            var dictionary = new Dictionary<string, object>(StringComparer.Ordinal);
+            if (row?.Table == null)
+            {
+                return dictionary;
+            }
+
+            foreach (DataColumn column in row.Table.Columns)
+            {
+                object value = row[column];
+                dictionary[column.ColumnName] = value == DBNull.Value ? null : value;
+            }
+
+            return dictionary;
+        }
+
+        private static string FormatAsJson(object value)
+        {
+            try
+            {
+                return JsonConvert.SerializeObject(value, Formatting.None);
+            }
+            catch
+            {
+                return value?.ToString() ?? string.Empty;
+            }
+        }
+
+        private static string FormatCellValue(object value)
+        {
+            if (value == null || value == DBNull.Value)
+            {
+                return string.Empty;
+            }
+
+            return Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
         }
 
         private static string GetExecutionLogPath(DateTime timestamp)
