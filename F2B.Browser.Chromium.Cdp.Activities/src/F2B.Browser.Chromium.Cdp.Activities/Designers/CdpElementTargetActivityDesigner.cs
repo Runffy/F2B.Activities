@@ -78,6 +78,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         private DesignerMode _designerMode = DesignerMode.General;
         private bool _isSyncingBy;
         private bool _isSyncingOperationType;
+        private bool _isSyncingTextType;
 
         public CdpElementTargetActivityDesigner()
         {
@@ -163,6 +164,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             body.Children.Add(_operationTypeRow);
 
             _textTypeComboBox = CdpDesignerShared.BuildEnumComboBox<CdpElementTextType>();
+            _textTypeComboBox.SelectionChanged += OnTextTypeSelectionChanged;
             _textTypeRow = CdpDesignerShared.CreateRow("Type", _textTypeComboBox, LabelColumn, CdpDesignerShared.RowSpacing);
             body.Children.Add(_textTypeRow);
 
@@ -309,7 +311,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             else if (_designerMode == DesignerMode.GetText)
             {
                 var type = ReadTextType(ModelItem);
-                CdpDesignerShared.SyncCombo(_textTypeComboBox, type, ref _isSyncingOperationType);
+                CdpDesignerShared.SyncCombo(_textTypeComboBox, type, ref _isSyncingTextType);
             }
         }
 
@@ -427,6 +429,20 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             if (_byComboBox.SelectedItem is CdpActivitySelectBy by)
             {
                 ModelItem.Properties["By"].SetValue(by);
+                RefreshRequiredBorders();
+            }
+        }
+
+        private void OnTextTypeSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isSyncingTextType || ModelItem == null || _designerMode != DesignerMode.GetText)
+            {
+                return;
+            }
+
+            if (_textTypeComboBox.SelectedItem is CdpElementTextType textType)
+            {
+                ModelItem.Properties["Type"].SetValue(textType);
                 RefreshRequiredBorders();
             }
         }
