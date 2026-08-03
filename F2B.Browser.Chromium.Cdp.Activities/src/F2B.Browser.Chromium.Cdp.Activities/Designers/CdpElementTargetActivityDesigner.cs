@@ -16,6 +16,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         private const string LabelColumn = "CdpElementTargetLabelColumn";
 
         private readonly Border _rootPanel;
+        private readonly ScreencastThumbnailControl _screencastThumbnail;
         private readonly FrameworkElement _targetRow;
         private readonly FrameworkElement _selectorRow;
         private readonly FrameworkElement _parentObjectRow;
@@ -95,6 +96,12 @@ namespace F2B.Browser.Chromium.Cdp.Activities
 
             var body = new StackPanel { Orientation = Orientation.Vertical };
             Grid.SetIsSharedSizeScope(body, true);
+
+            _screencastThumbnail = new ScreencastThumbnailControl
+            {
+                Visibility = Visibility.Collapsed
+            };
+            body.Children.Add(_screencastThumbnail);
 
             _targetExpressionBox = CdpDesignerShared.CreateInExpressionTextBox("Target", typeof(CdpBase));
             _targetRow = CdpDesignerShared.CreateRow("Target", _targetExpressionBox, LabelColumn, out _targetEditorBorder);
@@ -219,9 +226,23 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             CdpDesignerShared.BindExpressionOwner(_rootPanel, ModelItem);
             _designerMode = ReadDesignerMode(ModelItem);
             ConfigureOperationTypeCombo();
+            RefreshScreencastThumbnail();
             RefreshAllRows();
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
             RefreshRequiredBorders();
+        }
+
+        private void RefreshScreencastThumbnail()
+        {
+            if (ModelItem?.Properties["Screencast"] == null)
+            {
+                _screencastThumbnail.Visibility = Visibility.Collapsed;
+                _screencastThumbnail.Detach();
+                return;
+            }
+
+            _screencastThumbnail.Visibility = Visibility.Visible;
+            _screencastThumbnail.Attach(ModelItem, "Screencast");
         }
 
         private void ConfigureOperationTypeCombo()

@@ -25,5 +25,10 @@
     <Compile Include="..\..\..\F2B.OpenRpa.Design\VbStringArrayExpression.cs" Link="OpenRpa.Design\VbStringArrayExpression.cs" />
     <Compile Include="..\..\..\F2B.OpenRpa.Design\SelectorXmlEditorDialog.cs" Link="OpenRpa.Design\SelectorXmlEditorDialog.cs" />
     <Compile Include="..\..\..\F2B.OpenRpa.Design\SelectorsEditorDialog.cs" Link="OpenRpa.Design\SelectorsEditorDialog.cs" />
+    <Compile Include="..\..\..\F2B.OpenRpa.Design\OpenRpaProjectPaths.cs" Link="OpenRpa.Design\OpenRpaProjectPaths.cs" />
+    <Compile Include="..\..\..\F2B.OpenRpa.Design\ScreencastImageStore.cs" Link="OpenRpa.Design\ScreencastImageStore.cs" />
+    <Compile Include="..\..\..\F2B.OpenRpa.Design\ScreencastThumbnailControl.cs" Link="OpenRpa.Design\ScreencastThumbnailControl.cs" />
+    <Compile Include="..\..\..\F2B.OpenRpa.Design\ScreencastViewerWindow.cs" Link="OpenRpa.Design\ScreencastViewerWindow.cs" />
+    <Compile Include="..\..\..\F2B.OpenRpa.Design\ScreencastPickWindow.cs" Link="OpenRpa.Design\ScreencastPickWindow.cs" />
   </ItemGroup>
 </Project>

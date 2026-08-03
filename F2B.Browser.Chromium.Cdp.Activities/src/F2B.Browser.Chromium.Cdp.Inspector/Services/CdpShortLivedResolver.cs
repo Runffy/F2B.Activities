@@ -74,9 +74,7 @@ namespace F2B.Browser.Chromium.Cdp.Inspector.Services
                 }
                 else
                 {
-                    var elements = result.Tab.FindElements(operationXml);
-                    result.MatchCount = elements == null ? 0 : elements.Length;
-                    result.FirstElement = result.MatchCount > 0 ? elements[0] : null;
+                    ApplyElementMatches(result, operationXml, keepSessionAlive);
                 }
 
                 if (!keepSessionAlive)
@@ -149,9 +147,7 @@ namespace F2B.Browser.Chromium.Cdp.Inspector.Services
                     }
                     else
                     {
-                        var elements = tab.FindElements(operationXml);
-                        result.MatchCount = elements == null ? 0 : elements.Length;
-                        result.FirstElement = result.MatchCount > 0 ? elements[0] : null;
+                        ApplyElementMatches(result, operationXml, keepSessionAlive);
                     }
 
                     if (result.MatchCount > 0)
@@ -192,9 +188,7 @@ namespace F2B.Browser.Chromium.Cdp.Inspector.Services
                 }
                 else
                 {
-                    var elements = result.Tab.FindElements(operationXml);
-                    result.MatchCount = elements == null ? 0 : elements.Length;
-                    result.FirstElement = result.MatchCount > 0 ? elements[0] : null;
+                    ApplyElementMatches(result, operationXml, keepSessionAlive);
                 }
 
                 if (!keepSessionAlive)
@@ -213,6 +207,26 @@ namespace F2B.Browser.Chromium.Cdp.Inspector.Services
                 result.MatchCount = 0;
                 return result;
             }
+        }
+
+        /// <summary>
+        /// Count matches via FindElements (objectId array path; supports parent / multi-match).
+        /// </summary>
+        private static void ApplyElementMatches(
+            ResolveResult result,
+            string operationXml,
+            bool keepSessionAlive)
+        {
+            var elements = result.Tab.FindElements(operationXml);
+            if (elements != null && elements.Length > 0)
+            {
+                result.MatchCount = elements.Length;
+                result.FirstElement = keepSessionAlive ? elements[0] : null;
+                return;
+            }
+
+            result.MatchCount = 0;
+            result.FirstElement = null;
         }
 
         private static int? ReadPort(SelectorLevel wndLevel)

@@ -16,6 +16,12 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             DisplayName = "Element-DragToElement";
         }
 
+        /// <summary>
+        /// Design-time screencast image id (uuid only). Edited via canvas thumbnail, not the property grid.
+        /// </summary>
+        [Browsable(false)]
+        public string Screencast { get; set; }
+
         [DisplayName("Parent Object")]
         [Description("Optional parent/root for the drag source.")]
         [Category("Input.A")]

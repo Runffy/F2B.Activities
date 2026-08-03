@@ -15,6 +15,12 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             DisplayName = "Find Element";
         }
 
+        /// <summary>
+        /// Design-time screencast image id (uuid only). Edited via canvas thumbnail, not the property grid.
+        /// </summary>
+        [Browsable(false)]
+        public string Screencast { get; set; }
+
         [DisplayName("Parent Object")]
         [Description("Optional search root (CdpTab / CdpFrame / CdpElement). Required when Selector has no <wnd>.")]
         [Category("Input.A")]

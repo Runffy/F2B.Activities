@@ -15,6 +15,12 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         }
 
         /// <summary>
+        /// Design-time screencast image id (uuid only). Edited via canvas thumbnail, not the property grid.
+        /// </summary>
+        [Browsable(false)]
+        public string Screencast { get; set; }
+
+        /// <summary>
         /// When true, Target must be a CdpElement (GetParent; GetChildren also requires CdpElement but
         /// treats Selector as a child filter rather than a Target re-resolve).
         /// </summary>

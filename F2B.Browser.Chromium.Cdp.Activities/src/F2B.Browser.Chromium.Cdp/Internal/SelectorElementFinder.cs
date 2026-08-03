@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Text;
+using System.Linq;
 using F2B.Browser.Chromium.Cdp.Browser;
 using F2B.Browser.Chromium.Cdp.Exceptions;
 using F2B.Browser.Chromium.Cdp.Selectors;
@@ -33,6 +33,22 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             if (cn && typeof cn === 'object' && cn.baseVal != null) return String(cn.baseVal);
             return cn || '';
         }
+        // Boolean HTML attributes: <button disabled> => getAttribute returns "".
+        if (key === 'disabled' || key === 'checked' || key === 'selected' ||
+            key === 'readonly' || key === 'required' || key === 'multiple') {
+            var present = false;
+            if (el.hasAttribute && el.hasAttribute(name)) present = true;
+            else if (key === 'disabled' && el.disabled) present = true;
+            else if (key === 'checked' && el.checked) present = true;
+            else if (key === 'selected' && el.selected) present = true;
+            else if (key === 'readonly' && el.readOnly) present = true;
+            else if (key === 'required' && el.required) present = true;
+            else if (key === 'multiple' && el.multiple) present = true;
+            if (!present) return 'false';
+            var raw = el.getAttribute ? el.getAttribute(name) : null;
+            if (raw == null || raw === '' || String(raw).toLowerCase() === key) return 'true';
+            return String(raw);
+        }
         if (el.hasAttribute && el.hasAttribute(name)) {
             var attr = el.getAttribute(name);
             return attr == null ? '' : String(attr);
@@ -59,6 +75,15 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                 if (classes[i] && classes[i].toLowerCase() === expected.toLowerCase()) return true;
             }
             return false;
+        }
+        if (propName === 'disabled' || propName === 'checked' || propName === 'selected' ||
+            propName === 'readonly' || propName === 'required' || propName === 'multiple') {
+            var exp = expected.toLowerCase();
+            var wantTrue = (exp === '' || exp === 'true' || exp === '1' || exp === propName);
+            var wantFalse = (exp === 'false' || exp === '0');
+            var isTrue = actual.toLowerCase() === 'true';
+            if (wantTrue) return isTrue;
+            if (wantFalse) return !isTrue;
         }
         return actual.toLowerCase() === expected.toLowerCase();
     }
@@ -293,19 +318,12 @@ namespace F2B.Browser.Chromium.Cdp.Internal
     }
 
     var roots = walk(document, 0);
-    // FindElement (findAll=false): return the node directly so CDP can resolve objectId
-    // without setAttribute/querySelector (more reliable for SVG elements such as <rect>).
+    // Return DOM node(s) directly so CDP can resolve objectId(s).
+    // Prefer this over DOM attribute marks (marks fail for some parent/SVG hosts).
     if (!findAll) {
         return roots.length > 0 ? roots[0] : null;
     }
-    var objectIds = [];
-    for (var i = 0; i < roots.length; i++) {
-        var el = roots[i];
-        if (!el || !el.setAttribute) continue;
-        el.setAttribute('data-cdp-f2b-mark', markPrefix + i);
-        objectIds.push(markPrefix + i);
-    }
-    return objectIds;
+    return roots;
 })";
 
         public static IList<CdpElement> FindElements(CdpTab tab, string selectorXml)
@@ -361,41 +379,25 @@ namespace F2B.Browser.Chromium.Cdp.Internal
 
             root.Context.RefreshIds();
             var levelsJson = SerializeLevels(levels);
-            var markPrefix = "f2b-" + Guid.NewGuid().ToString("N") + "-";
             var functionDeclaration = BuildElementFinderFunction(
                 levelsJson,
                 "true",
-                markPrefix,
+                markPrefix: string.Empty,
                 directFirstLevel: true);
 
-            IList<string> marks;
             try
             {
-                marks = ReadMarks(RunElementFinder(root.Tab.GetSession(), root.ObjectId, functionDeclaration));
+                var arrayObjectId = RunElementFinderObjectId(
+                    root.Tab.GetSession(),
+                    root.ObjectId,
+                    functionDeclaration);
+                return ResolveElementsFromArrayObjectId(root.Tab.GetSession(), root.Tab, arrayObjectId)
+                    .ToArray();
             }
             catch
             {
                 return new CdpElement[0];
             }
-
-            var elements = new List<CdpElement>();
-            try
-            {
-                foreach (var mark in marks)
-                {
-                    var element = ResolveMarkedElement(root.Tab.GetSession(), root, mark);
-                    if (element != null)
-                    {
-                        elements.Add(element);
-                    }
-                }
-            }
-            finally
-            {
-                CleanupElementMarks(root.Tab.GetSession(), root, markPrefix);
-            }
-
-            return elements.ToArray();
         }
 
         public static bool TryFindElement(CdpTab tab, string selectorXml)
@@ -660,15 +662,14 @@ namespace F2B.Browser.Chromium.Cdp.Internal
 
             root.Context.RefreshIds();
             var levelsJson = SerializeLevels(levels);
-            var markPrefix = "f2b-" + Guid.NewGuid().ToString("N") + "-";
             var findAllLiteral = findAll ? "true" : "false";
-            var functionDeclaration = BuildElementFinderFunction(levelsJson, findAllLiteral, markPrefix);
+            var functionDeclaration = BuildElementFinderFunction(levelsJson, findAllLiteral, markPrefix: string.Empty);
 
-            if (!findAll)
+            try
             {
-                try
+                var objectId = RunElementFinderObjectId(session, root.ObjectId, functionDeclaration);
+                if (!findAll)
                 {
-                    var objectId = RunElementFinderObjectId(session, root.ObjectId, functionDeclaration);
                     var element = ResolveElementByObjectId(session, root.Tab, objectId);
                     if (element == null)
                     {
@@ -677,47 +678,13 @@ namespace F2B.Browser.Chromium.Cdp.Internal
 
                     return new List<CdpElement> { element };
                 }
-                catch (BrowserException)
-                {
-                    return new List<CdpElement>();
-                }
-            }
 
-            IList<string> marks;
-            try
-            {
-                marks = ReadMarks(RunElementFinder(session, root.ObjectId, functionDeclaration));
+                return ResolveElementsFromArrayObjectId(session, root.Tab, objectId);
             }
-            catch
+            catch (BrowserException)
             {
                 return new List<CdpElement>();
             }
-
-            var elements = new List<CdpElement>();
-            try
-            {
-                foreach (var mark in marks)
-                {
-                    try
-                    {
-                        var element = ResolveMarkedElement(session, root, mark);
-                        if (element != null)
-                        {
-                            elements.Add(element);
-                        }
-                    }
-                    catch (BrowserException)
-                    {
-                        // Skip marks that cannot be resolved.
-                    }
-                }
-            }
-            finally
-            {
-                CleanupElementMarks(session, root, markPrefix);
-            }
-
-            return elements;
         }
 
         private static IList<CdpElement> QueryElementsInContext(
@@ -726,15 +693,15 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             bool findAll)
         {
             var levelsJson = SerializeLevels(elementLevels);
-            var markPrefix = "f2b-" + Guid.NewGuid().ToString("N") + "-";
             var findAllLiteral = findAll ? "true" : "false";
-            var expression = FinderScript + "(" + levelsJson + ", " + findAllLiteral + ", '" + markPrefix + "')";
+            // markPrefix kept for FinderScript arity compatibility; unused since we return nodes directly.
+            var expression = FinderScript + "(" + levelsJson + ", " + findAllLiteral + ", '')";
 
-            if (!findAll)
+            try
             {
-                try
+                var objectId = context.EvaluateObjectId(expression);
+                if (!findAll)
                 {
-                    var objectId = context.EvaluateObjectId(expression);
                     var element = context.ResolveElement(objectId);
                     if (element == null)
                     {
@@ -743,51 +710,13 @@ namespace F2B.Browser.Chromium.Cdp.Internal
 
                     return new List<CdpElement> { element };
                 }
-                catch (BrowserException)
-                {
-                    return new List<CdpElement>();
-                }
-            }
 
-            object rawResult;
-            try
-            {
-                rawResult = context.Evaluate(expression);
+                return ResolveElementsFromArrayObjectId(context, objectId);
             }
-            catch
+            catch (BrowserException)
             {
                 return new List<CdpElement>();
             }
-
-            var marks = ReadMarks(rawResult);
-            var elements = new List<CdpElement>();
-            try
-            {
-                foreach (var mark in marks)
-                {
-                    try
-                    {
-                        var objectId = context.EvaluateObjectId(
-                            "document.querySelector('[data-cdp-f2b-mark=\"" + mark + "\"]')");
-
-                        var element = context.ResolveElement(objectId);
-                        if (element != null)
-                        {
-                            elements.Add(element);
-                        }
-                    }
-                    catch (BrowserException)
-                    {
-                        // Skip marks that cannot be resolved (e.g. detached / SVG edge cases).
-                    }
-                }
-            }
-            finally
-            {
-                CleanupMarks(context, markPrefix);
-            }
-
-            return elements;
         }
 
         private static IList<SelectorLevel> CombineLevels(SelectorScope scope)
@@ -835,31 +764,6 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             return "function() { var levels = " + levelsJson + "; var findAll = " + findAllLiteral +
                    "; var markPrefix = '" + markPrefix + "'; var directFirstLevel = " +
                    (directFirstLevel ? "true" : "false") + ";" + body + "}";
-        }
-
-        private static object RunElementFinder(CdpTabSession session, string objectId, string functionDeclaration)
-        {
-            var response = session.Send("Runtime.callFunctionOn", new Dictionary<string, object>
-            {
-                { "functionDeclaration", functionDeclaration },
-                { "objectId", objectId },
-                { "returnByValue", true },
-                { "awaitPromise", true },
-                { "userGesture", true }
-            });
-
-            object exceptionDetails;
-            if (response.TryGetValue("exceptionDetails", out exceptionDetails) && exceptionDetails != null)
-            {
-                throw new BrowserException(
-                    string.Format(
-                        "Element finder failed: {0}",
-                        CdpErrorFormatter.FormatExceptionDetails(exceptionDetails)));
-            }
-
-            var inner = CdpValueConverter.GetDictionary(response, "result");
-            object value;
-            return inner != null && inner.TryGetValue("value", out value) ? value : null;
         }
 
         private static string RunElementFinderObjectId(
@@ -940,43 +844,130 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                 objectId);
         }
 
-        private static CdpElement ResolveMarkedElement(CdpTabSession session, CdpElement root, string mark)
+        private static IList<CdpElement> ResolveElementsFromArrayObjectId(
+            CdpTabSession session,
+            CdpTab tab,
+            string arrayObjectId)
         {
-            var response = session.Send("Runtime.callFunctionOn", new Dictionary<string, object>
+            if (string.IsNullOrEmpty(arrayObjectId))
             {
-                {
-                    "functionDeclaration",
-                    "function() { return this.ownerDocument.querySelector('[data-cdp-f2b-mark=\"" + mark + "\"]'); }"
-                },
-                { "objectId", root.ObjectId },
-                { "returnByValue", false }
-            });
-
-            object exceptionDetails;
-            if (response.TryGetValue("exceptionDetails", out exceptionDetails) && exceptionDetails != null)
-            {
-                throw new BrowserException(
-                    string.Format(
-                        "Element mark resolve failed: {0}",
-                        CdpErrorFormatter.FormatExceptionDetails(exceptionDetails)));
+                return new List<CdpElement>();
             }
 
-            var inner = CdpValueConverter.GetDictionary(response, "result");
-            var objectId = inner != null ? CdpValueConverter.GetString(inner, "objectId") : null;
-            return ResolveElementByObjectId(session, root.Tab, objectId);
+            try
+            {
+                var propsResponse = session.Send("Runtime.getProperties", new Dictionary<string, object>
+                {
+                    { "objectId", arrayObjectId },
+                    { "ownProperties", true }
+                });
+
+                return ResolveIndexedElements(
+                    CdpValueConverter.GetList(propsResponse, "result"),
+                    objectId => ResolveElementByObjectId(session, tab, objectId));
+            }
+            finally
+            {
+                ReleaseRemoteObject(session, arrayObjectId);
+            }
         }
 
-        private static void CleanupElementMarks(CdpTabSession session, CdpElement root, string markPrefix)
+        private static IList<CdpElement> ResolveElementsFromArrayObjectId(
+            CdpDomContext context,
+            string arrayObjectId)
+        {
+            if (string.IsNullOrEmpty(arrayObjectId))
+            {
+                return new List<CdpElement>();
+            }
+
+            try
+            {
+                var propsResponse = context.Send("Runtime.getProperties", new Dictionary<string, object>
+                {
+                    { "objectId", arrayObjectId },
+                    { "ownProperties", true }
+                });
+
+                return ResolveIndexedElements(
+                    CdpValueConverter.GetList(propsResponse, "result"),
+                    objectId => context.ResolveElement(objectId));
+            }
+            finally
+            {
+                ReleaseRemoteObject(context, arrayObjectId);
+            }
+        }
+
+        private static IList<CdpElement> ResolveIndexedElements(
+            IList props,
+            Func<string, CdpElement> resolve)
+        {
+            var indexed = new List<KeyValuePair<int, CdpElement>>();
+            if (props == null)
+            {
+                return new List<CdpElement>();
+            }
+
+            foreach (var propEntry in props)
+            {
+                var prop = propEntry as Dictionary<string, object>;
+                if (prop == null)
+                {
+                    continue;
+                }
+
+                var name = CdpValueConverter.GetString(prop, "name");
+                if (string.IsNullOrEmpty(name) || name == "length")
+                {
+                    continue;
+                }
+
+                int index;
+                if (!int.TryParse(name, out index))
+                {
+                    continue;
+                }
+
+                var value = CdpValueConverter.GetDictionary(prop, "value");
+                var objectId = value != null ? CdpValueConverter.GetString(value, "objectId") : null;
+                if (string.IsNullOrEmpty(objectId))
+                {
+                    continue;
+                }
+
+                var element = resolve(objectId);
+                if (element != null)
+                {
+                    indexed.Add(new KeyValuePair<int, CdpElement>(index, element));
+                }
+            }
+
+            indexed.Sort((left, right) => left.Key.CompareTo(right.Key));
+            return indexed.Select(pair => pair.Value).ToList();
+        }
+
+        private static void ReleaseRemoteObject(CdpTabSession session, string objectId)
         {
             try
             {
-                session.Send("Runtime.callFunctionOn", new Dictionary<string, object>
+                session.Send("Runtime.releaseObject", new Dictionary<string, object>
                 {
-                    {
-                        "functionDeclaration",
-                        "function() { var nodes = this.ownerDocument.querySelectorAll('[data-cdp-f2b-mark^=\"" + markPrefix + "\"]'); for (var i = 0; i < nodes.length; i++) nodes[i].removeAttribute('data-cdp-f2b-mark'); }"
-                    },
-                    { "objectId", root.ObjectId }
+                    { "objectId", objectId }
+                });
+            }
+            catch
+            {
+            }
+        }
+
+        private static void ReleaseRemoteObject(CdpDomContext context, string objectId)
+        {
+            try
+            {
+                context.Send("Runtime.releaseObject", new Dictionary<string, object>
+                {
+                    { "objectId", objectId }
                 });
             }
             catch
@@ -1018,42 +1009,6 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             }
 
             return new CdpJsonSerializer().Serialize(payload);
-        }
-
-        private static IList<string> ReadMarks(object rawResult)
-        {
-            var marks = new List<string>();
-            var array = rawResult as IList;
-            if (array == null)
-            {
-                return marks;
-            }
-
-            foreach (var item in array)
-            {
-                if (item != null)
-                {
-                    marks.Add(Convert.ToString(item));
-                }
-            }
-
-            return marks;
-        }
-
-        private static void CleanupMarks(CdpDomContext context, string markPrefix)
-        {
-            try
-            {
-                context.Evaluate(
-                    @"(function(prefix){
-                        var nodes = document.querySelectorAll('[data-cdp-f2b-mark^=""' + prefix + '""]');
-                        for (var i = 0; i < nodes.length; i++) nodes[i].removeAttribute('data-cdp-f2b-mark');
-                    })('" + markPrefix + "')");
-            }
-            catch
-            {
-                // Ignore cleanup errors.
-            }
         }
     }
 }

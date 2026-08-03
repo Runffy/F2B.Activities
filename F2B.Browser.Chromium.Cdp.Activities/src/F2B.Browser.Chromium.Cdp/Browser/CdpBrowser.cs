@@ -546,25 +546,46 @@ namespace F2B.Browser.Chromium.Cdp.Browser
 
         /// <summary>
         /// Maximizes the browser window that contains the given tab, or <see cref="LatestTab"/> when omitted.
+        /// When <paramref name="tab"/> belongs to another <see cref="CdpBrowser"/> instance, that instance is used.
         /// </summary>
         public void Maximize(CdpTab tab = null)
         {
+            if (tab != null && tab.Browser != null && !ReferenceEquals(tab.Browser, this))
+            {
+                tab.Browser.Maximize(tab);
+                return;
+            }
+
             CdpBrowserWindowHelper.Maximize(_connection, ResolveWindowReferenceTab(tab).Id);
         }
 
         /// <summary>
         /// Minimizes the browser window that contains the given tab, or <see cref="LatestTab"/> when omitted.
+        /// When <paramref name="tab"/> belongs to another <see cref="CdpBrowser"/> instance, that instance is used.
         /// </summary>
         public void Minimize(CdpTab tab = null)
         {
+            if (tab != null && tab.Browser != null && !ReferenceEquals(tab.Browser, this))
+            {
+                tab.Browser.Minimize(tab);
+                return;
+            }
+
             CdpBrowserWindowHelper.Minimize(_connection, ResolveWindowReferenceTab(tab).Id);
         }
 
         /// <summary>
         /// Restores the browser window that contains the given tab to normal state, or <see cref="LatestTab"/> when omitted.
+        /// When <paramref name="tab"/> belongs to another <see cref="CdpBrowser"/> instance, that instance is used.
         /// </summary>
         public void Normal(CdpTab tab = null)
         {
+            if (tab != null && tab.Browser != null && !ReferenceEquals(tab.Browser, this))
+            {
+                tab.Browser.Normal(tab);
+                return;
+            }
+
             CdpBrowserWindowHelper.Normal(_connection, ResolveWindowReferenceTab(tab).Id);
         }
 
@@ -573,6 +594,12 @@ namespace F2B.Browser.Chromium.Cdp.Browser
             if (tab == null)
             {
                 throw new ArgumentNullException("tab");
+            }
+
+            if (tab.Browser != null && !ReferenceEquals(tab.Browser, this))
+            {
+                tab.Browser.SetWindowFullscreen(tab);
+                return;
             }
 
             CdpBrowserWindowHelper.Fullscreen(_connection, tab.Id);

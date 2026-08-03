@@ -171,6 +171,13 @@ function(sx, sy, browserName, port) {
     if (title) props.push(prop('title', title, false));
     var href = attr(el, 'href');
     if (href) props.push(prop('href', href, false));
+    // Boolean HTML attrs: <button disabled> => getAttribute returns "".
+    if ((el.hasAttribute && el.hasAttribute('disabled')) || el.disabled) {
+      props.push(prop('disabled', 'true', false));
+    }
+    if ((el.hasAttribute && el.hasAttribute('readonly')) || el.readOnly) {
+      props.push(prop('readonly', 'true', false));
+    }
     var text = ((el.innerText || '').trim()).slice(0, 120);
     if (text && text.length <= 60) props.push(prop('text', text, false));
     props.push(prop('idx', String(indexInParent(el)), false));

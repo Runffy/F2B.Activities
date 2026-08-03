@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Activities;
 using System.Activities.Presentation;
 using System.ComponentModel;
@@ -47,6 +48,8 @@ namespace F2B.Browser.Chromium.Cdp.Activities
                 throw new InvalidOperationException("Save File Path is required.");
             }
 
+            EnsureParentDirectory(path);
+
             var target = CdpTargetResolver.GetRoot(Target, context, "Target");
             var selector = Selector == null ? null : Selector.Get(context);
             var resolved = CdpTargetResolver.ResolveActionContext(
@@ -69,6 +72,20 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             }
 
             resolved.Tab.SaveScreenshot(path, fullPage: true);
+        }
+
+        private static void EnsureParentDirectory(string path)
+        {
+            var directory = Path.GetDirectoryName(Path.GetFullPath(path));
+            if (string.IsNullOrWhiteSpace(directory))
+            {
+                return;
+            }
+
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
         }
     }
 }

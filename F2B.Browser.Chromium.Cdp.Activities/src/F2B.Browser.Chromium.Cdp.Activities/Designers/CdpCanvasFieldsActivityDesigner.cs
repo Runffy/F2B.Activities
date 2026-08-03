@@ -17,6 +17,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         private const string LabelColumn = "CdpCanvasFieldLabelColumn";
 
         private readonly Border _rootPanel;
+        private readonly ScreencastThumbnailControl _screencastThumbnail;
 
         private readonly FrameworkElement _windowStateRow;
         private readonly ComboBox _windowStateComboBox;
@@ -98,6 +99,12 @@ namespace F2B.Browser.Chromium.Cdp.Activities
 
             var body = new StackPanel { Orientation = Orientation.Vertical };
             Grid.SetIsSharedSizeScope(body, true);
+
+            _screencastThumbnail = new ScreencastThumbnailControl
+            {
+                Visibility = Visibility.Collapsed
+            };
+            body.Children.Add(_screencastThumbnail);
 
             _windowStateComboBox = CdpDesignerShared.BuildEnumComboBox<CdpBrowserWindowStateOption>();
             _windowStateComboBox.SelectionChanged += OnWindowStateSelectionChanged;
@@ -258,10 +265,26 @@ namespace F2B.Browser.Chromium.Cdp.Activities
 
             CdpDesignerShared.BindExpressionOwner(_rootPanel, ModelItem);
             _designerMode = ResolveMode(ModelItem);
+            RefreshScreencastThumbnail();
             RefreshModeRows();
             RefreshModeState();
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
             RefreshRequiredBorders();
+        }
+
+        private void RefreshScreencastThumbnail()
+        {
+            var supported = _designerMode == DesignerMode.FindElement ||
+                            _designerMode == DesignerMode.ElementExists;
+            if (!supported || ModelItem?.Properties["Screencast"] == null)
+            {
+                _screencastThumbnail.Visibility = Visibility.Collapsed;
+                _screencastThumbnail.Detach();
+                return;
+            }
+
+            _screencastThumbnail.Visibility = Visibility.Visible;
+            _screencastThumbnail.Attach(ModelItem, "Screencast");
         }
 
         private void RefreshModeState(bool clearInactiveArguments = true)
