@@ -38,7 +38,8 @@
       <HintPath>..\..\packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="OpenRPA.Interfaces">
-      <HintPath>C:\Users\zc\AppData\Local\Programs\OpenRPA\OpenRPA.Interfaces.dll</HintPath>
+      <HintPath>..\resources\OpenRPA.Interfaces.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -59,8 +60,11 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GetRuntimeDirectoryActivity.cs" />
+    <Compile Include="GetRuntimeDirectoryDesigner.cs" />
     <Compile Include="GetWindowsCredentialActivity.cs" />
     <Compile Include="GetWindowsCredentialDesigner.cs" />
+    <Compile Include="RuntimeDirectory.cs" />
     <Compile Include="HttpCallResponse.cs" />
     <Compile Include="WindowsCredentialManager.cs" />
     <Compile Include="HttpVerbChoiceConverter.cs" />
