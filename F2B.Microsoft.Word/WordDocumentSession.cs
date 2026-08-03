@@ -125,6 +125,7 @@ namespace F2B.Microsoft.Word
             // Attach has no session Complete — persist new blank docs immediately so the path exists.
             if (createdNewDocument)
             {
+                wordFilePath = WordActivityHelper.EnsureCreatableWordFilePath(wordFilePath);
                 WordCom.SaveAsDocx(document, wordFilePath);
             }
 
@@ -143,7 +144,8 @@ namespace F2B.Microsoft.Word
             if (_createdNewDocument && !string.IsNullOrWhiteSpace(_wordFilePath))
             {
                 // New docs must be written once so the path exists, even when keeping open.
-                WordCom.SaveAsDocx(_document, _wordFilePath);
+                var savePath = WordActivityHelper.EnsureCreatableWordFilePath(_wordFilePath);
+                WordCom.SaveAsDocx(_document, savePath);
             }
             else if (_autoSaveOnComplete)
             {

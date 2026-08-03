@@ -6,7 +6,7 @@ using InteropWord = Microsoft.Office.Interop.Word;
 namespace F2B.Microsoft.Word
 {
     [DisplayName("Attach Document")]
-    [Description("Open or attach to a Word document and output the Document object. Does not close Word. When Create If Missing is true, creates a new .docx at the path if it does not exist.")]
+    [Description("Open or attach to a Word document and output the Document object. Does not close Word. When Create If Missing is true, creates a new blank document at the path if it does not exist (.docx or .doc; other extensions are saved as .docx).")]
     [Designer(typeof(WordSimpleFieldsActivityDesigner))]
     public sealed class AttachDocumentActivity : CodeActivity
     {

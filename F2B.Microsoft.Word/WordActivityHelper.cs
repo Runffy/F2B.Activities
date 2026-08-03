@@ -101,6 +101,23 @@ namespace F2B.Microsoft.Word
             return Path.GetFullPath(path);
         }
 
+        /// <summary>
+        /// Ensures a path is suitable for creating a new Word file via SaveAs.
+        /// Keeps .docx / .doc; coerces any other extension to .docx so format and extension stay aligned.
+        /// </summary>
+        internal static string EnsureCreatableWordFilePath(string wordFilePath)
+        {
+            var path = NormalizeWordFilePath(wordFilePath);
+            var extension = Path.GetExtension(path);
+            if (string.Equals(extension, ".docx", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(extension, ".doc", StringComparison.OrdinalIgnoreCase))
+            {
+                return path;
+            }
+
+            return Path.ChangeExtension(path, ".docx");
+        }
+
         internal static IReadOnlyList<string> ParseAndValidateImagePaths(string imagePath)
         {
             if (string.IsNullOrWhiteSpace(imagePath))

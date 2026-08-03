@@ -176,27 +176,189 @@ namespace F2B.Microsoft.Word
 
         internal static void SaveAsDocx(InteropWord.Document document, string wordFilePath)
         {
+            if (document == null)
+            {
+                throw new ArgumentNullException(nameof(document));
+            }
+
+            if (string.IsNullOrWhiteSpace(wordFilePath))
+            {
+                throw new ArgumentException("Word file path is required.", nameof(wordFilePath));
+            }
+
             WordActivityHelper.EnsureParentDirectoryExists(wordFilePath);
+            TryPrepareTargetFileForSaveAs(document, wordFilePath);
+
+            var fileFormat = ResolveNativeWordSaveFormat(wordFilePath);
+
+            try
+            {
+                object fileName = wordFilePath;
+                object format = fileFormat;
+                object addToRecentFiles = false;
+                object missing = Type.Missing;
+
+                try
+                {
+                    // Prefer SaveAs2. Call via DocumentClass / reflection because some
+                    // Interop Document/_Document facades used at compile time omit SaveAs2.
+                    if (!TrySaveAs2(document, wordFilePath, fileFormat))
+                    {
+                        throw new COMException("SaveAs2 is unavailable.");
+                    }
+
+                    return;
+                }
+                catch (COMException)
+                {
+                    // Older Word / some hosts only support SaveAs.
+                }
+
+                fileName = wordFilePath;
+                format = fileFormat;
+                addToRecentFiles = false;
+                ((InteropWord._Document)document).SaveAs(
+                    ref fileName,
+                    ref format,
+                    ref missing,
+                    ref missing,
+                    ref addToRecentFiles,
+                    ref missing,
+                    ref missing,
+                    ref missing,
+                    ref missing,
+                    ref missing,
+                    ref missing,
+                    ref missing,
+                    ref missing,
+                    ref missing,
+                    ref missing,
+                    ref missing);
+            }
+            catch (COMException ex)
+            {
+                throw new InvalidOperationException(
+                    "Word SaveAs failed for path: " + wordFilePath +
+                    " (HRESULT=0x" + ex.HResult.ToString("X8") + "). " + ex.Message,
+                    ex);
+            }
+        }
+
+        private static bool TrySaveAs2(InteropWord.Document document, string wordFilePath, object fileFormat)
+        {
             object fileName = wordFilePath;
-            object fileFormat = WdFormatXmlDocument;
+            object format = fileFormat;
+            object addToRecentFiles = false;
             object missing = Type.Missing;
-            ((InteropWord._Document)document).SaveAs(
-                ref fileName,
-                ref fileFormat,
-                ref missing,
-                ref missing,
-                ref missing,
-                ref missing,
-                ref missing,
-                ref missing,
-                ref missing,
-                ref missing,
-                ref missing,
-                ref missing,
-                ref missing,
-                ref missing,
-                ref missing,
-                ref missing);
+            object compatibilityMode = missing;
+
+            var args = new object[]
+            {
+                fileName,
+                format,
+                missing,
+                missing,
+                addToRecentFiles,
+                missing,
+                missing,
+                missing,
+                missing,
+                missing,
+                missing,
+                missing,
+                missing,
+                missing,
+                missing,
+                missing,
+                compatibilityMode
+            };
+
+            var method = document.GetType().GetMethod(
+                "SaveAs2",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+            if (method == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                method.Invoke(document, args);
+                return true;
+            }
+            catch (System.Reflection.TargetInvocationException ex) when (ex.InnerException is COMException)
+            {
+                throw (COMException)ex.InnerException;
+            }
+            catch (System.Reflection.TargetInvocationException ex)
+            {
+                if (ex.InnerException != null)
+                {
+                    throw ex.InnerException;
+                }
+
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// With DisplayAlerts=None, overwrite conflicts often surface as generic "Command failed".
+        /// Delete an existing target file when it is not the current document path.
+        /// </summary>
+        private static void TryPrepareTargetFileForSaveAs(InteropWord.Document document, string wordFilePath)
+        {
+            if (!File.Exists(wordFilePath))
+            {
+                return;
+            }
+
+            try
+            {
+                var fullName = document.FullName;
+                if (!string.IsNullOrWhiteSpace(fullName) &&
+                    string.Equals(
+                        Path.GetFullPath(fullName),
+                        Path.GetFullPath(wordFilePath),
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+            }
+            catch
+            {
+                // New unsaved docs may throw on FullName; treat as safe to replace target.
+            }
+
+            try
+            {
+                File.Delete(wordFilePath);
+            }
+            catch
+            {
+                // Leave for Word SaveAs; failure will include the path in the wrapped exception.
+            }
+        }
+
+        /// <summary>
+        /// Maps path extension to Word SaveAs format. .docx (default) → XML document; .doc → binary document.
+        /// </summary>
+        internal static object ResolveNativeWordSaveFormat(string wordFilePath)
+        {
+            var extension = Path.GetExtension(wordFilePath ?? string.Empty);
+            if (string.IsNullOrEmpty(extension) ||
+                string.Equals(extension, ".docx", StringComparison.OrdinalIgnoreCase))
+            {
+                return WdFormatXmlDocument;
+            }
+
+            if (string.Equals(extension, ".doc", StringComparison.OrdinalIgnoreCase))
+            {
+                return WdFormatDocument;
+            }
+
+            throw new ArgumentException(
+                "Cannot SaveAs Word document with extension '" + extension +
+                "'. Use .docx or .doc. Path: " + wordFilePath);
         }
 
         internal static void ReleaseComObject(object comObject)
