@@ -77,6 +77,8 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             }
 
             CdpDesignerShared.BindExpressionOwner(_rootPanel, ModelItem);
+            CdpDesignerShared.BindArgumentExpression(_parentObjectExpressionBox, ModelItem, "ParentObject", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_selectorsExpressionBox, ModelItem, "Selectors", "In", false);
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
             RefreshRequiredBorders();
         }

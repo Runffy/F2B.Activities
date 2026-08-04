@@ -110,10 +110,12 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             {
                 PathToArgument = pathToArgument,
                 ExpressionType = expressionType,
+                UseLocationExpression = false,
                 MinLines = 1,
                 MaxLines = 1
             };
 
+            // Temporary relative binding; designers should call BindArgumentExpression once ModelItem is ready.
             BindingOperations.SetBinding(editor, ExpressionTextBox.OwnerActivityProperty, new Binding("ModelItem"));
             BindingOperations.SetBinding(editor, ExpressionTextBox.ExpressionProperty, new Binding("ModelItem." + pathToArgument)
             {
@@ -131,6 +133,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             {
                 PathToArgument = pathToArgument,
                 ExpressionType = expressionType,
+                UseLocationExpression = true,
                 MinLines = 1,
                 MaxLines = 1
             };
@@ -152,6 +155,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             {
                 PathToArgument = pathToArgument,
                 ExpressionType = expressionType,
+                UseLocationExpression = true,
                 MinLines = 1,
                 MaxLines = 1
             };
@@ -165,6 +169,37 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             });
 
             return editor;
+        }
+
+        /// <summary>
+        /// Rebinds an ExpressionTextBox with Source=ModelItem so paths like "Name" bind to the
+        /// activity argument rather than competing with FrameworkElement.Name / designer paths.
+        /// </summary>
+        internal static void BindArgumentExpression(
+            ExpressionTextBox editor,
+            ModelItem modelItem,
+            string pathToArgument,
+            string direction,
+            bool useLocationExpression)
+        {
+            if (editor == null || modelItem == null || string.IsNullOrWhiteSpace(pathToArgument))
+            {
+                return;
+            }
+
+            editor.OwnerActivity = modelItem;
+            editor.PathToArgument = pathToArgument;
+            editor.UseLocationExpression = useLocationExpression;
+
+            BindingOperations.ClearBinding(editor, ExpressionTextBox.OwnerActivityProperty);
+            BindingOperations.ClearBinding(editor, ExpressionTextBox.ExpressionProperty);
+            BindingOperations.SetBinding(editor, ExpressionTextBox.ExpressionProperty, new Binding(pathToArgument)
+            {
+                Source = modelItem,
+                Mode = BindingMode.TwoWay,
+                Converter = new ArgumentToExpressionConverter(),
+                ConverterParameter = direction
+            });
         }
 
         internal static ComboBox BuildEnumComboBox<TEnum>() where TEnum : struct

@@ -264,12 +264,30 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             }
 
             CdpDesignerShared.BindExpressionOwner(_rootPanel, ModelItem);
+            RebindCanvasArgumentEditors();
             _designerMode = ResolveMode(ModelItem);
             RefreshScreencastThumbnail();
             RefreshModeRows();
             RefreshModeState();
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
             RefreshRequiredBorders();
+        }
+
+        private void RebindCanvasArgumentEditors()
+        {
+            CdpDesignerShared.BindArgumentExpression(_parentObjectExpressionBox, ModelItem, "ParentObject", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_findSelectorExpressionBox, ModelItem, "Selector", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_elementExistsSelectorExpressionBox, ModelItem, "Selector", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_targetExpressionBox, ModelItem, "Target", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_compositeSelectorExpressionBox, ModelItem, "Selector", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_scriptExpressionBox, ModelItem, "Script", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_saveFilePathExpressionBox, ModelItem, "SaveFilePath", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_pixelsExpressionBox, ModelItem, "Pixels", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_navigateUrlExpressionBox, ModelItem, "Url", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_tabGetSpecificSelectorExpressionBox, ModelItem, "Selector", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_requestUrlExpressionBox, ModelItem, "Url", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_postDataExpressionBox, ModelItem, "Data", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_postDictExpressionBox, ModelItem, "Dict", "In", false);
         }
 
         private void RefreshScreencastThumbnail()

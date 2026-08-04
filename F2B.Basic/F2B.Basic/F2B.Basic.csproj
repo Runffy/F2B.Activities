@@ -60,6 +60,9 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ActivityFaultPathBuilder.cs" />
+    <Compile Include="AssignEntry.cs" />
+    <Compile Include="FaultPathTrackingExtension.cs" />
     <Compile Include="GetRuntimeDirectoryActivity.cs" />
     <Compile Include="GetRuntimeDirectoryDesigner.cs" />
     <Compile Include="GetWindowsCredentialActivity.cs" />
@@ -77,6 +80,8 @@
     <Compile Include="LogMessageDesigner.cs" />
     <Compile Include="MessageBoxActivity.cs" />
     <Compile Include="MessageBoxDesigner.cs" />
+    <Compile Include="MultipleAssignActivity.cs" />
+    <Compile Include="MultipleAssignDesigner.cs" />
     <Compile Include="NumberIncrementActivity.cs" />
     <Compile Include="NumberIncrementDesigner.cs" />
     <Compile Include="OnlyIfActivity.cs" />
@@ -89,6 +94,8 @@
     <Compile Include="StartFileDesigner.cs" />
     <Compile Include="ThrowSystemExceptionActivity.cs" />
     <Compile Include="ThrowSystemExceptionDesigner.cs" />
+    <Compile Include="TraceableTryCatchActivity.cs" />
+    <Compile Include="TraceableTryCatchDesigner.cs" />
     <Compile Include="UnitTestScopeActivity.cs" />
     <Compile Include="UnitTestScopeDesigner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -226,12 +226,50 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             }
 
             CdpDesignerShared.BindExpressionOwner(_rootPanel, ModelItem);
+            RebindCanvasArgumentEditors();
             _designerMode = ReadDesignerMode(ModelItem);
             ConfigureOperationTypeCombo();
             RefreshScreencastThumbnail();
             RefreshAllRows();
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
             RefreshRequiredBorders();
+        }
+
+        private void RebindCanvasArgumentEditors()
+        {
+            // Bind with Source=ModelItem so argument names like "Name" do not clash with FrameworkElement.Name.
+            CdpDesignerShared.BindArgumentExpression(_targetExpressionBox, ModelItem, "Target", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_parentObjectExpressionBox, ModelItem, "ParentObject", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_selectorExpressionBox, ModelItem, "Selector", "In", false);
+            CdpDesignerShared.BindArgumentExpression(
+                _destinationParentObjectExpressionBox,
+                ModelItem,
+                "DestinationParentObject",
+                "In",
+                false);
+            CdpDesignerShared.BindArgumentExpression(
+                _destinationSelectorExpressionBox,
+                ModelItem,
+                "DestinationSelector",
+                "In",
+                false);
+            CdpDesignerShared.BindArgumentExpression(_valueExpressionBox, ModelItem, "Value", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_inputValueExpressionBox, ModelItem, "Value", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_setValueExpressionBox, ModelItem, "SetValue", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_keysExpressionBox, ModelItem, "Keys", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_nameExpressionBox, ModelItem, "Name", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_uploadPathsExpressionBox, ModelItem, "UploadFilePaths", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_offsetXExpressionBox, ModelItem, "OffsetX", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_offsetYExpressionBox, ModelItem, "OffsetY", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_xExpressionBox, ModelItem, "X", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_yExpressionBox, ModelItem, "Y", "In", false);
+            // Output Result stays property-grid only (optional); keep binding for consistency if shown later.
+            CdpDesignerShared.BindArgumentExpression(
+                _outputResultExpressionBox,
+                ModelItem,
+                "OutputResult",
+                "Out",
+                true);
         }
 
         private void RefreshScreencastThumbnail()
@@ -404,19 +442,20 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         private void RefreshAttributeValueRow(CdpAttributeOperationType type)
         {
             _setValueRow.Visibility = type == CdpAttributeOperationType.Set ? Visibility.Visible : Visibility.Collapsed;
-            _outputResultRow.Visibility = type == CdpAttributeOperationType.Get ? Visibility.Visible : Visibility.Collapsed;
+            // Output Result is optional and edited in the property grid only.
+            _outputResultRow.Visibility = Visibility.Collapsed;
         }
 
         private void RefreshStyleValueRow(CdpStyleOperationType type)
         {
             _setValueRow.Visibility = type == CdpStyleOperationType.Set ? Visibility.Visible : Visibility.Collapsed;
-            _outputResultRow.Visibility = type == CdpStyleOperationType.Get ? Visibility.Visible : Visibility.Collapsed;
+            _outputResultRow.Visibility = Visibility.Collapsed;
         }
 
         private void RefreshPropertyValueRow(CdpPropertyOperationType type)
         {
             _setValueRow.Visibility = type == CdpPropertyOperationType.Set ? Visibility.Visible : Visibility.Collapsed;
-            _outputResultRow.Visibility = type == CdpPropertyOperationType.Get ? Visibility.Visible : Visibility.Collapsed;
+            _outputResultRow.Visibility = Visibility.Collapsed;
         }
 
         private void OnBySelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -569,10 +608,11 @@ namespace F2B.Browser.Chromium.Cdp.Activities
                 _setValueEditorBorder,
                 _setValueRow.Visibility == Visibility.Visible,
                 CdpDesignerShared.IsArgumentFilled(ModelItem, "SetValue", _setValueExpressionBox));
+            // Output Result is optional (property grid only) — never mark required on canvas.
             CdpDesignerShared.SetRequiredBorder(
                 _outputResultEditorBorder,
-                _outputResultRow.Visibility == Visibility.Visible,
-                CdpDesignerShared.IsArgumentFilled(ModelItem, "OutputResult", _outputResultExpressionBox));
+                false,
+                true);
             CdpDesignerShared.SetRequiredBorder(
                 _keysEditorBorder,
                 _designerMode == DesignerMode.SendKeys,
