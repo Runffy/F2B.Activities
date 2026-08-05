@@ -145,6 +145,31 @@ function(sx, sy, browserName, port) {
   function prop(name, value, selected) {
     return { name: name, value: value == null ? '' : String(value), isSelected: !!selected, isRegex: false };
   }
+  function normalizeText(value) {
+    return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+  }
+  function getDirectElementText(el) {
+    if (!el || !el.childNodes) return '';
+    var text = '';
+    for (var ti = 0; ti < el.childNodes.length; ti++) {
+      var node = el.childNodes[ti];
+      if (node && node.nodeType === 3) text += node.textContent || '';
+    }
+    return normalizeText(text);
+  }
+  function getInnerText(el) {
+    if (!el) return '';
+    return normalizeText((el.innerText || el.textContent || '') + '');
+  }
+  function getAaName(el) {
+    if (!el || el.nodeType !== 1) return '';
+    var aria = el.getAttribute ? (el.getAttribute('aria-label') || '') : '';
+    if (normalizeText(aria)) return normalizeText(aria);
+    if (el.title && normalizeText(el.title)) return normalizeText(el.title);
+    var placeholder = el.getAttribute ? (el.getAttribute('placeholder') || '') : '';
+    if (normalizeText(placeholder)) return normalizeText(placeholder);
+    return getInnerText(el);
+  }
   function countMatches(selector) {
     try { return document.querySelectorAll(selector).length; } catch (e) { return 0; }
   }
@@ -178,8 +203,12 @@ function(sx, sy, browserName, port) {
     if ((el.hasAttribute && el.hasAttribute('readonly')) || el.readOnly) {
       props.push(prop('readonly', 'true', false));
     }
-    var text = ((el.innerText || '').trim()).slice(0, 120);
-    if (text && text.length <= 60) props.push(prop('text', text, false));
+    var directText = getDirectElementText(el).slice(0, 120);
+    if (directText && directText.length <= 60) props.push(prop('text', directText, false));
+    var innerTextVal = getInnerText(el).slice(0, 120);
+    if (innerTextVal && innerTextVal.length <= 60) props.push(prop('innertext', innerTextVal, false));
+    var aaName = getAaName(el).slice(0, 120);
+    if (aaName && aaName.length <= 60) props.push(prop('aaname', aaName, false));
     props.push(prop('idx', String(indexInParent(el)), false));
     var css = buildCss(el);
     if (css) props.push(prop('css-selector', css, false));
@@ -303,7 +332,7 @@ function(sx, sy, browserName, port) {
 
   var display = (el.tagName || '').toLowerCase();
   if (el.id) display += '#' + el.id;
-  var t = ((el.innerText || '').trim()).slice(0, 40);
+  var t = getAaName(el).slice(0, 40);
   if (t) display += ' ' + t;
 
   return JSON.stringify({

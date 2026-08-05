@@ -9,6 +9,8 @@ namespace F2B.Browser.Chromium.Cdp.Inspector.Services
     public static class InspectorSelectorSerializer
     {
         private const string RegexSuffix = "-re";
+        private const string NotEqualSuffix = "-ne";
+        private const string NotRegexSuffix = "-nre";
         public const int CompactPropertyMaxLength = 20;
 
         public static bool IsCompactPropertyValue(string value)
@@ -159,8 +161,15 @@ namespace F2B.Browser.Chromium.Cdp.Inspector.Services
             if (string.IsNullOrEmpty(attrName))
                 return;
 
-            if (property.IsRegex && property.SupportsRegex)
-                attrName += RegexSuffix;
+            if (property.SupportsNegation || property.SupportsRegex)
+            {
+                if (property.IsNegated && property.IsRegex && property.SupportsRegex && property.SupportsNegation)
+                    attrName += NotRegexSuffix;
+                else if (property.IsNegated && property.SupportsNegation)
+                    attrName += NotEqualSuffix;
+                else if (property.IsRegex && property.SupportsRegex)
+                    attrName += RegexSuffix;
+            }
 
             var value = EscapeValue(truncateForDisplay
                 ? FormatDisplayValue(property.Value)

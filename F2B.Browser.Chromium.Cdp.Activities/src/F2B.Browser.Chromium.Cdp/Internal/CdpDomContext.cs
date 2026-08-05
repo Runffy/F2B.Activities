@@ -539,7 +539,7 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                 }
 
                 var actual = GetFramePropertyValue(frame, iframeAttributes, property.Name);
-                if (!MatchValue(actual, property.Value, property.IsRegex))
+                if (!MatchValue(actual, property.Value, property.IsRegex, property.IsNegated))
                 {
                     return false;
                 }
@@ -633,24 +633,29 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             return CdpValueConverter.GetString(frame, propertyName) ?? string.Empty;
         }
 
-        private static bool MatchValue(string actual, string expected, bool isRegex)
+        private static bool MatchValue(string actual, string expected, bool isRegex, bool isNegated = false)
         {
             actual = actual ?? string.Empty;
             expected = expected ?? string.Empty;
 
+            bool positive;
             if (isRegex)
             {
                 try
                 {
-                    return System.Text.RegularExpressions.Regex.IsMatch(actual, expected);
+                    positive = System.Text.RegularExpressions.Regex.IsMatch(actual, expected);
                 }
                 catch
                 {
-                    return false;
+                    positive = false;
                 }
             }
+            else
+            {
+                positive = string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase);
+            }
 
-            return string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase);
+            return isNegated ? !positive : positive;
         }
     }
 }

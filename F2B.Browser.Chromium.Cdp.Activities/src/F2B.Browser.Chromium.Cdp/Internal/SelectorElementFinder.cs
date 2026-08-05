@@ -22,11 +22,43 @@ namespace F2B.Browser.Chromium.Cdp.Internal
         return null;
     }
 
+    function getDirectElementText(el) {
+        if (!el || !el.childNodes) return '';
+        var text = '';
+        for (var i = 0; i < el.childNodes.length; i++) {
+            var node = el.childNodes[i];
+            if (node && node.nodeType === 3) text += node.textContent || '';
+        }
+        return normalizeText(text);
+    }
+
+    function getInnerText(el) {
+        if (!el) return '';
+        return normalizeText((el.innerText || el.textContent || '') + '');
+    }
+
+    function getAaName(el) {
+        if (!el || el.nodeType !== 1) return '';
+        var aria = el.getAttribute ? (el.getAttribute('aria-label') || '') : '';
+        if (normalizeText(aria)) return normalizeText(aria);
+        if (el.title && normalizeText(el.title)) return normalizeText(el.title);
+        var placeholder = el.getAttribute ? (el.getAttribute('placeholder') || '') : '';
+        if (normalizeText(placeholder)) return normalizeText(placeholder);
+        // Fall back to visible aggregated text (same idea as Bridge getElementName).
+        return getInnerText(el);
+    }
+
+    function normalizeText(value) {
+        return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+    }
+
     function readValue(el, name) {
         if (!el || el.nodeType !== 1) return '';
         var key = (name || '').toLowerCase();
         if (key === 'tag') return (el.tagName || '').toLowerCase();
-        if (key === 'text') return (el.innerText || el.textContent || '').trim();
+        if (key === 'text') return getDirectElementText(el);
+        if (key === 'innertext') return getInnerText(el);
+        if (key === 'aaname') return getAaName(el);
         if (key === 'class') {
             var cn = el.className;
             // SVGElement.className is SVGAnimatedString, not a string.
@@ -62,6 +94,12 @@ namespace F2B.Browser.Chromium.Cdp.Internal
     }
 
     function matchValue(actual, prop) {
+        var positive = matchValuePositive(actual, prop);
+        if (prop && prop.negate) return !positive;
+        return positive;
+    }
+
+    function matchValuePositive(actual, prop) {
         actual = actual == null ? '' : String(actual);
         var expected = prop.value == null ? '' : String(prop.value);
         var propName = (prop.name || '').toLowerCase();
@@ -85,6 +123,9 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             if (wantTrue) return isTrue;
             if (wantFalse) return !isTrue;
         }
+        if (propName === 'text' || propName === 'innertext' || propName === 'aaname') {
+            return normalizeText(actual).toLowerCase() === normalizeText(expected).toLowerCase();
+        }
         return actual.toLowerCase() === expected.toLowerCase();
     }
 
@@ -100,6 +141,29 @@ namespace F2B.Browser.Chromium.Cdp.Internal
         return true;
     }
 
+    // Among matches that share aggregated text, keep the deepest (non-ancestor) nodes so
+    // text-only selectors hit the leaf, and <parent level='1'/> climbs from that leaf.
+    function preferDeepest(matched) {
+        if (!matched || matched.length <= 1) return matched || [];
+        var deepest = [];
+        for (var i = 0; i < matched.length; i++) {
+            var candidate = matched[i];
+            if (!candidate) continue;
+            var isAncestorOfOther = false;
+            for (var j = 0; j < matched.length; j++) {
+                if (i === j || !matched[j]) continue;
+                try {
+                    if (candidate.contains && candidate.contains(matched[j])) {
+                        isAncestorOfOther = true;
+                        break;
+                    }
+                } catch (e) {}
+            }
+            if (!isAncestorOfOther) deepest.push(candidate);
+        }
+        return deepest.length > 0 ? deepest : matched;
+    }
+
     function getSearchRoot(root) {
         if (!root) return null;
         if (root.nodeType === 9) return root.body || root.documentElement;
@@ -108,6 +172,7 @@ namespace F2B.Browser.Chromium.Cdp.Internal
     }
 
     function narrowMatches(matched, level, levelIndex) {
+        matched = preferDeepest(matched);
         var idxProp = getProp(level, 'idx');
         if (idxProp && idxProp.value !== '' && idxProp.value != null) {
             var idx = parseInt(idxProp.value, 10);
@@ -115,7 +180,12 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             return [matched[idx]];
         }
         var isLast = levelIndex >= levels.length - 1;
-        if (!isLast || !findAll) {
+        // Intermediate levels must keep the full candidate set so chains like
+        // <ctrl tag='td'/><parent level='1'/> can produce every row <tr>.
+        if (!isLast) {
+            return matched;
+        }
+        if (!findAll) {
             return matched.length > 0 ? [matched[0]] : [];
         }
         return matched;
@@ -167,10 +237,22 @@ namespace F2B.Browser.Chromium.Cdp.Internal
         var count = prop && prop.value ? parseInt(prop.value, 10) : 1;
         if (isNaN(count) || count < 1) count = 1;
         var result = [];
+        var seen = typeof Set !== 'undefined' ? new Set() : null;
         for (var i = 0; i < nodes.length; i++) {
             var node = nodes[i];
             for (var j = 0; j < count && node; j++) node = node.parentElement;
-            if (node) result.push(node);
+            if (!node) continue;
+            if (seen) {
+                if (seen.has(node)) continue;
+                seen.add(node);
+            } else {
+                var dup = false;
+                for (var s = 0; s < result.length; s++) {
+                    if (result[s] === node) { dup = true; break; }
+                }
+                if (dup) continue;
+            }
+            result.push(node);
         }
         return result;
     }
@@ -196,7 +278,7 @@ namespace F2B.Browser.Chromium.Cdp.Internal
         var tag = (level.tag || '').toLowerCase();
         if (tag === 'frm') {
             var frameEls = applyFrm(doc, level, levelIndex);
-            // Terminal <frm> ù?host iframe/frame elements (needed by FindFrame / AsFrame).
+            // Terminal <frm> ??host iframe/frame elements (needed by FindFrame / AsFrame).
             if (levelIndex + 1 >= levels.length) return frameEls;
             var docs = [];
             for (var i = 0; i < frameEls.length; i++) {
@@ -278,7 +360,7 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                 if (matchElement(frameNodes[ff], level)) matched.push(frameNodes[ff]);
             }
             var frameEls = narrowMatches(matched, level, levelIndex);
-            // Terminal <frm> under an Element root ù?host iframe (not contentDocument body).
+            // Terminal <frm> under an Element root ??host iframe (not contentDocument body).
             if (levelIndex + 1 >= levels.length) return frameEls;
             var docs = [];
             for (var i2 = 0; i2 < frameEls.length; i2++) {
@@ -997,7 +1079,8 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                     {
                         name = property.Name != null ? property.Name.ToLowerInvariant() : string.Empty,
                         value = property.Value ?? string.Empty,
-                        regex = property.IsRegex
+                        regex = property.IsRegex,
+                        negate = property.IsNegated
                     });
                 }
 

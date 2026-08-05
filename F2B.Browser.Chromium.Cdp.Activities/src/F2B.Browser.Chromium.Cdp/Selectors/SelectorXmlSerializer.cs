@@ -12,6 +12,8 @@ namespace F2B.Browser.Chromium.Cdp.Selectors
     public static class SelectorXmlSerializer
     {
         private const string RegexSuffix = "-re";
+        private const string NotEqualSuffix = "-ne";
+        private const string NotRegexSuffix = "-nre";
         private static readonly Regex LevelTagRegex = new Regex(
             @"<(wnd|frm|ctrl|parent)\b[^>]*/>",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
@@ -29,6 +31,8 @@ namespace F2B.Browser.Chromium.Cdp.Selectors
             { "Type", "type" },
             { "Href", "href" },
             { "text", "text" },
+            { "innertext", "innertext" },
+            { "aaname", "aaname" },
             { "role", "role" },
             { "id", "id" },
             { "class", "class" },
@@ -50,6 +54,8 @@ namespace F2B.Browser.Chromium.Cdp.Selectors
             { "type", "type" },
             { "href", "href" },
             { "text", "text" },
+            { "innertext", "innertext" },
+            { "aaname", "aaname" },
             { "role", "role" },
             { "value", "value" },
             { "xpath", "xpath" },
@@ -240,10 +246,7 @@ namespace F2B.Browser.Chromium.Cdp.Selectors
                     continue;
                 }
 
-                if (property.IsRegex && SelectorProperty.SupportsRegexProperty(property.Name))
-                {
-                    attrName += RegexSuffix;
-                }
+                attrName += ResolveMatchSuffix(property);
 
                 attrs.Add(attrName + "='" + EscapeValue(property.Value) + "'");
             }
@@ -352,11 +355,9 @@ namespace F2B.Browser.Chromium.Cdp.Selectors
             foreach (var attribute in element.Attributes())
             {
                 var attrName = attribute.Name.LocalName;
-                var isRegex = attrName.EndsWith(RegexSuffix, StringComparison.OrdinalIgnoreCase);
-                if (isRegex)
-                {
-                    attrName = attrName.Substring(0, attrName.Length - RegexSuffix.Length);
-                }
+                bool isRegex;
+                bool isNegated;
+                ParseMatchSuffix(ref attrName, out isRegex, out isNegated);
 
                 string propertyName;
                 if (!WireToHtmlMap.TryGetValue(attrName, out propertyName))
@@ -387,16 +388,82 @@ namespace F2B.Browser.Chromium.Cdp.Selectors
 
                 var value = UnescapeValue(attribute.Value);
 
+                if (!SelectorProperty.SupportsMatchModifier(propertyName))
+                {
+                    isRegex = false;
+                    isNegated = false;
+                }
+
                 level.Properties.Add(new SelectorProperty
                 {
                     Name = propertyName,
                     Value = value,
-                    IsRegex = isRegex && SelectorProperty.SupportsRegexProperty(propertyName),
+                    IsRegex = isRegex,
+                    IsNegated = isNegated,
                     IsSelected = true
                 });
             }
 
             return level;
+        }
+
+        /// <summary>
+        /// Parse trailing match modifiers: <c>-nre</c>, <c>-ne</c>, <c>-re</c> (longest first).
+        /// </summary>
+        private static void ParseMatchSuffix(ref string attrName, out bool isRegex, out bool isNegated)
+        {
+            isRegex = false;
+            isNegated = false;
+            if (string.IsNullOrEmpty(attrName))
+            {
+                return;
+            }
+
+            if (attrName.EndsWith(NotRegexSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                isNegated = true;
+                isRegex = true;
+                attrName = attrName.Substring(0, attrName.Length - NotRegexSuffix.Length);
+                return;
+            }
+
+            if (attrName.EndsWith(NotEqualSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                isNegated = true;
+                attrName = attrName.Substring(0, attrName.Length - NotEqualSuffix.Length);
+                return;
+            }
+
+            if (attrName.EndsWith(RegexSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                isRegex = true;
+                attrName = attrName.Substring(0, attrName.Length - RegexSuffix.Length);
+            }
+        }
+
+        private static string ResolveMatchSuffix(SelectorProperty property)
+        {
+            if (property == null || !SelectorProperty.SupportsMatchModifier(property.Name))
+            {
+                return string.Empty;
+            }
+
+            if (property.IsNegated && property.IsRegex)
+            {
+                return NotRegexSuffix;
+            }
+
+            if (property.IsNegated)
+            {
+                return NotEqualSuffix;
+            }
+
+            if (property.IsRegex)
+            {
+                return RegexSuffix;
+            }
+
+            return string.Empty;
         }
 
         private static string UnescapeValue(string value)

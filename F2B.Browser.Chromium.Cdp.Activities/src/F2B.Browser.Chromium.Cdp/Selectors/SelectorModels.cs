@@ -10,7 +10,22 @@ namespace F2B.Browser.Chromium.Cdp.Selectors
         public bool IsSelected { get; set; } = true;
         public bool IsRegex { get; set; }
 
+        /// <summary>
+        /// When true, the match is inverted: <c>-ne</c> (not equal) or <c>-nre</c> (not regex).
+        /// </summary>
+        public bool IsNegated { get; set; }
+
         public static bool SupportsRegexProperty(string propertyName)
+        {
+            return SupportsMatchModifier(propertyName);
+        }
+
+        public static bool SupportsNegationProperty(string propertyName)
+        {
+            return SupportsMatchModifier(propertyName);
+        }
+
+        public static bool SupportsMatchModifier(string propertyName)
         {
             if (string.IsNullOrEmpty(propertyName))
             {

@@ -9,6 +9,7 @@ namespace F2B.Browser.Chromium.Cdp.Inspector.Models
     {
         private bool _isSelected;
         private bool _isRegex;
+        private bool _isNegated;
         private string _value;
 
         public string Name { get; set; }
@@ -44,7 +45,22 @@ namespace F2B.Browser.Chromium.Cdp.Inspector.Models
             }
         }
 
+        public bool IsNegated
+        {
+            get => _isNegated;
+            set
+            {
+                if (!SupportsNegation && value)
+                    return;
+
+                if (SetProperty(ref _isNegated, value))
+                    RaisePropertyChanged(nameof(DisplayText));
+            }
+        }
+
         public bool SupportsRegex => SelectorProperty.SupportsRegexProperty(Name);
+
+        public bool SupportsNegation => SelectorProperty.SupportsNegationProperty(Name);
 
         public string DisplayText
         {
@@ -53,7 +69,14 @@ namespace F2B.Browser.Chromium.Cdp.Inspector.Models
                 if (string.IsNullOrEmpty(Value))
                     return Name;
 
-                var suffix = IsRegex ? "-re" : string.Empty;
+                var suffix = string.Empty;
+                if (IsNegated && IsRegex)
+                    suffix = "-nre";
+                else if (IsNegated)
+                    suffix = "-ne";
+                else if (IsRegex)
+                    suffix = "-re";
+
                 return Name + suffix + " = \"" + Value + "\"";
             }
         }
@@ -66,6 +89,7 @@ namespace F2B.Browser.Chromium.Cdp.Inspector.Models
                 Value = source.Value,
                 IsSelected = source.IsSelected,
                 IsRegex = source.IsRegex,
+                IsNegated = source.IsNegated,
                 CanToggle = true
             };
         }
@@ -77,7 +101,8 @@ namespace F2B.Browser.Chromium.Cdp.Inspector.Models
                 Name = Name,
                 Value = Value,
                 IsSelected = IsSelected,
-                IsRegex = IsRegex
+                IsRegex = IsRegex,
+                IsNegated = IsNegated
             };
         }
     }
