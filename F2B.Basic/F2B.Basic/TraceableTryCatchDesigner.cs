@@ -20,9 +20,17 @@ namespace F2B.Basic
             };
 
             var panel = new StackPanel();
-            panel.Children.Add(CreateActivitySection("Try", "ModelItem.Try", "Drop Try activities here"));
-            panel.Children.Add(CreateCatchSection());
-            panel.Children.Add(CreateActivitySection("Finally", "ModelItem.Finally", "Drop Finally activities here (optional)"));
+            panel.Children.Add(CreateExpandableActivitySection(
+                "Try",
+                "ModelItem.Try",
+                "Drop Try activities here",
+                expandedByDefault: true));
+            panel.Children.Add(CreateExpandableCatchSection(expandedByDefault: false));
+            panel.Children.Add(CreateExpandableActivitySection(
+                "Finally",
+                "ModelItem.Finally",
+                "Drop Finally activities here (optional)",
+                expandedByDefault: false));
 
             var hint = new TextBlock
             {
@@ -38,53 +46,54 @@ namespace F2B.Basic
             Content = border;
         }
 
-        private static FrameworkElement CreateCatchSection()
+        private static FrameworkElement CreateExpandableCatchSection(bool expandedByDefault)
         {
-            var section = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
-            section.Children.Add(new TextBlock
-            {
-                Text = "Catch  (argument: exception)",
-                FontWeight = FontWeights.SemiBold,
-                Margin = new Thickness(0, 0, 0, 2)
-            });
-
             var presenter = new WorkflowItemPresenter
             {
                 HintText = "Drop Catch activities here — use exception.Source in expressions",
                 MinWidth = 280,
-                MinHeight = 40
+                MinHeight = 40,
+                Margin = new Thickness(4, 2, 0, 0)
             };
-            // ActivityAction<Exception>.Handler — same pattern as OpenRPA ForEach Body.Handler
             BindingOperations.SetBinding(presenter, WorkflowItemPresenter.ItemProperty, new Binding("ModelItem.Catch.Handler")
             {
                 Mode = BindingMode.TwoWay
             });
-            section.Children.Add(presenter);
-            return section;
+
+            return CreateExpander("Catch  (argument: exception)", presenter, expandedByDefault);
         }
 
-        private static FrameworkElement CreateActivitySection(string title, string bindingPath, string hint)
+        private static FrameworkElement CreateExpandableActivitySection(
+            string title,
+            string bindingPath,
+            string hint,
+            bool expandedByDefault)
         {
-            var section = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
-            section.Children.Add(new TextBlock
-            {
-                Text = title,
-                FontWeight = FontWeights.SemiBold,
-                Margin = new Thickness(0, 0, 0, 2)
-            });
-
             var presenter = new WorkflowItemPresenter
             {
                 HintText = hint,
                 MinWidth = 280,
-                MinHeight = 40
+                MinHeight = 40,
+                Margin = new Thickness(4, 2, 0, 0)
             };
             BindingOperations.SetBinding(presenter, WorkflowItemPresenter.ItemProperty, new Binding(bindingPath)
             {
                 Mode = BindingMode.TwoWay
             });
-            section.Children.Add(presenter);
-            return section;
+
+            return CreateExpander(title, presenter, expandedByDefault);
+        }
+
+        private static Expander CreateExpander(string header, UIElement content, bool expandedByDefault)
+        {
+            return new Expander
+            {
+                Header = header,
+                IsExpanded = expandedByDefault,
+                Margin = new Thickness(0, 0, 0, 6),
+                FontWeight = FontWeights.SemiBold,
+                Content = content
+            };
         }
     }
 }

@@ -61,7 +61,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActivityFaultPathBuilder.cs" />
+    <!-- Temporarily disabled: Multiple Assign / Number Increment
     <Compile Include="AssignEntry.cs" />
+    -->
     <Compile Include="FaultPathTrackingExtension.cs" />
     <Compile Include="GetRuntimeDirectoryActivity.cs" />
     <Compile Include="GetRuntimeDirectoryDesigner.cs" />
@@ -80,12 +82,19 @@
     <Compile Include="LogMessageDesigner.cs" />
     <Compile Include="MessageBoxActivity.cs" />
     <Compile Include="MessageBoxDesigner.cs" />
+    <!-- Temporarily disabled: Multiple Assign / Number Increment
     <Compile Include="MultipleAssignActivity.cs" />
     <Compile Include="MultipleAssignDesigner.cs" />
     <Compile Include="NumberIncrementActivity.cs" />
     <Compile Include="NumberIncrementDesigner.cs" />
+    -->
     <Compile Include="OnlyIfActivity.cs" />
     <Compile Include="OnlyIfDesigner.cs" />
+    <Compile Include="ElseIfActivity.cs" />
+    <Compile Include="ElseIfBranch.cs" />
+    <Compile Include="ElseIfDesigner.cs" />
+    <Compile Include="OnlyTryActivity.cs" />
+    <Compile Include="OnlyTryDesigner.cs" />
     <Compile Include="ProcessExistsActivity.cs" />
     <Compile Include="ProcessExistsDesigner.cs" />
     <Compile Include="RunCmdCommandActivity.cs" />

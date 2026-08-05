@@ -1,3 +1,4 @@
+using System;
 using System.Activities;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -56,16 +57,29 @@ namespace F2B.Basic
                     entry.Value = new InArgument<object>();
                 }
 
+                Type toType = entry.To.ArgumentType ?? typeof(object);
+                Type valueType = entry.Value.ArgumentType ?? typeof(object);
+
+                if (entry.To.Direction != ArgumentDirection.Out && entry.To.Direction != ArgumentDirection.InOut)
+                {
+                    metadata.AddValidationError("Assignment To must be an OutArgument (row " + i + ").");
+                }
+
+                if (entry.Value.Direction != ArgumentDirection.In && entry.Value.Direction != ArgumentDirection.InOut)
+                {
+                    metadata.AddValidationError("Assignment Value must be an InArgument (row " + i + ").");
+                }
+
                 var toArgument = new RuntimeArgument(
                     "Assignment_To_" + i,
-                    typeof(object),
+                    toType,
                     ArgumentDirection.Out);
                 metadata.Bind(entry.To, toArgument);
                 runtimeArguments.Add(toArgument);
 
                 var valueArgument = new RuntimeArgument(
                     "Assignment_Value_" + i,
-                    typeof(object),
+                    valueType,
                     ArgumentDirection.In);
                 metadata.Bind(entry.Value, valueArgument);
                 runtimeArguments.Add(valueArgument);
@@ -86,10 +100,10 @@ namespace F2B.Basic
                 object value = null;
                 if (entry.Value != null && entry.Value.Expression != null)
                 {
-                    value = context.GetValue(entry.Value);
+                    value = entry.Value.Get(context);
                 }
 
-                context.SetValue(entry.To, value);
+                entry.To.Set(context, value);
             }
         }
 
