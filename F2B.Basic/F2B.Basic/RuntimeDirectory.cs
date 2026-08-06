@@ -23,6 +23,7 @@ namespace F2B.Basic
     /// <summary>
     /// Per-run runtime directory under OpenRPA ProjectsDirectory\Runtime\{projectname}\{timestamp}.
     /// Usage: <c>F2B.Basic.RuntimeDirectory.Path</c> (always Second precision).
+    /// Second mode shares its stamp with LogMessage when either runs first.
     /// </summary>
     public static class RuntimeDirectory
     {
@@ -44,6 +45,15 @@ namespace F2B.Basic
             }
         }
 
+        public static bool TryGetExistingPath(string workflowInstanceId, out string runtimeDirectory)
+        {
+            string key = string.IsNullOrWhiteSpace(workflowInstanceId)
+                ? string.Empty
+                : workflowInstanceId.Trim();
+            return PathsByWorkflowInstanceId.TryGetValue(key, out runtimeDirectory)
+                   && !string.IsNullOrWhiteSpace(runtimeDirectory);
+        }
+
         /// <summary>
         /// Returns the runtime directory for the given workflow instance, creating it on first use.
         /// </summary>
@@ -56,7 +66,7 @@ namespace F2B.Basic
                 ? string.Empty
                 : workflowInstanceId.Trim();
 
-            return PathsByWorkflowInstanceId.GetOrAdd(key, _ => CreateDirectory(projectName, mode));
+            return PathsByWorkflowInstanceId.GetOrAdd(key, _ => CreateDirectory(key, projectName, mode));
         }
 
         /// <summary>
@@ -79,11 +89,11 @@ namespace F2B.Basic
             return GetOrCreate(workflowInstanceId, projectNameFromContext, mode);
         }
 
-        private static string CreateDirectory(string projectName, RuntimeDirectoryMode mode)
+        private static string CreateDirectory(string workflowInstanceId, string projectName, RuntimeDirectoryMode mode)
         {
             string safeProjectName = SanitizePathSegment(
                 string.IsNullOrWhiteSpace(projectName) ? "UnknownProject" : projectName.Trim());
-            string stamp = FormatTimestamp(DateTime.Now, mode);
+            string stamp = ResolveStamp(workflowInstanceId, mode);
             string directory = System.IO.Path.Combine(
                 Extensions.ProjectsDirectory,
                 "Runtime",
@@ -91,7 +101,37 @@ namespace F2B.Basic
                 stamp);
 
             Directory.CreateDirectory(directory);
+
+            if (mode == RuntimeDirectoryMode.Second)
+            {
+                WorkflowRunTimestamp.SetSecondStamp(workflowInstanceId, stamp);
+            }
+
             return directory;
+        }
+
+        private static string ResolveStamp(string workflowInstanceId, RuntimeDirectoryMode mode)
+        {
+            if (mode != RuntimeDirectoryMode.Second)
+            {
+                return FormatTimestamp(DateTime.Now, mode);
+            }
+
+            string stamp;
+            if (WorkflowRunTimestamp.TryGetSecondStamp(workflowInstanceId, out stamp))
+            {
+                return stamp;
+            }
+
+            string logFile;
+            if (LogMessageActivity.TryGetExistingLogFile(workflowInstanceId, out logFile)
+                && WorkflowRunTimestamp.TryParseLogFileStamp(logFile, out stamp))
+            {
+                WorkflowRunTimestamp.SetSecondStamp(workflowInstanceId, stamp);
+                return stamp;
+            }
+
+            return WorkflowRunTimestamp.GetOrCreateSecondStamp(workflowInstanceId);
         }
 
         private static string FormatTimestamp(DateTime value, RuntimeDirectoryMode mode)
@@ -105,12 +145,12 @@ namespace F2B.Basic
                 case RuntimeDirectoryMode.Day:
                     return value.ToString("yyyyMMdd");
                 case RuntimeDirectoryMode.Hour:
-                    return value.ToString("yyyyMMddhh");
+                    return value.ToString("yyyyMMddHH");
                 case RuntimeDirectoryMode.Minute:
-                    return value.ToString("yyyyMMddhhmm");
+                    return value.ToString("yyyyMMddHHmm");
                 case RuntimeDirectoryMode.Second:
                 default:
-                    return value.ToString("yyyyMMddhhmmss");
+                    return value.ToString(WorkflowRunTimestamp.SecondStampFormat);
             }
         }
 

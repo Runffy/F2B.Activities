@@ -33,7 +33,7 @@ namespace F2B.Basic
 
             /// <summary>
             /// Human-oriented path for Exception.Source: DisplayName segments with
-            /// 0-based index among same-DisplayName siblings (omitted when unique).
+            /// 1-based index among same-DisplayName siblings ([1] omitted).
             /// </summary>
             public string SourcePath
             {
@@ -53,6 +53,9 @@ namespace F2B.Basic
                     return xpath;
                 }
             }
+
+            /// <summary>Definition-tree chain from Try root to the fault leaf (inclusive).</summary>
+            public List<Activity> Chain { get; set; }
         }
 
         public static Result Build(Activity tryRoot, ActivityInstance propagatedFrom, string preferredActivityId = null)
@@ -100,7 +103,8 @@ namespace F2B.Basic
                 ActivityId = resultLeaf != null ? resultLeaf.Id ?? string.Empty : string.Empty,
                 DisplayName = GetDisplayLabel(resultLeaf),
                 XPath = BuildXPath(chain),
-                DisplayPath = BuildDisplayPath(chain)
+                DisplayPath = BuildDisplayPath(chain),
+                Chain = new List<Activity>(chain)
             };
         }
 
@@ -113,13 +117,11 @@ namespace F2B.Basic
 
             try
             {
-                if (!string.IsNullOrWhiteSpace(fault.SourcePath))
+                string localPath = fault.SourcePath;
+                string composed = ComposeCrossWorkflowSource(exception, fault, localPath);
+                if (!string.IsNullOrWhiteSpace(composed))
                 {
-                    exception.Source = fault.SourcePath;
-                }
-                else if (!string.IsNullOrWhiteSpace(fault.DisplayPath))
-                {
-                    exception.Source = fault.DisplayPath;
+                    exception.Source = composed;
                 }
                 else if (!string.IsNullOrWhiteSpace(fault.DisplayName))
                 {
@@ -129,11 +131,123 @@ namespace F2B.Basic
                 exception.Data[DataKeyActivityId] = fault.ActivityId ?? string.Empty;
                 exception.Data[DataKeyDisplayName] = fault.DisplayName ?? string.Empty;
                 exception.Data[DataKeyXPath] = fault.XPath ?? string.Empty;
-                exception.Data[DataKeyDisplayPath] = fault.DisplayPath ?? string.Empty;
+                exception.Data[DataKeyDisplayPath] = exception.Source ?? string.Empty;
             }
             catch
             {
             }
+        }
+
+        /// <summary>
+        /// When the fault leaf is Invoke OpenRPA, keep the child Source and prepend
+        /// localPath &gt; child.xaml[n]: childSource (1-based; [1] omitted).
+        /// </summary>
+        private static string ComposeCrossWorkflowSource(Exception exception, Result fault, string localPath)
+        {
+            Activity leaf = fault.Chain != null && fault.Chain.Count > 0
+                ? fault.Chain[fault.Chain.Count - 1]
+                : null;
+
+            string childSource = exception.Source;
+            bool looksLikeInvoke = leaf != null && IsInvokeOpenRpaActivity(leaf);
+            bool hasChildPath = !string.IsNullOrWhiteSpace(childSource)
+                && !string.Equals(childSource, localPath, StringComparison.Ordinal)
+                && !string.Equals(childSource, fault.DisplayName, StringComparison.Ordinal);
+
+            if (looksLikeInvoke && hasChildPath)
+            {
+                string xaml = ExtractInvokedWorkflowFileName(exception);
+                int invokeIndex = GetInvokeOpenRpaIndex1Based(fault.Chain, leaf);
+                string xamlSegment = FormatIndexedName(xaml, invokeIndex);
+                if (string.IsNullOrWhiteSpace(localPath))
+                {
+                    return xamlSegment + ": " + childSource;
+                }
+
+                return localPath + " > " + xamlSegment + ": " + childSource;
+            }
+
+            return localPath;
+        }
+
+        private static bool IsInvokeOpenRpaActivity(Activity activity)
+        {
+            if (activity == null)
+            {
+                return false;
+            }
+
+            string typeName = activity.GetType().Name ?? string.Empty;
+            return typeName.IndexOf("InvokeOpenRPA", StringComparison.OrdinalIgnoreCase) >= 0
+                   || typeName.IndexOf("InvokeOpenRpa", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static string ExtractInvokedWorkflowFileName(Exception exception)
+        {
+            string message = exception?.Message ?? string.Empty;
+            const string marker = " failed with ";
+            int index = message.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            string name = index > 0 ? message.Substring(0, index).Trim() : null;
+            if (string.IsNullOrWhiteSpace(name) && exception?.InnerException != null)
+            {
+                return ExtractInvokedWorkflowFileName(exception.InnerException);
+            }
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return "workflow.xaml";
+            }
+
+            int slash = Math.Max(name.LastIndexOf('/'), name.LastIndexOf('\\'));
+            if (slash >= 0 && slash < name.Length - 1)
+            {
+                name = name.Substring(slash + 1);
+            }
+
+            if (!name.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase))
+            {
+                name = name + ".xaml";
+            }
+
+            return name;
+        }
+
+        private static int GetInvokeOpenRpaIndex1Based(IList<Activity> chain, Activity invokeLeaf)
+        {
+            if (chain == null || chain.Count < 2 || invokeLeaf == null)
+            {
+                return 1;
+            }
+
+            Activity parent = chain[chain.Count - 2];
+            int index = 0;
+            foreach (Activity sibling in GetChildren(parent))
+            {
+                if (!IsInvokeOpenRpaActivity(sibling))
+                {
+                    continue;
+                }
+
+                index++;
+                if (ReferenceEquals(sibling, invokeLeaf) ||
+                    (!string.IsNullOrEmpty(invokeLeaf.Id)
+                     && string.Equals(sibling.Id, invokeLeaf.Id, StringComparison.Ordinal)))
+                {
+                    return index;
+                }
+            }
+
+            return 1;
+        }
+
+        private static string FormatIndexedName(string name, int index1Based)
+        {
+            if (index1Based > 1)
+            {
+                return name + "[" + index1Based + "]";
+            }
+
+            return name;
         }
 
         public static ActivityInstance ResolveFaultLeaf(ActivityInstance propagatedFrom)
@@ -401,11 +515,16 @@ namespace F2B.Basic
 
                 sb.Append('/');
                 sb.Append(segment);
+                // 1-based among same-type siblings; omit [1].
                 if (sameTypeCount > 1 && indexAmongType >= 0)
                 {
-                    sb.Append('[');
-                    sb.Append(indexAmongType);
-                    sb.Append(']');
+                    int index1Based = indexAmongType + 1;
+                    if (index1Based > 1)
+                    {
+                        sb.Append('[');
+                        sb.Append(index1Based);
+                        sb.Append(']');
+                    }
                 }
             }
 
@@ -442,12 +561,16 @@ namespace F2B.Basic
                 int indexAmongName = GetSameDisplayNameIndex(parent, node);
                 int sameNameCount = CountSameDisplayNameChildren(parent, displayName);
 
-                // Index only among siblings that share the same DisplayName (0-based).
+                // 1-based among same-DisplayName siblings; omit [1].
                 if (sameNameCount > 1 && indexAmongName >= 0)
                 {
-                    sb.Append('[');
-                    sb.Append(indexAmongName);
-                    sb.Append(']');
+                    int index1Based = indexAmongName + 1;
+                    if (index1Based > 1)
+                    {
+                        sb.Append('[');
+                        sb.Append(index1Based);
+                        sb.Append(']');
+                    }
                 }
             }
 

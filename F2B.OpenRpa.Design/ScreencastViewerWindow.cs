@@ -43,11 +43,14 @@ namespace F2B.OpenRpa.Design
             };
             RenderOptions.SetBitmapScalingMode(_image, BitmapScalingMode.HighQuality);
 
+            var copyItem = new MenuItem { Header = "Copy image" };
+            copyItem.Click += (_, __) => CopyImage();
             var changeItem = new MenuItem { Header = "Change image" };
             changeItem.Click += (_, __) => ChangeImage();
             var deleteItem = new MenuItem { Header = "Delete image" };
             deleteItem.Click += (_, __) => DeleteImage();
             _imageContextMenu = new ContextMenu();
+            _imageContextMenu.Items.Add(copyItem);
             _imageContextMenu.Items.Add(changeItem);
             _imageContextMenu.Items.Add(deleteItem);
             _image.ContextMenu = _imageContextMenu;
@@ -68,6 +71,16 @@ namespace F2B.OpenRpa.Design
 
             Content = _scrollViewer;
             Loaded += OnLoaded;
+            PreviewKeyDown += OnPreviewKeyDown;
+        }
+
+        private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                Close();
+            }
         }
 
         /// <summary>Raised when Screencast uuid changes (new value or null when cleared).</summary>
@@ -102,6 +115,40 @@ namespace F2B.OpenRpa.Design
             return false;
         }
 
+        private void CopyImage()
+        {
+            try
+            {
+                BitmapSource bitmap = _image.Source as BitmapSource;
+                if (bitmap == null || ReferenceEquals(bitmap, ScreencastImageStore.BrokenPlaceholder))
+                {
+                    bitmap = ScreencastImageStore.TryLoadBitmap(_uuid);
+                }
+
+                if (bitmap == null)
+                {
+                    MessageBox.Show(
+                        this,
+                        "No image available to copy.",
+                        "Screencast",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+
+                Clipboard.SetImage(bitmap);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    this,
+                    "Failed to copy image: " + ex.Message,
+                    "Screencast",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
         private void ChangeImage()
         {
             string newUuid;
@@ -123,12 +170,8 @@ namespace F2B.OpenRpa.Design
 
             _uuid = newUuid;
             ScreencastChanged?.Invoke(_uuid);
-            if (!TryLoadCurrentImage())
-            {
-                return;
-            }
-
-            FitImageToViewport();
+            // Return to workflow after change — do not stay on / reopen viewer.
+            Close();
         }
 
         private void DeleteImage()

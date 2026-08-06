@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Reflection;
 
@@ -10,6 +11,12 @@ namespace F2B.OpenRpa.Design
     /// </summary>
     public static class OpenRpaProjectPaths
     {
+        private static readonly object CacheGate = new object();
+        private static string _cachedProjectName;
+        private static string _cachedScreensDirectory;
+        private static readonly ConcurrentDictionary<string, string> UuidPathCache =
+            new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         public static string GetProjectsDirectory()
         {
             try
@@ -42,7 +49,7 @@ namespace F2B.OpenRpa.Design
                 var workflow = TryGetCurrentWorkflow();
                 if (workflow == null)
                 {
-                    return null;
+                    return GetCachedProjectName();
                 }
 
                 var projectAndName = GetStringProperty(workflow, "ProjectAndName");
@@ -51,13 +58,13 @@ namespace F2B.OpenRpa.Design
                     var slash = projectAndName.IndexOf('/');
                     if (slash > 0)
                     {
-                        return projectAndName.Substring(0, slash);
+                        return CacheProjectName(projectAndName.Substring(0, slash));
                     }
 
                     var backslash = projectAndName.IndexOf('\\');
                     if (backslash > 0)
                     {
-                        return projectAndName.Substring(0, backslash);
+                        return CacheProjectName(projectAndName.Substring(0, backslash));
                     }
                 }
 
@@ -68,13 +75,14 @@ namespace F2B.OpenRpa.Design
                     var name = GetStringProperty(project, "name") ?? GetStringProperty(project, "Name");
                     if (!string.IsNullOrWhiteSpace(name))
                     {
-                        return name;
+                        return CacheProjectName(name);
                     }
 
                     var path = GetStringProperty(project, "Path");
                     if (!string.IsNullOrWhiteSpace(path))
                     {
-                        return Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                        return CacheProjectName(
+                            Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)));
                     }
                 }
             }
@@ -82,7 +90,7 @@ namespace F2B.OpenRpa.Design
             {
             }
 
-            return null;
+            return GetCachedProjectName();
         }
 
         public static string GetScreensDirectory(string projectName)
@@ -111,6 +119,17 @@ namespace F2B.OpenRpa.Design
             var projectName = TryGetCurrentProjectName();
             if (string.IsNullOrWhiteSpace(projectName))
             {
+                lock (CacheGate)
+                {
+                    if (!string.IsNullOrWhiteSpace(_cachedScreensDirectory) &&
+                        Directory.Exists(_cachedScreensDirectory))
+                    {
+                        screensDirectory = _cachedScreensDirectory;
+                        error = null;
+                        return true;
+                    }
+                }
+
                 error = "Unable to resolve the current OpenRPA project name. Open a workflow in the designer and try again.";
                 return false;
             }
@@ -118,6 +137,7 @@ namespace F2B.OpenRpa.Design
             try
             {
                 screensDirectory = GetScreensDirectory(projectName);
+                CacheScreensDirectory(projectName, screensDirectory);
                 error = null;
                 return true;
             }
@@ -125,6 +145,140 @@ namespace F2B.OpenRpa.Design
             {
                 error = ex.Message;
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Resolves a screencast PNG path. Falls back to cache and Projects/*/Screens search
+        /// when the active designer/project is not ready yet (common while opening a workflow).
+        /// </summary>
+        public static bool TryResolveScreencastFile(string uuid, out string fullPath, out string error)
+        {
+            fullPath = null;
+            error = null;
+            if (string.IsNullOrWhiteSpace(uuid))
+            {
+                error = "Screencast id is empty.";
+                return false;
+            }
+
+            var key = uuid.Trim();
+            string cachedPath;
+            if (UuidPathCache.TryGetValue(key, out cachedPath) && File.Exists(cachedPath))
+            {
+                fullPath = cachedPath;
+                return true;
+            }
+
+            string screensDir;
+            string screensError;
+            if (TryGetScreensDirectory(out screensDir, out screensError))
+            {
+                var candidate = Path.Combine(screensDir, key + ".png");
+                if (File.Exists(candidate))
+                {
+                    UuidPathCache[key] = candidate;
+                    fullPath = candidate;
+                    return true;
+                }
+            }
+
+            // Designer may not be ready yet; locate the file under any project Screens folder.
+            var found = FindScreencastFileByUuid(key);
+            if (!string.IsNullOrWhiteSpace(found) && File.Exists(found))
+            {
+                UuidPathCache[key] = found;
+                try
+                {
+                    var screens = Path.GetDirectoryName(found);
+                    var projectDir = string.IsNullOrWhiteSpace(screens) ? null : Path.GetDirectoryName(screens);
+                    var projectName = string.IsNullOrWhiteSpace(projectDir) ? null : Path.GetFileName(projectDir);
+                    if (!string.IsNullOrWhiteSpace(projectName) && !string.IsNullOrWhiteSpace(screens))
+                    {
+                        CacheScreensDirectory(projectName, screens);
+                    }
+                }
+                catch
+                {
+                }
+
+                fullPath = found;
+                return true;
+            }
+
+            // Keep the expected path for callers that create files, even when missing.
+            if (!string.IsNullOrWhiteSpace(screensDir))
+            {
+                fullPath = Path.Combine(screensDir, key + ".png");
+                error = screensError;
+                return true;
+            }
+
+            error = screensError ?? "Screencast image file was not found.";
+            return false;
+        }
+
+        private static string FindScreencastFileByUuid(string uuid)
+        {
+            try
+            {
+                var projectsRoot = Path.Combine(GetProjectsDirectory(), "Projects");
+                if (!Directory.Exists(projectsRoot))
+                {
+                    return null;
+                }
+
+                var fileName = uuid + ".png";
+                foreach (var projectDir in Directory.EnumerateDirectories(projectsRoot))
+                {
+                    var candidate = Path.Combine(projectDir, "Screens", fileName);
+                    if (File.Exists(candidate))
+                    {
+                        return candidate;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
+        }
+
+        private static string CacheProjectName(string projectName)
+        {
+            if (string.IsNullOrWhiteSpace(projectName))
+            {
+                return projectName;
+            }
+
+            lock (CacheGate)
+            {
+                _cachedProjectName = projectName.Trim();
+            }
+
+            return _cachedProjectName;
+        }
+
+        private static string GetCachedProjectName()
+        {
+            lock (CacheGate)
+            {
+                return _cachedProjectName;
+            }
+        }
+
+        private static void CacheScreensDirectory(string projectName, string screensDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(projectName) || string.IsNullOrWhiteSpace(screensDirectory))
+            {
+                return;
+            }
+
+            lock (CacheGate)
+            {
+                _cachedProjectName = projectName.Trim();
+                _cachedScreensDirectory = screensDirectory;
             }
         }
 

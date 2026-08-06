@@ -26,6 +26,38 @@ namespace F2B.Basic
         private const string UserLogHeader = "Timestamp,MachineName,UserName,WorkflowName,LogEntryId,Level,Message";
         private const string ExecutionLogHeader = "Timestamp,MachineName,UserName,ProjectName,WorkflowName,LogEntryId,Level,Message";
 
+        internal static bool TryGetExistingLogFile(string workflowInstanceId, out string logFilePath)
+        {
+            if (string.IsNullOrWhiteSpace(workflowInstanceId))
+            {
+                logFilePath = null;
+                return false;
+            }
+
+            return WorkflowLogFiles.TryGetValue(workflowInstanceId.Trim(), out logFilePath)
+                   && !string.IsNullOrWhiteSpace(logFilePath);
+        }
+
+        private static string ResolveLogSecondStamp(string instanceId)
+        {
+            string stamp;
+            if (WorkflowRunTimestamp.TryGetSecondStamp(instanceId, out stamp))
+            {
+                return stamp;
+            }
+
+            string runtimeDir;
+            if (RuntimeDirectory.TryGetExistingPath(instanceId, out runtimeDir)
+                && WorkflowRunTimestamp.TryParseRuntimeFolderStamp(runtimeDir, out stamp))
+            {
+                WorkflowRunTimestamp.SetSecondStamp(instanceId, stamp);
+                return stamp;
+            }
+
+            stamp = WorkflowRunTimestamp.GetOrCreateSecondStamp(instanceId);
+            return stamp;
+        }
+
         public LogMessageActivity()
         {
             DisplayName = "Log Message";
@@ -80,9 +112,17 @@ namespace F2B.Basic
 
             string logfile = WorkflowLogFiles.GetOrAdd(instanceId, _ =>
             {
-                string filename = $"[{DateTime.Now:yyyyMMddHHmmss}]{SanitizeFileName(projectName)}.csv";
+                string stamp = ResolveLogSecondStamp(instanceId);
+                string filename = $"[{stamp}]{SanitizeFileName(projectName)}.csv";
                 return Path.Combine(folder, filename);
             });
+
+            // Keep shared stamp aligned with the concrete logfile name.
+            string parsedStamp;
+            if (WorkflowRunTimestamp.TryParseLogFileStamp(logfile, out parsedStamp))
+            {
+                WorkflowRunTimestamp.SetSecondStamp(instanceId, parsedStamp);
+            }
 
             string entryId = string.IsNullOrWhiteSpace(LogEntryId) ? string.Empty : LogEntryId.Trim();
             DateTime now = DateTime.Now;

@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace F2B.OpenRpa.Design
 {
@@ -20,6 +21,9 @@ namespace F2B.OpenRpa.Design
         private const double BrokenFixedWidth = FixedWidth / 2;
         private const double BrokenMaxImageHeight = MaxImageHeight / 2;
         private const double ButtonWidth = 96;
+        private const int MaxLoadRetries = 8;
+
+        private static readonly int[] RetryDelaysMs = { 50, 100, 200, 400, 800, 1200, 2000, 3000 };
 
         private readonly StackPanel _noImagePanel;
         private readonly Button _thumbButton;
@@ -28,6 +32,9 @@ namespace F2B.OpenRpa.Design
 
         private ModelItem _modelItem;
         private string _propertyName = "Screencast";
+        private int _loadRetryCount;
+        private string _retryUuid;
+        private DispatcherTimer _retryTimer;
 
         public ScreencastThumbnailControl()
         {
@@ -83,6 +90,9 @@ namespace F2B.OpenRpa.Design
             Children.Add(_noImagePanel);
             Children.Add(_thumbButton);
 
+            Loaded += OnControlLoaded;
+            IsVisibleChanged += OnIsVisibleChanged;
+
             ShowNoImageState();
         }
 
@@ -95,6 +105,9 @@ namespace F2B.OpenRpa.Design
 
             _modelItem = modelItem;
             _propertyName = string.IsNullOrWhiteSpace(propertyName) ? "Screencast" : propertyName;
+            _loadRetryCount = 0;
+            _retryUuid = null;
+            StopRetryTimer();
 
             if (_modelItem != null)
             {
@@ -106,6 +119,7 @@ namespace F2B.OpenRpa.Design
 
         public void Detach()
         {
+            StopRetryTimer();
             if (_modelItem != null)
             {
                 _modelItem.PropertyChanged -= OnModelPropertyChanged;
@@ -115,17 +129,33 @@ namespace F2B.OpenRpa.Design
 
         public void Refresh()
         {
+            RefreshCore(scheduleRetryOnMiss: true);
+        }
+
+        private void RefreshCore(bool scheduleRetryOnMiss)
+        {
             var uuid = ReadUuid();
             if (string.IsNullOrWhiteSpace(uuid))
             {
+                StopRetryTimer();
+                _loadRetryCount = 0;
+                _retryUuid = null;
                 _image.Source = null;
                 ShowNoImageState();
                 return;
             }
 
+            if (!string.Equals(_retryUuid, uuid, StringComparison.OrdinalIgnoreCase))
+            {
+                _retryUuid = uuid;
+                _loadRetryCount = 0;
+            }
+
             var bitmap = ScreencastImageStore.TryLoadBitmap(uuid);
             if (bitmap != null)
             {
+                StopRetryTimer();
+                _loadRetryCount = 0;
                 ApplyThumbSize(FixedWidth, MaxImageHeight);
                 _image.Source = bitmap;
                 _thumbButton.ToolTip = "Click to view image";
@@ -133,11 +163,73 @@ namespace F2B.OpenRpa.Design
                 return;
             }
 
-            // Id is set (e.g. after project migrate) but the PNG is missing or unreadable.
+            // Id is set but PNG not resolved yet (designer/project path race) or truly missing.
             ApplyThumbSize(BrokenFixedWidth, BrokenMaxImageHeight);
             _image.Source = ScreencastImageStore.BrokenPlaceholder;
             _thumbButton.ToolTip = "Image file missing or corrupted. Click to repair.";
             ShowHasImageState();
+
+            if (scheduleRetryOnMiss)
+            {
+                ScheduleLoadRetry();
+            }
+        }
+
+        private void ScheduleLoadRetry()
+        {
+            if (_loadRetryCount >= MaxLoadRetries)
+            {
+                StopRetryTimer();
+                return;
+            }
+
+            if (_retryTimer == null)
+            {
+                _retryTimer = new DispatcherTimer { IsEnabled = false };
+                _retryTimer.Tick += OnRetryTimerTick;
+            }
+
+            var delayIndex = Math.Min(_loadRetryCount, RetryDelaysMs.Length - 1);
+            _retryTimer.Interval = TimeSpan.FromMilliseconds(RetryDelaysMs[delayIndex]);
+            _retryTimer.Stop();
+            _retryTimer.Start();
+        }
+
+        private void OnRetryTimerTick(object sender, EventArgs e)
+        {
+            StopRetryTimer();
+            _loadRetryCount++;
+            RefreshCore(scheduleRetryOnMiss: true);
+        }
+
+        private void StopRetryTimer()
+        {
+            if (_retryTimer == null)
+            {
+                return;
+            }
+
+            _retryTimer.Stop();
+        }
+
+        private void OnControlLoaded(object sender, RoutedEventArgs e)
+        {
+            // Designer/project context is often ready only after the visual tree loads.
+            if (!string.IsNullOrWhiteSpace(ReadUuid()) &&
+                (_image.Source == null || ReferenceEquals(_image.Source, ScreencastImageStore.BrokenPlaceholder)))
+            {
+                RefreshCore(scheduleRetryOnMiss: true);
+            }
+        }
+
+        private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (IsVisible &&
+                !string.IsNullOrWhiteSpace(ReadUuid()) &&
+                (_image.Source == null || ReferenceEquals(_image.Source, ScreencastImageStore.BrokenPlaceholder)))
+            {
+                RefreshCore(scheduleRetryOnMiss: true);
+            }
         }
 
         private void ApplyThumbSize(double width, double maxHeight)
@@ -190,7 +282,7 @@ namespace F2B.OpenRpa.Design
 
             WriteUuid(newUuid);
             Refresh();
-            OpenViewer(newUuid);
+            // Do not open viewer after set — return to the workflow canvas.
         }
 
         private void ViewImage()
@@ -250,6 +342,7 @@ namespace F2B.OpenRpa.Design
             if (string.IsNullOrEmpty(e.PropertyName) ||
                 string.Equals(e.PropertyName, _propertyName, StringComparison.OrdinalIgnoreCase))
             {
+                _loadRetryCount = 0;
                 Refresh();
             }
         }

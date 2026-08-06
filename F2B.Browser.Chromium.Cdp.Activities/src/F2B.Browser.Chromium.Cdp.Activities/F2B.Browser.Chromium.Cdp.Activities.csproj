@@ -30,5 +30,6 @@
     <Compile Include="..\..\..\F2B.OpenRpa.Design\ScreencastThumbnailControl.cs" Link="OpenRpa.Design\ScreencastThumbnailControl.cs" />
     <Compile Include="..\..\..\F2B.OpenRpa.Design\ScreencastViewerWindow.cs" Link="OpenRpa.Design\ScreencastViewerWindow.cs" />
     <Compile Include="..\..\..\F2B.OpenRpa.Design\ScreencastPickWindow.cs" Link="OpenRpa.Design\ScreencastPickWindow.cs" />
+    <Compile Include="..\..\..\F2B.OpenRpa.Design\ScreencastExistingWindow.cs" Link="OpenRpa.Design\ScreencastExistingWindow.cs" />
   </ItemGroup>
 </Project>

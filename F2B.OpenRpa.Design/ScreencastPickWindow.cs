@@ -35,13 +35,30 @@ namespace F2B.OpenRpa.Design
                 Content = "Browse from file",
                 Padding = new Thickness(10, 4, 10, 4),
                 HorizontalAlignment = HorizontalAlignment.Left,
-                Margin = new Thickness(0, 0, 0, 10)
+                Margin = new Thickness(0, 0, 8, 0)
             };
             browseButton.Click += (_, __) => BrowseFromFile();
 
+            var existingButton = new Button
+            {
+                Content = "From existing",
+                Padding = new Thickness(10, 4, 10, 4),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+            existingButton.Click += (_, __) => BrowseFromExisting();
+
+            var topButtons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+            topButtons.Children.Add(browseButton);
+            topButtons.Children.Add(existingButton);
+
             _hintLabel = new TextBlock
             {
-                Text = "No image — Browse from file, or Ctrl+V to paste",
+                Text = "No image — Browse from file, From existing, or Ctrl+V to paste",
                 Foreground = new SolidColorBrush(Color.FromRgb(0x66, 0x66, 0x66)),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -104,9 +121,9 @@ namespace F2B.OpenRpa.Design
             buttons.Children.Add(cancelButton);
 
             var root = new DockPanel { Margin = new Thickness(12) };
-            DockPanel.SetDock(browseButton, Dock.Top);
+            DockPanel.SetDock(topButtons, Dock.Top);
             DockPanel.SetDock(buttons, Dock.Bottom);
-            root.Children.Add(browseButton);
+            root.Children.Add(topButtons);
             root.Children.Add(buttons);
             root.Children.Add(previewBorder);
 
@@ -125,8 +142,11 @@ namespace F2B.OpenRpa.Design
         /// <summary>Frozen preview image confirmed by OK; null if cancelled.</summary>
         public BitmapSource SelectedImage { get; private set; }
 
+        /// <summary>When set, OK selected an existing Screens uuid (no re-save).</summary>
+        public string SelectedExistingUuid { get; private set; }
+
         /// <summary>
-        /// Shows the picker; on OK saves under Screens and returns new uuid.
+        /// Shows the picker; on OK either reuses an existing uuid or saves a new PNG under Screens.
         /// </summary>
         public static bool TryPickAndSave(
             Window owner,
@@ -145,7 +165,24 @@ namespace F2B.OpenRpa.Design
             }
 
             var result = picker.ShowDialog();
-            if (result != true || picker.SelectedImage == null)
+            if (result != true)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(picker.SelectedExistingUuid))
+            {
+                newUuid = picker.SelectedExistingUuid;
+                if (!string.IsNullOrWhiteSpace(previousUuid)
+                    && !string.Equals(previousUuid, newUuid, StringComparison.OrdinalIgnoreCase))
+                {
+                    ScreencastImageStore.TryDelete(previousUuid);
+                }
+
+                return true;
+            }
+
+            if (picker.SelectedImage == null)
             {
                 return false;
             }
@@ -155,6 +192,32 @@ namespace F2B.OpenRpa.Design
                 previousUuid,
                 out newUuid,
                 out error);
+        }
+
+        private void BrowseFromExisting()
+        {
+            string uuid;
+            string error;
+            if (!ScreencastExistingWindow.TryPickExisting(this, out uuid, out error))
+            {
+                if (!string.IsNullOrWhiteSpace(error))
+                {
+                    MessageBox.Show(
+                        this,
+                        error,
+                        "From existing",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+
+                return;
+            }
+
+            // Selecting existing uuid confirms immediately (same as OK on that dialog).
+            SelectedExistingUuid = uuid;
+            SelectedImage = null;
+            DialogResult = true;
+            Close();
         }
 
         private void OnPreviewKeyDown(object sender, KeyEventArgs e)
@@ -390,6 +453,7 @@ namespace F2B.OpenRpa.Design
                 return;
             }
 
+            SelectedExistingUuid = null;
             SelectedImage = _pendingImage;
             DialogResult = true;
             Close();

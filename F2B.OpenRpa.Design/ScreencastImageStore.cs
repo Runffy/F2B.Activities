@@ -84,42 +84,33 @@ namespace F2B.OpenRpa.Design
 
         public static bool TryResolvePath(string uuid, out string fullPath, out string error)
         {
-            fullPath = null;
-            error = null;
-            if (string.IsNullOrWhiteSpace(uuid))
-            {
-                error = "Screencast id is empty.";
-                return false;
-            }
-
-            string screensDir;
-            if (!OpenRpaProjectPaths.TryGetScreensDirectory(out screensDir, out error))
-            {
-                return false;
-            }
-
-            fullPath = Path.Combine(screensDir, uuid.Trim() + ".png");
-            return true;
+            return OpenRpaProjectPaths.TryResolveScreencastFile(uuid, out fullPath, out error);
         }
 
         public static BitmapImage TryLoadBitmap(string uuid)
         {
             string path;
             string error;
-            if (!TryResolvePath(uuid, out path, out error) || !File.Exists(path))
+            if (!TryResolvePath(uuid, out path, out error) || string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             {
                 return null;
             }
 
             try
             {
-                var image = new BitmapImage();
-                image.BeginInit();
-                image.CacheOption = BitmapCacheOption.OnLoad;
-                image.UriSource = new Uri(path, UriKind.Absolute);
-                image.EndInit();
-                image.Freeze();
-                return image;
+                // Load via memory so we do not keep a file lock, and avoid UriSource races.
+                var bytes = File.ReadAllBytes(path);
+                using (var stream = new MemoryStream(bytes))
+                {
+                    var image = new BitmapImage();
+                    image.BeginInit();
+                    image.CacheOption = BitmapCacheOption.OnLoad;
+                    image.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+                    image.StreamSource = stream;
+                    image.EndInit();
+                    image.Freeze();
+                    return image;
+                }
             }
             catch
             {

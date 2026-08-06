@@ -69,7 +69,10 @@
     <Compile Include="GetRuntimeDirectoryDesigner.cs" />
     <Compile Include="GetWindowsCredentialActivity.cs" />
     <Compile Include="GetWindowsCredentialDesigner.cs" />
+    <Compile Include="HouseKeepingActivity.cs" />
+    <Compile Include="HouseKeepingDesigner.cs" />
     <Compile Include="RuntimeDirectory.cs" />
+    <Compile Include="WorkflowRunTimestamp.cs" />
     <Compile Include="HttpCallResponse.cs" />
     <Compile Include="WindowsCredentialManager.cs" />
     <Compile Include="HttpVerbChoiceConverter.cs" />

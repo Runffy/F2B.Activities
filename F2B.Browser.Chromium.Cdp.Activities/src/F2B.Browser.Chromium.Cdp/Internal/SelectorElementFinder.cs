@@ -94,9 +94,13 @@ namespace F2B.Browser.Chromium.Cdp.Internal
     }
 
     function matchValue(actual, prop) {
-        var positive = matchValuePositive(actual, prop);
-        if (prop && prop.negate) return !positive;
-        return positive;
+        actual = actual == null ? '' : String(actual);
+        var negated = prop && (prop.negate === true || prop.negate === 1 || prop.negate === 'true');
+        // -ne / -nre: keep when the positive match fails (empty actual also passes for -ne).
+        if (negated) {
+            return !matchValuePositive(actual, prop);
+        }
+        return matchValuePositive(actual, prop);
     }
 
     function matchValuePositive(actual, prop) {
@@ -104,7 +108,12 @@ namespace F2B.Browser.Chromium.Cdp.Internal
         var expected = prop.value == null ? '' : String(prop.value);
         var propName = (prop.name || '').toLowerCase();
         if (prop.regex) {
-            try { return new RegExp(expected).test(actual); } catch (e) { return false; }
+            try {
+                return new RegExp(expected).test(actual);
+            } catch (e) {
+                // Invalid pattern cannot match ? positive false ? -nre would keep the element.
+                return false;
+            }
         }
         if (propName === 'class') {
             if (expected === '') return actual === '';
@@ -1075,12 +1084,12 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                         continue;
                     }
 
-                    props.Add(new
+                    props.Add(new Dictionary<string, object>
                     {
-                        name = property.Name != null ? property.Name.ToLowerInvariant() : string.Empty,
-                        value = property.Value ?? string.Empty,
-                        regex = property.IsRegex,
-                        negate = property.IsNegated
+                        { "name", property.Name != null ? property.Name.ToLowerInvariant() : string.Empty },
+                        { "value", property.Value ?? string.Empty },
+                        { "regex", property.IsRegex },
+                        { "negate", property.IsNegated }
                     });
                 }
 
