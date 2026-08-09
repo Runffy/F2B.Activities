@@ -34,7 +34,7 @@ namespace F2B.Basic
 
             var hint = new TextBlock
             {
-                Text = "In Catch: exception.Source = DisplayName path (e.g. Try/Sequence[1]/some loop/error point). FaultXPath keeps type path.",
+                Text = "In Catch: exception.Source is a multi-line trace (one workflow per line), from the host workflow root Sequence through nested Invoke OpenRPA.",
                 FontSize = 10,
                 Foreground = Brushes.DimGray,
                 TextWrapping = TextWrapping.Wrap,

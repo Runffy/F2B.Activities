@@ -28,8 +28,8 @@ namespace F2B.Browser.Chromium.Bridge
 
         [DisplayName("Wait State")]
         [Category("Input.C")]
-        [DefaultValue(BridgeFindElementWaitState.None)]
-        public BridgeFindElementWaitState WaitState { get; set; } = BridgeFindElementWaitState.None;
+        [DefaultValue(BridgeFindElementWaitState.Attached)]
+        public BridgeFindElementWaitState WaitState { get; set; } = BridgeFindElementWaitState.Attached;
 
         [DisplayName("Timeout (ms)")]
         [Category("Input.Z")]

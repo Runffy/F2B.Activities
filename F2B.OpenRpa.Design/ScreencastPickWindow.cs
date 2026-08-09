@@ -34,7 +34,10 @@ namespace F2B.OpenRpa.Design
             {
                 Content = "Browse from file",
                 Padding = new Thickness(10, 4, 10, 4),
+                MinWidth = 130,
+                MinHeight = 28,
                 HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 8, 0)
             };
             browseButton.Click += (_, __) => BrowseFromFile();
@@ -43,14 +46,18 @@ namespace F2B.OpenRpa.Design
             {
                 Content = "From existing",
                 Padding = new Thickness(10, 4, 10, 4),
+                MinWidth = 130,
+                MinHeight = 28,
                 HorizontalAlignment = HorizontalAlignment.Left,
-                Margin = new Thickness(0, 0, 0, 10)
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0)
             };
             existingButton.Click += (_, __) => BrowseFromExisting();
 
             var topButtons = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 0, 10)
             };
             topButtons.Children.Add(browseButton);

@@ -1056,7 +1056,8 @@ async function executeBridgeCommand(message) {
 
     case 'tab.parallelFindElement':
     case 'element.parallelFindElement':
-      message.selectors = (message.selectorSets || []).map((levels) => ({ selectorLevels: levels }));
+      // Keep objects { frameSelectorLevels, selectorLevels } or legacy level arrays as-is.
+      message.selectors = message.selectorSets || message.selectors || [];
       return runPageCommand(message);
 
     case 'tab.runJs':

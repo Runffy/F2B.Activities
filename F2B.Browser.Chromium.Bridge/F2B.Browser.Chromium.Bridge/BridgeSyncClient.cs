@@ -817,19 +817,67 @@ namespace F2B.Browser.Chromium.Bridge
             int timeoutMs = 15000,
             BridgeFindElementWaitState waitState = BridgeFindElementWaitState.Attached)
         {
-            var selectorSets = (selectorXmlList ?? Enumerable.Empty<string>())
-                .Select(selectorXml => BridgeRpcHost.BuildSelectorLevelsPayload(
-                    SelectorXmlSerializer.SplitScope(selectorXml).ElementLevels))
-                .ToArray();
-
-            var response = Invoke("tab.parallelFindElement", WithTab(new Dictionary<string, object>
+            // Reuse element.find (same path as FindElement / GetText). The dedicated
+            // tab.parallelFindElement JS path historically diverged and missed matches
+            // that resolveTarget/waitForElements would find in the root document.
+            var selectors = (selectorXmlList ?? Enumerable.Empty<string>()).ToArray();
+            if (selectors.Length == 0)
             {
-                { "selectorSets", selectorSets },
-                { "timeout", timeoutMs },
-                { "waitState", waitState.ToString() }
-            }), timeoutMs);
+                return -1;
+            }
 
-            return BridgeJson.GetInt(response.Data, "matchedIndex", -1);
+            var timeout = Math.Max(0, timeoutMs);
+            var deadline = DateTime.UtcNow.AddMilliseconds(timeout);
+            do
+            {
+                for (var i = 0; i < selectors.Length; i++)
+                {
+                    if (string.IsNullOrWhiteSpace(selectors[i]))
+                    {
+                        continue;
+                    }
+
+                    if (TryFindElementOnce(selectors[i], waitState))
+                    {
+                        return i;
+                    }
+                }
+
+                if (timeout <= 0)
+                {
+                    break;
+                }
+
+                var remaining = (int)Math.Ceiling((deadline - DateTime.UtcNow).TotalMilliseconds);
+                if (remaining <= 0)
+                {
+                    break;
+                }
+
+                Thread.Sleep(Math.Min(100, remaining));
+            }
+            while (DateTime.UtcNow < deadline);
+
+            return -1;
+        }
+
+        private bool TryFindElementOnce(string selectorXml, BridgeFindElementWaitState waitState)
+        {
+            try
+            {
+                Invoke("element.find", WithSelector(selectorXml, new Dictionary<string, object>
+                {
+                    { "index", 0 },
+                    { "timeout", 250 },
+                    { "waitState", waitState.ToString() },
+                    { "delayBefore", 0 }
+                }), 5000);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public object RunJs(string script, object arg = null, int timeoutMs = 15000, bool isAsync = false)
@@ -1497,19 +1545,66 @@ namespace F2B.Browser.Chromium.Bridge
             int timeoutMs = 15000,
             BridgeFindElementWaitState waitState = BridgeFindElementWaitState.Attached)
         {
-            var selectorSets = (selectorXmlList ?? Enumerable.Empty<string>())
-                .Select(selectorXml => BridgeRpcHost.BuildSelectorLevelsPayload(
-                    SelectorXmlSerializer.SplitScope(selectorXml).ElementLevels))
-                .ToArray();
-
-            var response = Invoke("element.parallelFindElement", WithSelector(new Dictionary<string, object>
+            // Reuse element.findScoped — same resolve path as BwElement.FindElement.
+            var selectors = (selectorXmlList ?? Enumerable.Empty<string>()).ToArray();
+            if (selectors.Length == 0)
             {
-                { "selectorSets", selectorSets },
-                { "timeout", timeoutMs },
-                { "waitState", waitState.ToString() }
-            }), timeoutMs);
+                return -1;
+            }
 
-            return BridgeJson.GetInt(response.Data, "matchedIndex", -1);
+            var timeout = Math.Max(0, timeoutMs);
+            var deadline = DateTime.UtcNow.AddMilliseconds(timeout);
+            do
+            {
+                for (var i = 0; i < selectors.Length; i++)
+                {
+                    if (string.IsNullOrWhiteSpace(selectors[i]))
+                    {
+                        continue;
+                    }
+
+                    if (TryFindScopedElementOnce(selectors[i], waitState))
+                    {
+                        return i;
+                    }
+                }
+
+                if (timeout <= 0)
+                {
+                    break;
+                }
+
+                var remaining = (int)Math.Ceiling((deadline - DateTime.UtcNow).TotalMilliseconds);
+                if (remaining <= 0)
+                {
+                    break;
+                }
+
+                Thread.Sleep(Math.Min(100, remaining));
+            }
+            while (DateTime.UtcNow < deadline);
+
+            return -1;
+        }
+
+        private bool TryFindScopedElementOnce(string selectorXml, BridgeFindElementWaitState waitState)
+        {
+            try
+            {
+                Invoke("element.findScoped", WithSelector(new Dictionary<string, object>
+                {
+                    { "scopedSelectorLevels", BridgeRpcHost.BuildSelectorLevelsPayload(SelectorXmlSerializer.Deserialize(selectorXml)) },
+                    { "index", 0 },
+                    { "timeout", 250 },
+                    { "waitState", waitState.ToString() },
+                    { "delayBefore", 0 }
+                }), 5000);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private object[] BuildValidationLevels(string validationSelectorXml)

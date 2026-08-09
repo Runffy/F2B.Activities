@@ -9,7 +9,8 @@ namespace F2B.Basic
     /// <summary>
     /// Try / Catch / Finally with fault attribution: Activity Id, DisplayName, relative XPath, and DisplayName path.
     /// Catch is an ActivityAction&lt;Exception&gt; so the handler argument <c>exception</c> is in scope (like WF TryCatch).
-    /// Exception.Source uses a DisplayName path (same-name sibling index). FaultXPath keeps the type-based path.
+        /// Exception.Source uses a multi-line DisplayName trace across nested Invoke OpenRPA.
+        /// FaultXPath keeps the type-based path.
     /// </summary>
     [Designer(typeof(TraceableTryCatchDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("Traceable TryCatch")]
@@ -57,7 +58,7 @@ namespace F2B.Basic
         public OutArgument<string> FaultXPath { get; set; }
 
         [DisplayName("Fault Display Path")]
-        [Description("Try-relative DisplayName path with 0-based index among same DisplayName siblings, e.g. Try/Sequence[1]/some loop/error point.")]
+        [Description("Multi-line DisplayName trace from the host workflow root Sequence across nested Invoke OpenRPA.")]
         [Category("Output")]
         public OutArgument<string> FaultDisplayPath { get; set; }
 
@@ -146,7 +147,11 @@ namespace F2B.Basic
             }
 
             ActivityFaultPathBuilder.Result fault = ActivityFaultPathBuilder.Build(Try, propagatedFrom, preferredId);
-            ActivityFaultPathBuilder.EnrichException(propagatedException, fault);
+            ActivityFaultPathBuilder.EnrichException(
+                propagatedException,
+                fault,
+                tryCatchActivity: this,
+                workflowInstanceId: faultContext.WorkflowInstanceId.ToString());
 
             faultContext.SetValue(_caughtException, propagatedException);
             WriteFaultOutputs(faultContext, propagatedException, fault);

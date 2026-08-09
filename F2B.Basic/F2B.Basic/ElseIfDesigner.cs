@@ -21,6 +21,7 @@ namespace F2B.Basic
     {
         private const string LabelColumnGroup = "ElseIfConditionLabel";
         private const double LabelColumnWidth = 72;
+        private const double ConditionEditorWidth = 280;
 
         private readonly StackPanel _root;
         private readonly StackPanel _elseIfsPanel;
@@ -149,7 +150,8 @@ namespace F2B.Basic
                 SharedSizeGroup = LabelColumnGroup,
                 MinWidth = LabelColumnWidth
             });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            // Fixed-width condition editor — do not grow with expression text length.
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var label = new TextBlock
             {
@@ -166,8 +168,10 @@ namespace F2B.Basic
                 ExpressionType = typeof(bool),
                 MinLines = 1,
                 MaxLines = 1,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                MinWidth = 160
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Width = ConditionEditorWidth,
+                MinWidth = ConditionEditorWidth,
+                MaxWidth = ConditionEditorWidth
             };
 
             BindingOperations.SetBinding(
@@ -207,7 +211,9 @@ namespace F2B.Basic
                 BorderBrush = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
                 Child = expressionTextBox,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Width = ConditionEditorWidth,
+                MaxWidth = ConditionEditorWidth,
                 Tag = branchItem
             };
             Grid.SetColumn(editorBorder, 1);

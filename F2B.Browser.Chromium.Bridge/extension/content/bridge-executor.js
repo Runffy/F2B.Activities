@@ -613,36 +613,57 @@
 
       case 'tab.parallelFindElement':
       case 'element.parallelFindElement': {
-        const selectorSets = message.selectors || (message.selectorSets || []).map((levels) => ({ selectorLevels: levels }));
-        const timeout = message.timeout || 15000;
+        const rawSets = message.selectors || message.selectorSets || [];
+        const selectorSets = rawSets.map((item) => {
+          if (!item) {
+            return { frameSelectorLevels: [], selectorLevels: [] };
+          }
+
+          if (Array.isArray(item)) {
+            return { frameSelectorLevels: [], selectorLevels: item };
+          }
+
+          return {
+            frameSelectorLevels: item.frameSelectorLevels || [],
+            selectorLevels: item.selectorLevels || []
+          };
+        });
+        const timeout = Math.max(0, Number(message.timeout) || 0);
         const waitState = message.waitState || 'Attached';
         const started = Date.now();
-        let searchRoot = document;
+        let baseRoot = document;
 
         if (message.action === 'element.parallelFindElement') {
-          searchRoot = await resolveTarget(message);
-        } else {
-          const frameLevels = message.frameSelectorLevels || [];
-          if (frameLevels.length > 0) {
-            searchRoot = await DomSelectorResolver.resolveSearchRootAsync(
-              frameLevels,
-              document,
-              timeout
-            );
-          }
+          baseRoot = await resolveTarget(message);
         }
 
-        while (Date.now() - started < timeout) {
+        // Use do/while so timeout=0 still performs one pass (same as FindElement retry semantics).
+        do {
           for (let i = 0; i < selectorSets.length; i += 1) {
-            const levels = selectorSets[i]?.selectorLevels || selectorSets[i] || [];
-            const matches = DomSelectorResolver.findElements(levels, searchRoot);
+            const set = selectorSets[i];
+            let searchRoot = baseRoot;
+            const frameLevels = set.frameSelectorLevels || [];
+            if (frameLevels.length > 0) {
+              const remaining = Math.max(1, timeout - (Date.now() - started));
+              searchRoot = await DomSelectorResolver.resolveSearchRootAsync(
+                frameLevels,
+                baseRoot,
+                remaining
+              );
+            }
+
+            const matches = DomSelectorResolver.findElements(set.selectorLevels || [], searchRoot);
             if (matches[0] && DomSelectorResolver.matchWaitState(matches[0], waitState)) {
               return { matchedIndex: i };
             }
           }
 
+          if (timeout <= 0) {
+            break;
+          }
+
           await sleep(100);
-        }
+        } while (Date.now() - started < timeout);
 
         return { matchedIndex: -1 };
       }
