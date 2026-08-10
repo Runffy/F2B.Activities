@@ -156,7 +156,14 @@ namespace F2B.Basic
             faultContext.SetValue(_caughtException, propagatedException);
             WriteFaultOutputs(faultContext, propagatedException, fault);
 
+            // HandleFault alone is not enough: without CancelChild, a Sequence Try can
+            // continue scheduling activities after the faulted one (e.g. Log after Throw).
             faultContext.HandleFault();
+            if (propagatedFrom != null)
+            {
+                faultContext.CancelChild(propagatedFrom);
+            }
+
             faultContext.SetValue(_suppressCancel, true);
 
             if (Catch != null && Catch.Handler != null)

@@ -556,7 +556,9 @@ namespace F2B.Browser.Chromium.Cdp.Browser
                 return;
             }
 
-            CdpBrowserWindowHelper.Maximize(_connection, ResolveWindowReferenceTab(tab).Id);
+            CdpTab resolved = ResolveWindowReferenceTab(tab);
+            CdpBrowserWindowHelper.Maximize(_connection, resolved.Id);
+            TryBringWindowToFront(resolved);
         }
 
         /// <summary>
@@ -586,7 +588,9 @@ namespace F2B.Browser.Chromium.Cdp.Browser
                 return;
             }
 
-            CdpBrowserWindowHelper.Normal(_connection, ResolveWindowReferenceTab(tab).Id);
+            CdpTab resolved = ResolveWindowReferenceTab(tab);
+            CdpBrowserWindowHelper.Normal(_connection, resolved.Id);
+            TryBringWindowToFront(resolved);
         }
 
         internal void SetWindowFullscreen(CdpTab tab)
@@ -603,6 +607,65 @@ namespace F2B.Browser.Chromium.Cdp.Browser
             }
 
             CdpBrowserWindowHelper.Fullscreen(_connection, tab.Id);
+            TryBringWindowToFront(tab);
+        }
+
+        private void TryBringWindowToFront(CdpTab tab)
+        {
+            if (tab == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _connection.ActivateTarget(tab.Id);
+            }
+            catch
+            {
+                // Best effort — still try native activation.
+            }
+
+            int rootProcessId = 0;
+            try
+            {
+                if (Process != null && !Process.HasExited)
+                {
+                    rootProcessId = Process.Id;
+                }
+            }
+            catch
+            {
+                rootProcessId = 0;
+            }
+
+            if (rootProcessId <= 0)
+            {
+                try
+                {
+                    IList<int> listening = ProcessCommandLine.GetListeningProcessIds(Port);
+                    if (listening != null && listening.Count > 0)
+                    {
+                        rootProcessId = listening[0];
+                    }
+                }
+                catch
+                {
+                    rootProcessId = 0;
+                }
+            }
+
+            string title = null;
+            try
+            {
+                title = tab.Title;
+            }
+            catch
+            {
+                title = null;
+            }
+
+            CdpNativeWindowActivator.TryBringToFront(rootProcessId, title);
         }
 
         private CdpTab ResolveWindowReferenceTab(CdpTab tab)

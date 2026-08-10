@@ -15,12 +15,16 @@ namespace F2B.Basic
             {
                 BorderBrush = Brushes.Gray,
                 BorderThickness = new Thickness(1),
-                Padding = new Thickness(4)
+                Padding = new Thickness(4),
+                MinWidth = 320,
+                HorizontalAlignment = HorizontalAlignment.Stretch
             };
 
             var presenter = new WorkflowItemPresenter
             {
                 HintText = "Drop activities here",
+                MinWidth = 280,
+                MinHeight = 40,
                 Margin = new Thickness(0)
             };
             BindingOperations.SetBinding(presenter, WorkflowItemPresenter.ItemProperty, new Binding("ModelItem.Body")
@@ -28,7 +32,7 @@ namespace F2B.Basic
                 Mode = BindingMode.TwoWay
             });
 
-            root.Child = presenter;
+            root.Child = ActivityBodyExpandHelper.WrapExpandingBody(this, presenter);
             Content = root;
         }
     }

@@ -6,7 +6,7 @@ using F2B.Browser.Chromium.Cdp.Browser;
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
     [DisplayName("Browser-ChangeWindowState")]
-    [Description("Change the browser window state (maximize, minimize, or normal).")]
+    [Description("Change the browser window state (maximize, minimize, or normal). Maximize/Normal also soft-activates the window to the foreground (not TopMost).")]
     [Designer(typeof(CdpCanvasFieldsActivityDesigner))]
     public sealed class BrowserChangeWindowStateActivity : CodeActivity
     {
@@ -26,7 +26,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         public InArgument<CdpBrowser> Browser { get; set; }
 
         [DisplayName("Window State")]
-        [Description("Target window state.")]
+        [Description("Target window state. Maximize and Normal bring the browser to the foreground (soft activate). Minimize does not.")]
         [Category("Input.B")]
         [DefaultValue(CdpBrowserWindowStateOption.Maximize)]
         [TypeConverter(typeof(CdpBrowserWindowStateOptionConverter))]

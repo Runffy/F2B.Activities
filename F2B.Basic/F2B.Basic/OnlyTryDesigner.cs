@@ -1,4 +1,5 @@
 using System.Activities.Presentation;
+using System.Activities.Presentation.View;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -14,10 +15,15 @@ namespace F2B.Basic
             {
                 BorderBrush = Brushes.Gray,
                 BorderThickness = new Thickness(1),
-                Padding = new Thickness(6)
+                Padding = new Thickness(6),
+                MinWidth = 320,
+                HorizontalAlignment = HorizontalAlignment.Stretch
             };
 
-            var panel = new StackPanel();
+            var panel = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
             panel.Children.Add(new TextBlock
             {
                 Text = "Try",
@@ -36,7 +42,7 @@ namespace F2B.Basic
             {
                 Mode = BindingMode.TwoWay
             });
-            panel.Children.Add(bodyPresenter);
+            panel.Children.Add(ActivityBodyExpandHelper.WrapExpandingBody(this, bodyPresenter));
 
             border.Child = panel;
             Content = border;

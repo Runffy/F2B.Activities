@@ -44,7 +44,8 @@ namespace F2B.Forms.Designer
             TextVAlign textAlignV,
             Font font,
             Color foreColor,
-            Color backColor)
+            Color backColor,
+            bool showResizeHandles = true)
         {
             if (g == null || bounds.Width <= 0 || bounds.Height <= 0)
             {
@@ -96,8 +97,26 @@ namespace F2B.Forms.Designer
                 case FormControlType.CheckBox:
                     DrawCheckBox(g, bounds, displayText, enabled, isChecked, alignFlags, useFont, useFore, backColor);
                     break;
+                case FormControlType.RadioButton:
+                    DrawRadioButton(g, bounds, displayText, enabled, isChecked, alignFlags, useFont, useFore, backColor);
+                    break;
                 case FormControlType.ComboBox:
                     DrawComboBox(g, bounds, displayText, enabled, useFont, useFore, backColor);
+                    break;
+                case FormControlType.ListBox:
+                    DrawListBox(g, bounds, displayText, enabled, checkedStyle: false, useFont, useFore, backColor);
+                    break;
+                case FormControlType.CheckedListBox:
+                    DrawListBox(g, bounds, displayText, enabled, checkedStyle: true, useFont, useFore, backColor);
+                    break;
+                case FormControlType.MaskedTextBox:
+                    DrawTextBox(g, bounds, displayText, enabled, multiline: false, multilineFlags, useFont, useFore, backColor);
+                    break;
+                case FormControlType.NumericUpDown:
+                    DrawNumericUpDown(g, bounds, displayText, enabled, useFont, useFore, backColor);
+                    break;
+                case FormControlType.PictureBox:
+                    DrawPictureBox(g, bounds, enabled, backColor);
                     break;
                 case FormControlType.DatePicker:
                     DrawDatePicker(
@@ -150,15 +169,20 @@ namespace F2B.Forms.Designer
 
             if (selected)
             {
-                DrawSelectionChrome(g, bounds);
+                DrawSelectionChrome(g, bounds, showResizeHandles);
             }
         }
 
-        public static void DrawSelectionChrome(Graphics g, Rectangle bounds)
+        public static void DrawSelectionChrome(Graphics g, Rectangle bounds, bool showResizeHandles = true)
         {
             using (var pen = new Pen(Color.DodgerBlue, 2))
             {
                 g.DrawRectangle(pen, bounds);
+            }
+
+            if (!showResizeHandles)
+            {
+                return;
             }
 
             foreach (ResizeHandle handle in GetResizeHandles())
@@ -385,6 +409,191 @@ namespace F2B.Forms.Designer
 
             var textBounds = new Rectangle(bounds.X + 18, bounds.Y, Math.Max(0, bounds.Width - 18), bounds.Height);
             TextRenderer.DrawText(g, text, font, textBounds, foreColor, flags);
+        }
+
+        private static void DrawRadioButton(
+            Graphics g,
+            Rectangle bounds,
+            string text,
+            bool enabled,
+            bool isChecked,
+            TextFormatFlags flags,
+            Font font,
+            Color foreColor,
+            Color backColor)
+        {
+            if (!backColor.IsEmpty)
+            {
+                using (var brush = new SolidBrush(backColor))
+                {
+                    g.FillRectangle(brush, bounds);
+                }
+            }
+
+            var glyph = new Rectangle(bounds.X, bounds.Y + Math.Max(0, (bounds.Height - 13) / 2), 13, 13);
+            RadioButtonState state;
+            if (!enabled)
+            {
+                state = isChecked ? RadioButtonState.CheckedDisabled : RadioButtonState.UncheckedDisabled;
+            }
+            else
+            {
+                state = isChecked ? RadioButtonState.CheckedNormal : RadioButtonState.UncheckedNormal;
+            }
+
+            if (Application.RenderWithVisualStyles)
+            {
+                RadioButtonRenderer.DrawRadioButton(g, glyph.Location, state);
+            }
+            else
+            {
+                ButtonState classic = isChecked ? ButtonState.Checked : ButtonState.Normal;
+                if (!enabled)
+                {
+                    classic |= ButtonState.Inactive;
+                }
+
+                ControlPaint.DrawRadioButton(g, glyph, classic);
+            }
+
+            var textBounds = new Rectangle(bounds.X + 18, bounds.Y, Math.Max(0, bounds.Width - 18), bounds.Height);
+            TextRenderer.DrawText(g, text, font, textBounds, foreColor, flags);
+        }
+
+        private static void DrawListBox(
+            Graphics g,
+            Rectangle bounds,
+            string text,
+            bool enabled,
+            bool checkedStyle,
+            Font font,
+            Color foreColor,
+            Color backColor)
+        {
+            Color fill = !backColor.IsEmpty
+                ? backColor
+                : (enabled ? SystemColors.Window : SystemColors.Control);
+            using (var brush = new SolidBrush(fill))
+            {
+                g.FillRectangle(brush, bounds);
+            }
+
+            ControlPaint.DrawBorder3D(g, bounds, Border3DStyle.Sunken);
+            int rowHeight = Math.Max(16, font.Height + 2);
+            string line = string.IsNullOrEmpty(text) ? "Item" : text;
+            Color textColor = foreColor.IsEmpty
+                ? (enabled ? SystemColors.WindowText : SystemColors.GrayText)
+                : foreColor;
+
+            for (int i = 0; i < 3; i++)
+            {
+                int y = bounds.Y + 2 + i * rowHeight;
+                if (y + rowHeight > bounds.Bottom - 2)
+                {
+                    break;
+                }
+
+                var row = new Rectangle(bounds.X + 2, y, Math.Max(0, bounds.Width - 4), rowHeight);
+                if (checkedStyle)
+                {
+                    var box = new Rectangle(row.X + 2, row.Y + Math.Max(0, (row.Height - 12) / 2), 12, 12);
+                    ControlPaint.DrawCheckBox(g, box, i == 0 ? ButtonState.Checked : ButtonState.Normal);
+                    var textBounds = new Rectangle(box.Right + 4, row.Y, Math.Max(0, row.Right - box.Right - 4), row.Height);
+                    TextRenderer.DrawText(
+                        g,
+                        line + (i + 1),
+                        font,
+                        textBounds,
+                        textColor,
+                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+                }
+                else
+                {
+                    if (i == 0)
+                    {
+                        using (var highlight = new SolidBrush(SystemColors.Highlight))
+                        {
+                            g.FillRectangle(highlight, row);
+                        }
+
+                        textColor = SystemColors.HighlightText;
+                    }
+
+                    TextRenderer.DrawText(
+                        g,
+                        line + (i == 0 ? string.Empty : (i + 1).ToString()),
+                        font,
+                        row,
+                        textColor,
+                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+                    textColor = foreColor.IsEmpty
+                        ? (enabled ? SystemColors.WindowText : SystemColors.GrayText)
+                        : foreColor;
+                }
+            }
+        }
+
+        private static void DrawNumericUpDown(
+            Graphics g,
+            Rectangle bounds,
+            string text,
+            bool enabled,
+            Font font,
+            Color foreColor,
+            Color backColor)
+        {
+            Color fill = !backColor.IsEmpty
+                ? backColor
+                : (enabled ? SystemColors.Window : SystemColors.Control);
+            using (var brush = new SolidBrush(fill))
+            {
+                g.FillRectangle(brush, bounds);
+            }
+
+            ControlPaint.DrawBorder3D(g, bounds, Border3DStyle.Sunken);
+            int buttonWidth = SystemInformation.VerticalScrollBarWidth;
+            var up = new Rectangle(bounds.Right - buttonWidth - 1, bounds.Y + 1, buttonWidth, Math.Max(1, bounds.Height / 2 - 1));
+            var down = new Rectangle(bounds.Right - buttonWidth - 1, up.Bottom, buttonWidth, Math.Max(1, bounds.Bottom - up.Bottom - 1));
+            ControlPaint.DrawScrollButton(g, up, ScrollButton.Up, enabled ? ButtonState.Normal : ButtonState.Inactive);
+            ControlPaint.DrawScrollButton(g, down, ScrollButton.Down, enabled ? ButtonState.Normal : ButtonState.Inactive);
+
+            var textBounds = new Rectangle(bounds.X + 3, bounds.Y, Math.Max(0, bounds.Width - buttonWidth - 6), bounds.Height);
+            Color textColor = foreColor.IsEmpty
+                ? (enabled ? SystemColors.WindowText : SystemColors.GrayText)
+                : foreColor;
+            TextRenderer.DrawText(
+                g,
+                string.IsNullOrEmpty(text) ? "0" : text,
+                font,
+                textBounds,
+                textColor,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+        }
+
+        private static void DrawPictureBox(Graphics g, Rectangle bounds, bool enabled, Color backColor)
+        {
+            Color fill = !backColor.IsEmpty
+                ? backColor
+                : (enabled ? SystemColors.Control : SystemColors.ControlLight);
+            using (var brush = new SolidBrush(fill))
+            {
+                g.FillRectangle(brush, bounds);
+            }
+
+            ControlPaint.DrawBorder3D(g, bounds, Border3DStyle.Sunken);
+            using (var pen = new Pen(enabled ? SystemColors.GrayText : SystemColors.ControlDark))
+            {
+                int pad = 8;
+                var inner = Rectangle.Inflate(bounds, -pad, -pad);
+                if (inner.Width > 4 && inner.Height > 4)
+                {
+                    g.DrawRectangle(pen, inner);
+                    g.DrawLine(pen, inner.Left, inner.Bottom, inner.Left + inner.Width / 3, inner.Top + inner.Height / 2);
+                    g.DrawLine(pen, inner.Left + inner.Width / 3, inner.Top + inner.Height / 2, inner.Left + inner.Width * 2 / 3, inner.Bottom - 4);
+                    g.DrawLine(pen, inner.Left + inner.Width * 2 / 3, inner.Bottom - 4, inner.Right, inner.Top + 4);
+                    g.DrawEllipse(pen, inner.Right - inner.Width / 3, inner.Top + 2, Math.Max(4, inner.Width / 5), Math.Max(4, inner.Width / 5));
+                }
+            }
         }
 
         private static void DrawComboBox(

@@ -48,6 +48,34 @@ namespace F2B.Forms.Model
         [JsonProperty("maxLength")]
         public int? MaxLength { get; set; }
 
+        /// <summary>MaskedTextBox input mask, e.g. 000-000-0000.</summary>
+        [JsonProperty("mask")]
+        public string Mask { get; set; }
+
+        /// <summary>NumericUpDown minimum.</summary>
+        [JsonProperty("minimum")]
+        public decimal? Minimum { get; set; }
+
+        /// <summary>NumericUpDown maximum.</summary>
+        [JsonProperty("maximum")]
+        public decimal? Maximum { get; set; }
+
+        /// <summary>NumericUpDown step.</summary>
+        [JsonProperty("increment")]
+        public decimal? Increment { get; set; }
+
+        /// <summary>NumericUpDown decimal places.</summary>
+        [JsonProperty("decimalPlaces")]
+        public int? DecimalPlaces { get; set; }
+
+        /// <summary>PictureBox image file path.</summary>
+        [JsonProperty("imagePath")]
+        public string ImagePath { get; set; }
+
+        /// <summary>PictureBox SizeMode: Normal | StretchImage | Zoom | CenterImage | AutoSize.</summary>
+        [JsonProperty("sizeMode")]
+        public string SizeMode { get; set; }
+
         [JsonProperty("scrollBars")]
         public string ScrollBars { get; set; }
 

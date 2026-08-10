@@ -29,7 +29,18 @@ namespace F2B.Forms.Engine
                     list.Add("Uncheck");
                     break;
 
+                case FormControlType.RadioButton:
+                    list.Add("Check");
+                    list.Add("Uncheck");
+                    break;
+
                 case FormControlType.ComboBox:
+                case FormControlType.ListBox:
+                case FormControlType.CheckedListBox:
+                    list.Add("Change");
+                    break;
+
+                case FormControlType.NumericUpDown:
                     list.Add("Change");
                     break;
 
@@ -40,10 +51,15 @@ namespace F2B.Forms.Engine
 
                 case FormControlType.TextBox:
                 case FormControlType.TextArea:
+                case FormControlType.MaskedTextBox:
                     list.Add("KeyUp");
                     list.Add("Focus");
                     list.Add("Blur");
                     list.Add("TextChanged");
+                    break;
+
+                case FormControlType.PictureBox:
+                    list.Add("Click");
                     break;
 
                 case FormControlType.TabControl:
@@ -83,11 +99,17 @@ namespace F2B.Forms.Engine
             {
                 FormControlType.Button,
                 FormControlType.CheckBox,
+                FormControlType.RadioButton,
                 FormControlType.ComboBox,
+                FormControlType.ListBox,
+                FormControlType.CheckedListBox,
+                FormControlType.NumericUpDown,
                 FormControlType.DatePicker,
                 FormControlType.DateTimePicker,
                 FormControlType.TextBox,
                 FormControlType.TextArea,
+                FormControlType.MaskedTextBox,
+                FormControlType.PictureBox,
                 FormControlType.TabControl,
                 FormControlType.TabPage,
                 FormControlType.DataGrid

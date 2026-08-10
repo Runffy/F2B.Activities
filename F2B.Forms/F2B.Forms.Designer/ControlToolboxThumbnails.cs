@@ -46,8 +46,26 @@ namespace F2B.Forms.Designer
                     case FormControlType.CheckBox:
                         DrawCheckBox(g);
                         break;
+                    case FormControlType.RadioButton:
+                        DrawRadioButton(g);
+                        break;
                     case FormControlType.ComboBox:
                         DrawComboBox(g);
+                        break;
+                    case FormControlType.ListBox:
+                        DrawListBox(g, checkedStyle: false);
+                        break;
+                    case FormControlType.CheckedListBox:
+                        DrawListBox(g, checkedStyle: true);
+                        break;
+                    case FormControlType.MaskedTextBox:
+                        DrawMaskedTextBox(g);
+                        break;
+                    case FormControlType.NumericUpDown:
+                        DrawNumericUpDown(g);
+                        break;
+                    case FormControlType.PictureBox:
+                        DrawPictureBox(g);
                         break;
                     case FormControlType.DatePicker:
                         DrawDatePicker(g, includeTime: false);
@@ -160,6 +178,126 @@ namespace F2B.Forms.Designer
                     new Point(box.Left + 3, box.Top + 7),
                     new Point(box.Left + 6, box.Top + 10),
                     new Point(box.Right - 3, box.Top + 3)
+                });
+            }
+        }
+
+        private static void DrawRadioButton(Graphics g)
+        {
+            int size = 14;
+            var circle = new Rectangle((Width - size) / 2, (Height - size) / 2, size, size);
+            FillRound(g, circle, Color.White, Muted, size / 2);
+            using (var brush = new SolidBrush(Accent))
+            {
+                g.FillEllipse(brush, circle.Left + 4, circle.Top + 4, 6, 6);
+            }
+        }
+
+        private static void DrawListBox(Graphics g, bool checkedStyle)
+        {
+            var r = new Rectangle(5, 5, Width - 10, Height - 10);
+            FillRound(g, r, Color.White, Muted, 3);
+            using (var brush = new SolidBrush(Soft))
+            {
+                g.FillRectangle(brush, r.Left + 2, r.Top + 3, r.Width - 4, 6);
+            }
+
+            for (int i = 0; i < 3; i++)
+            {
+                int y = r.Top + 4 + i * 6;
+                if (checkedStyle)
+                {
+                    using (var pen = new Pen(Muted))
+                    {
+                        g.DrawRectangle(pen, r.Left + 3, y, 4, 4);
+                    }
+
+                    if (i == 0)
+                    {
+                        using (var pen = new Pen(Accent, 1.5f))
+                        {
+                            g.DrawLine(pen, r.Left + 4, y + 2, r.Left + 5, y + 3);
+                            g.DrawLine(pen, r.Left + 5, y + 3, r.Left + 7, y + 1);
+                        }
+                    }
+
+                    using (var brush = new SolidBrush(Ink))
+                    {
+                        g.FillRectangle(brush, r.Left + 10, y + 1, r.Width - 14, 2);
+                    }
+                }
+                else
+                {
+                    using (var brush = new SolidBrush(i == 0 ? Accent : Ink))
+                    {
+                        g.FillRectangle(brush, r.Left + 3, y + 1, r.Width - 6, 2);
+                    }
+                }
+            }
+        }
+
+        private static void DrawMaskedTextBox(Graphics g)
+        {
+            var r = new Rectangle(4, 10, Width - 8, 12);
+            FillRound(g, r, Color.White, Muted, 3);
+            using (var brush = new SolidBrush(Ink))
+            {
+                g.FillRectangle(brush, r.Left + 3, r.Top + 5, 2, 2);
+                g.FillRectangle(brush, r.Left + 6, r.Top + 5, 2, 2);
+                g.FillRectangle(brush, r.Left + 9, r.Top + 5, 2, 2);
+                g.FillRectangle(brush, r.Left + 14, r.Top + 5, 2, 2);
+                g.FillRectangle(brush, r.Left + 17, r.Top + 5, 2, 2);
+                g.FillRectangle(brush, r.Left + 20, r.Top + 5, 2, 2);
+            }
+
+            using (var pen = new Pen(Muted))
+            {
+                g.DrawLine(pen, r.Left + 12, r.Top + 3, r.Left + 12, r.Bottom - 3);
+                g.DrawLine(pen, r.Left + 23, r.Top + 3, r.Left + 23, r.Bottom - 3);
+            }
+        }
+
+        private static void DrawNumericUpDown(Graphics g)
+        {
+            var r = new Rectangle(4, 10, Width - 8, 12);
+            FillRound(g, r, Color.White, Muted, 3);
+            int mid = r.Right - 8;
+            using (var pen = new Pen(Soft))
+            {
+                g.DrawLine(pen, mid - 2, r.Top + 1, mid - 2, r.Bottom - 1);
+                g.DrawLine(pen, mid - 1, r.Top + r.Height / 2, r.Right - 2, r.Top + r.Height / 2);
+            }
+
+            using (var brush = new SolidBrush(Ink))
+            {
+                g.FillPolygon(brush, new[]
+                {
+                    new Point(mid + 1, r.Top + 4),
+                    new Point(mid + 5, r.Top + 4),
+                    new Point(mid + 3, r.Top + 2)
+                });
+                g.FillPolygon(brush, new[]
+                {
+                    new Point(mid + 1, r.Bottom - 4),
+                    new Point(mid + 5, r.Bottom - 4),
+                    new Point(mid + 3, r.Bottom - 2)
+                });
+            }
+        }
+
+        private static void DrawPictureBox(Graphics g)
+        {
+            var r = new Rectangle(6, 5, Width - 12, Height - 10);
+            FillRound(g, r, Color.White, Muted, 3);
+            using (var pen = new Pen(Accent, 1.5f))
+            {
+                g.DrawEllipse(pen, r.Left + 3, r.Top + 3, 5, 5);
+                g.DrawLines(pen, new[]
+                {
+                    new Point(r.Left + 2, r.Bottom - 3),
+                    new Point(r.Left + 8, r.Top + 10),
+                    new Point(r.Left + 14, r.Bottom - 5),
+                    new Point(r.Right - 2, r.Top + 4)
                 });
             }
         }

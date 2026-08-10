@@ -10,7 +10,6 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -21,7 +20,7 @@ namespace F2B.Basic
     {
         private const string LabelColumnGroup = "ElseIfConditionLabel";
         private const double LabelColumnWidth = 72;
-        private const double ConditionEditorWidth = 280;
+        private const double ConditionEditorWidth = 200;
 
         private readonly StackPanel _root;
         private readonly StackPanel _elseIfsPanel;
@@ -40,7 +39,7 @@ namespace F2B.Basic
                 BorderBrush = Brushes.Gray,
                 BorderThickness = new Thickness(1),
                 Padding = new Thickness(8),
-                MinWidth = 420,
+                MinWidth = 320,
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
 
@@ -230,6 +229,7 @@ namespace F2B.Basic
             var presenter = new WorkflowItemPresenter
             {
                 HintText = "Drop activity here",
+                MinWidth = 240,
                 MinHeight = 40,
                 VerticalAlignment = VerticalAlignment.Top
             };
@@ -241,7 +241,7 @@ namespace F2B.Basic
                     Source = this,
                     Mode = BindingMode.TwoWay
                 });
-            return WrapFullWidthPresenter(presenter);
+            return ActivityBodyExpandHelper.WrapExpandingBody(this, presenter);
         }
 
         private FrameworkElement CreateBranchBodyPresenter(ModelItem branchItem)
@@ -249,6 +249,7 @@ namespace F2B.Basic
             var presenter = new WorkflowItemPresenter
             {
                 HintText = "Drop activity here",
+                MinWidth = 240,
                 MinHeight = 40,
                 VerticalAlignment = VerticalAlignment.Top
             };
@@ -260,157 +261,7 @@ namespace F2B.Basic
                     Source = branchItem,
                     Mode = BindingMode.TwoWay
                 });
-            return WrapFullWidthPresenter(presenter);
-        }
-
-        /// <summary>
-        /// WorkflowItemPresenter can stretch, but the nested Sequence ActivityDesigner keeps its
-        /// preferred narrow width and stays centered. Force both the presenter and the first
-        /// nested ActivityDesigner to the host's full content width (aligned with Condition row).
-        /// </summary>
-        private static FrameworkElement WrapFullWidthPresenter(WorkflowItemPresenter presenter)
-        {
-            var host = new Grid
-            {
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                MinHeight = 40
-            };
-
-            presenter.HorizontalAlignment = HorizontalAlignment.Stretch;
-            presenter.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-
-            Action apply = () => ApplyFullWidthToPresenterContent(host, presenter);
-
-            host.SizeChanged += (s, e) => apply();
-            presenter.Loaded += (s, e) =>
-            {
-                apply();
-                presenter.Dispatcher.BeginInvoke(apply, DispatcherPriority.Loaded);
-                presenter.Dispatcher.BeginInvoke(apply, DispatcherPriority.ContextIdle);
-            };
-
-            DependencyPropertyDescriptor descriptor = DependencyPropertyDescriptor.FromProperty(
-                WorkflowItemPresenter.ItemProperty,
-                typeof(WorkflowItemPresenter));
-            if (descriptor != null)
-            {
-                descriptor.AddValueChanged(presenter, (s, e) =>
-                {
-                    presenter.Dispatcher.BeginInvoke(apply, DispatcherPriority.Loaded);
-                    presenter.Dispatcher.BeginInvoke(apply, DispatcherPriority.ContextIdle);
-                });
-            }
-
-            host.Children.Add(presenter);
-            return host;
-        }
-
-        private static void ApplyFullWidthToPresenterContent(FrameworkElement host, WorkflowItemPresenter presenter)
-        {
-            if (host == null || presenter == null)
-            {
-                return;
-            }
-
-            double width = host.ActualWidth;
-            if (width <= 1)
-            {
-                return;
-            }
-
-            SetElementWidth(presenter, width);
-
-            ActivityDesigner nestedDesigner = FindDescendantActivityDesigner(presenter);
-            if (nestedDesigner != null)
-            {
-                // Left-align with If/Else If/Else; match Condition row outer width.
-                nestedDesigner.HorizontalAlignment = HorizontalAlignment.Left;
-                SetElementWidth(nestedDesigner, width);
-
-                // Sequence's inner drop strip also has a small default MinWidth.
-                foreach (WorkflowItemsPresenter itemsPresenter in FindDescendantsOfType<WorkflowItemsPresenter>(nestedDesigner))
-                {
-                    if (itemsPresenter.MinWidth < width - 24)
-                    {
-                        itemsPresenter.MinWidth = Math.Max(0, width - 24);
-                    }
-
-                    itemsPresenter.HorizontalAlignment = HorizontalAlignment.Stretch;
-                }
-            }
-        }
-
-        private static void SetElementWidth(FrameworkElement element, double width)
-        {
-            if (element == null || width <= 1)
-            {
-                return;
-            }
-
-            if (double.IsNaN(element.Width) || Math.Abs(element.Width - width) > 0.5)
-            {
-                element.Width = width;
-            }
-
-            if (element.MinWidth < width)
-            {
-                element.MinWidth = width;
-            }
-
-            if (!double.IsInfinity(element.MaxWidth) && element.MaxWidth < width)
-            {
-                element.MaxWidth = double.PositiveInfinity;
-            }
-        }
-
-        private static ActivityDesigner FindDescendantActivityDesigner(DependencyObject root)
-        {
-            if (root == null)
-            {
-                return null;
-            }
-
-            int count = VisualTreeHelper.GetChildrenCount(root);
-            for (int i = 0; i < count; i++)
-            {
-                DependencyObject child = VisualTreeHelper.GetChild(root, i);
-                var designer = child as ActivityDesigner;
-                if (designer != null)
-                {
-                    return designer;
-                }
-
-                designer = FindDescendantActivityDesigner(child);
-                if (designer != null)
-                {
-                    return designer;
-                }
-            }
-
-            return null;
-        }
-
-        private static IEnumerable<T> FindDescendantsOfType<T>(DependencyObject root) where T : DependencyObject
-        {
-            if (root == null)
-            {
-                yield break;
-            }
-
-            int count = VisualTreeHelper.GetChildrenCount(root);
-            for (int i = 0; i < count; i++)
-            {
-                DependencyObject child = VisualTreeHelper.GetChild(root, i);
-                if (child is T match)
-                {
-                    yield return match;
-                }
-
-                foreach (T nested in FindDescendantsOfType<T>(child))
-                {
-                    yield return nested;
-                }
-            }
+            return ActivityBodyExpandHelper.WrapExpandingBody(this, presenter);
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)

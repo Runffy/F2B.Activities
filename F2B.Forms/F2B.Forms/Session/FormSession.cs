@@ -317,6 +317,28 @@ namespace F2B.Forms.Session
                 {
                     result = checkBox.Checked;
                 }
+                else if (control is RadioButton radioButton)
+                {
+                    result = radioButton.Checked;
+                }
+                else if (control is NumericUpDown numeric)
+                {
+                    result = numeric.Value;
+                }
+                else if (control is CheckedListBox checkedList)
+                {
+                    var checkedItems = new List<string>();
+                    foreach (object item in checkedList.CheckedItems)
+                    {
+                        checkedItems.Add(Convert.ToString(item) ?? string.Empty);
+                    }
+
+                    result = checkedItems;
+                }
+                else if (control is ListBox listBox)
+                {
+                    result = listBox.SelectedItem == null ? string.Empty : Convert.ToString(listBox.SelectedItem);
+                }
                 else if (control is ComboBox comboBox)
                 {
                     result = comboBox.SelectedItem == null ? string.Empty : Convert.ToString(comboBox.SelectedItem);
@@ -324,6 +346,10 @@ namespace F2B.Forms.Session
                 else if (control is DateTimePicker dateTimePicker)
                 {
                     result = FormRenderer.ReadDateTimePickerValue(dateTimePicker);
+                }
+                else if (control is PictureBox pictureBox)
+                {
+                    result = FormRenderer.ReadPicturePath(pictureBox);
                 }
                 else if (control is Form)
                 {
@@ -456,38 +482,97 @@ namespace F2B.Forms.Session
             InvokeOnUi(() =>
             {
                 Control control = GetControl(controlId);
-                var combo = control as ComboBox;
-                if (combo == null)
+                if (control is ComboBox combo)
                 {
-                    throw new InvalidOperationException(
-                        "UpdateOptionsList requires a ComboBox. Control '" + controlId + "' is '" + control.GetType().Name + "'.");
-                }
-
-                string previous = combo.SelectedItem == null ? null : Convert.ToString(combo.SelectedItem);
-                if (clearExisting)
-                {
-                    combo.Items.Clear();
-                }
-
-                if (options != null)
-                {
-                    foreach (string option in options)
+                    string previous = combo.SelectedItem == null ? null : Convert.ToString(combo.SelectedItem);
+                    if (clearExisting)
                     {
-                        combo.Items.Add(option ?? string.Empty);
+                        combo.Items.Clear();
                     }
+
+                    if (options != null)
+                    {
+                        foreach (string option in options)
+                        {
+                            combo.Items.Add(option ?? string.Empty);
+                        }
+                    }
+
+                    if (previous != null)
+                    {
+                        int index = combo.FindStringExact(previous);
+                        combo.SelectedIndex = index;
+                    }
+                    else
+                    {
+                        combo.SelectedIndex = -1;
+                    }
+
+                    FlushControlPaint(combo);
+                    return;
                 }
 
-                if (previous != null)
+                if (control is CheckedListBox checkedList)
                 {
-                    int index = combo.FindStringExact(previous);
-                    combo.SelectedIndex = index;
-                }
-                else
-                {
-                    combo.SelectedIndex = -1;
+                    string previous = checkedList.SelectedItem == null ? null : Convert.ToString(checkedList.SelectedItem);
+                    if (clearExisting)
+                    {
+                        checkedList.Items.Clear();
+                    }
+
+                    if (options != null)
+                    {
+                        foreach (string option in options)
+                        {
+                            checkedList.Items.Add(option ?? string.Empty);
+                        }
+                    }
+
+                    if (previous != null)
+                    {
+                        checkedList.SelectedIndex = checkedList.FindStringExact(previous);
+                    }
+                    else
+                    {
+                        checkedList.SelectedIndex = -1;
+                    }
+
+                    FlushControlPaint(checkedList);
+                    return;
                 }
 
-                FlushControlPaint(combo);
+                if (control is ListBox listBox)
+                {
+                    string previous = listBox.SelectedItem == null ? null : Convert.ToString(listBox.SelectedItem);
+                    if (clearExisting)
+                    {
+                        listBox.Items.Clear();
+                    }
+
+                    if (options != null)
+                    {
+                        foreach (string option in options)
+                        {
+                            listBox.Items.Add(option ?? string.Empty);
+                        }
+                    }
+
+                    if (previous != null)
+                    {
+                        listBox.SelectedIndex = listBox.FindStringExact(previous);
+                    }
+                    else
+                    {
+                        listBox.SelectedIndex = -1;
+                    }
+
+                    FlushControlPaint(listBox);
+                    return;
+                }
+
+                throw new InvalidOperationException(
+                    "UpdateOptionsList requires ComboBox / ListBox / CheckedListBox. Control '"
+                    + controlId + "' is '" + control.GetType().Name + "'.");
             });
         }
 
@@ -1199,6 +1284,16 @@ namespace F2B.Forms.Session
                         return;
                     }
 
+                    if (control is PictureBox pictureBox
+                        && (string.Equals(name, "Value", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(name, "Text", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(name, "ImagePath", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        FormRenderer.ApplyPicturePath(pictureBox, value == null ? null : Convert.ToString(value));
+                        FlushControlPaint(control);
+                        return;
+                    }
+
                     if (string.Equals(name, "Value", StringComparison.OrdinalIgnoreCase))
                     {
                         FormRenderer.ApplyValue(control, value);
@@ -1207,6 +1302,14 @@ namespace F2B.Forms.Session
                     }
 
                     control.Text = value == null ? string.Empty : Convert.ToString(value);
+                    FlushControlPaint(control);
+                    return;
+                }
+
+                if (control is PictureBox picture
+                    && string.Equals(name, "ImagePath", StringComparison.OrdinalIgnoreCase))
+                {
+                    FormRenderer.ApplyPicturePath(picture, value == null ? null : Convert.ToString(value));
                     FlushControlPaint(control);
                     return;
                 }
@@ -1232,9 +1335,24 @@ namespace F2B.Forms.Session
                     return;
                 }
 
+                if (control is RadioButton radioButton && string.Equals(name, "Checked", StringComparison.OrdinalIgnoreCase))
+                {
+                    radioButton.Checked = value is bool b ? b : Convert.ToBoolean(value);
+                    FlushControlPaint(control);
+                    return;
+                }
+
                 if (control is ComboBox combo && string.Equals(name, "Items", StringComparison.OrdinalIgnoreCase))
                 {
                     FormRenderer.ApplyValue(combo, value);
+                    FlushControlPaint(control);
+                    return;
+                }
+
+                if ((control is ListBox || control is CheckedListBox)
+                    && string.Equals(name, "Items", StringComparison.OrdinalIgnoreCase))
+                {
+                    FormRenderer.ApplyValue(control, value);
                     FlushControlPaint(control);
                     return;
                 }
@@ -1512,6 +1630,19 @@ namespace F2B.Forms.Session
                         return () => checkOn.CheckedChanged -= handler;
                     }
 
+                    if (control is RadioButton radioOn)
+                    {
+                        EventHandler handler = (s, e) =>
+                        {
+                            if (radioOn.Checked)
+                            {
+                                Raise(controlId, "Check", e);
+                            }
+                        };
+                        radioOn.CheckedChanged += handler;
+                        return () => radioOn.CheckedChanged -= handler;
+                    }
+
                     return null;
                 case "uncheck":
                     if (control is CheckBox checkOff)
@@ -1527,6 +1658,19 @@ namespace F2B.Forms.Session
                         return () => checkOff.CheckedChanged -= handler;
                     }
 
+                    if (control is RadioButton radioOff)
+                    {
+                        EventHandler handler = (s, e) =>
+                        {
+                            if (!radioOff.Checked)
+                            {
+                                Raise(controlId, "Uncheck", e);
+                            }
+                        };
+                        radioOff.CheckedChanged += handler;
+                        return () => radioOff.CheckedChanged -= handler;
+                    }
+
                     return null;
                 case "checkedchanged":
                     if (control is CheckBox checkBox)
@@ -1534,6 +1678,13 @@ namespace F2B.Forms.Session
                         EventHandler handler = (s, e) => Raise(controlId, "CheckedChanged", e);
                         checkBox.CheckedChanged += handler;
                         return () => checkBox.CheckedChanged -= handler;
+                    }
+
+                    if (control is RadioButton radioChanged)
+                    {
+                        EventHandler handler = (s, e) => Raise(controlId, "CheckedChanged", e);
+                        radioChanged.CheckedChanged += handler;
+                        return () => radioChanged.CheckedChanged -= handler;
                     }
 
                     return null;
@@ -1562,6 +1713,20 @@ namespace F2B.Forms.Session
                             return () => comboBox.SelectedIndexChanged -= handler;
                         }
 
+                        if (control is CheckedListBox checkedList)
+                        {
+                            EventHandler handler = (s, e) => Raise(controlId, raiseAs, e);
+                            checkedList.SelectedIndexChanged += handler;
+                            return () => checkedList.SelectedIndexChanged -= handler;
+                        }
+
+                        if (control is ListBox listBox)
+                        {
+                            EventHandler handler = (s, e) => Raise(controlId, raiseAs, e);
+                            listBox.SelectedIndexChanged += handler;
+                            return () => listBox.SelectedIndexChanged -= handler;
+                        }
+
                         if (control is TabControl tabControl)
                         {
                             EventHandler handler = (s, e) => Raise(controlId, raiseAs, e);
@@ -1574,6 +1739,13 @@ namespace F2B.Forms.Session
                             EventHandler handler = (s, e) => Raise(controlId, raiseAs, e);
                             dateTimePicker.ValueChanged += handler;
                             return () => dateTimePicker.ValueChanged -= handler;
+                        }
+
+                        if (control is NumericUpDown numeric)
+                        {
+                            EventHandler handler = (s, e) => Raise(controlId, raiseAs, e);
+                            numeric.ValueChanged += handler;
+                            return () => numeric.ValueChanged -= handler;
                         }
 
                         return null;
@@ -1964,14 +2136,45 @@ namespace F2B.Forms.Session
                 return checkBox.Checked;
             }
 
+            if (control is RadioButton radioButton)
+            {
+                return radioButton.Checked;
+            }
+
+            if (control is NumericUpDown numeric)
+            {
+                return numeric.Value;
+            }
+
             if (control is ComboBox comboBox)
             {
                 return comboBox.SelectedItem == null ? string.Empty : Convert.ToString(comboBox.SelectedItem);
             }
 
+            if (control is CheckedListBox checkedList)
+            {
+                var checkedItems = new List<string>();
+                foreach (object item in checkedList.CheckedItems)
+                {
+                    checkedItems.Add(Convert.ToString(item) ?? string.Empty);
+                }
+
+                return checkedItems;
+            }
+
+            if (control is ListBox listBox)
+            {
+                return listBox.SelectedItem == null ? string.Empty : Convert.ToString(listBox.SelectedItem);
+            }
+
             if (control is DateTimePicker dateTimePicker)
             {
                 return FormRenderer.ReadDateTimePickerValue(dateTimePicker);
+            }
+
+            if (control is PictureBox pictureBox)
+            {
+                return FormRenderer.ReadPicturePath(pictureBox);
             }
 
             return control.Text;

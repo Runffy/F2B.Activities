@@ -60,10 +60,17 @@ namespace F2B.Forms.Designer
         private Point _toolboxDragStart;
         private string _toolboxDragType;
         private bool _toolboxDidDrag;
+        private readonly bool _isViewer;
 
         public MainForm()
+            : this(isViewer: false)
         {
-            Text = "F2B.Forms.Designer（New Form）";
+        }
+
+        public MainForm(bool isViewer)
+        {
+            _isViewer = isViewer;
+            Text = _isViewer ? "F2B.Forms.Viewer" : "F2B.Forms.Designer（New Form）";
             Width = 1200;
             Height = 780;
             StartPosition = FormStartPosition.CenterScreen;
@@ -73,7 +80,7 @@ namespace F2B.Forms.Designer
             KeyDown += MainForm_KeyDown;
 
             var menu = BuildMenuStrip();
-            var controlsBar = BuildControlsToolStrip();
+            Control controlsBar = _isViewer ? null : BuildControlsToolbox();
 
             _viewport = new Panel
             {
@@ -95,16 +102,20 @@ namespace F2B.Forms.Designer
                 BorderStyle = BorderStyle.None,
                 TabStop = true,
                 Location = Point.Empty,
-                AllowDrop = true
+                AllowDrop = !_isViewer
             };
             _canvas.Paint += CanvasOnPaint;
             _canvas.MouseDown += CanvasOnMouseDown;
             _canvas.MouseMove += CanvasOnMouseMove;
             _canvas.MouseUp += CanvasOnMouseUp;
             _canvas.MouseWheel += ViewportOnMouseWheel;
-            _canvas.DragEnter += CanvasOnDragEnter;
-            _canvas.DragOver += CanvasOnDragOver;
-            _canvas.DragDrop += CanvasOnDragDrop;
+            if (!_isViewer)
+            {
+                _canvas.DragEnter += CanvasOnDragEnter;
+                _canvas.DragOver += CanvasOnDragOver;
+                _canvas.DragDrop += CanvasOnDragDrop;
+            }
+
             _viewport.Controls.Add(_canvas);
 
             _propertyGrid = new PropertyGrid
@@ -116,6 +127,11 @@ namespace F2B.Forms.Designer
             };
             _propertyGrid.PropertyValueChanged += (s, e) =>
             {
+                if (_isViewer)
+                {
+                    return;
+                }
+
                 // PropertyGrid raises this after the value changed — undo restores the prior stable snapshot.
                 if (!_suspendHistory && _stableSnapshot != null)
                 {
@@ -138,7 +154,8 @@ namespace F2B.Forms.Designer
             _contextLabel = new Label
             {
                 Dock = DockStyle.Top,
-                Height = 22,
+                Height = _isViewer ? 0 : 22,
+                Visible = !_isViewer,
                 Text = "Add target: Form (root)",
                 ForeColor = Color.DimGray,
                 Padding = new Padding(6, 3, 0, 0)
@@ -155,16 +172,16 @@ namespace F2B.Forms.Designer
             };
             _controlTree.AfterSelect += OnTreeAfterSelect;
 
-            // Layout: left Tree View | center Designer Area | right Properties (full height).
+            // Layout: left Tree View | center Designer/Viewer Area | right Properties (full height).
             // Use TableLayoutPanel instead of SplitContainer to avoid startup SplitterDistance exceptions.
             var treePanel = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle };
             treePanel.Controls.Add(_controlTree);
             treePanel.Controls.Add(_contextLabel);
             treePanel.Controls.Add(CreateSectionHeader("Tree View"));
 
-            var designerPanel = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle };
-            designerPanel.Controls.Add(_viewport);
-            designerPanel.Controls.Add(CreateSectionHeader("Designer Area"));
+            var surfacePanel = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle };
+            surfacePanel.Controls.Add(_viewport);
+            surfacePanel.Controls.Add(CreateSectionHeader(_isViewer ? "Viewer Area" : "Designer Area"));
 
             var propertiesPanel = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle };
             propertiesPanel.Controls.Add(_propertyGrid);
@@ -179,16 +196,20 @@ namespace F2B.Forms.Designer
                 Padding = Padding.Empty
             };
             rootHost.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 18f));  // Tree View
-            rootHost.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 57f));  // Designer Area
+            rootHost.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 57f));  // Surface
             rootHost.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));  // Properties
             rootHost.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
             rootHost.Controls.Add(treePanel, 0, 0);
-            rootHost.Controls.Add(designerPanel, 1, 0);
+            rootHost.Controls.Add(surfacePanel, 1, 0);
             rootHost.Controls.Add(propertiesPanel, 2, 0);
 
             // Dock order: Fill first, then Top strips (last Top added sits under the previous Top).
             Controls.Add(rootHost);
-            Controls.Add(controlsBar);
+            if (controlsBar != null)
+            {
+                Controls.Add(controlsBar);
+            }
+
             Controls.Add(menu);
             MainMenuStrip = menu;
 
@@ -443,6 +464,13 @@ namespace F2B.Forms.Designer
         private MenuStrip BuildMenuStrip()
         {
             var menu = new MenuStrip();
+            if (_isViewer)
+            {
+                menu.Items.Add(new ToolStripMenuItem("Open", null, (s, e) => TryOpenForm()));
+                menu.Items.Add(new ToolStripMenuItem("Preview", null, (s, e) => Preview()));
+                return menu;
+            }
+
             menu.Items.Add(new ToolStripMenuItem("New", null, (s, e) => TryNewForm()));
             menu.Items.Add(new ToolStripMenuItem("Open", null, (s, e) => TryOpenForm()));
             menu.Items.Add(new ToolStripMenuItem("Save", null, (s, e) => SaveForm(false)));
@@ -451,39 +479,238 @@ namespace F2B.Forms.Designer
             return menu;
         }
 
-        private ToolStrip BuildControlsToolStrip()
+        private Control BuildControlsToolbox()
         {
-            var bar = new ToolStrip
+            var root = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 118,
+                BackColor = Color.FromArgb(250, 250, 250),
+                Padding = Padding.Empty
+            };
+            root.Paint += (s, e) =>
+            {
+                using (var pen = new Pen(Color.FromArgb(225, 225, 225)))
+                {
+                    int y = root.ClientSize.Height - 1;
+                    e.Graphics.DrawLine(pen, 0, y, root.ClientSize.Width, y);
+                }
+            };
+
+            var split = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 1,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty,
+                BackColor = Color.FromArgb(250, 250, 250)
+            };
+            split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55f));
+            split.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 1f));
+            split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45f));
+            split.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+
+            Control operators = BuildToolboxCategoryScroll(
+                "Operators",
+                new[]
+                {
+                    Tuple.Create("Button", FormControlType.Button),
+                    Tuple.Create("Label", FormControlType.Label),
+                    Tuple.Create("TextBox", FormControlType.TextBox),
+                    Tuple.Create("TextArea", FormControlType.TextArea),
+                    Tuple.Create("CheckBox", FormControlType.CheckBox),
+                    Tuple.Create("RadioButton", FormControlType.RadioButton),
+                    Tuple.Create("ComboBox", FormControlType.ComboBox),
+                    Tuple.Create("ListBox", FormControlType.ListBox),
+                    Tuple.Create("CheckedListBox", FormControlType.CheckedListBox),
+                    Tuple.Create("MaskedTextBox", FormControlType.MaskedTextBox),
+                    Tuple.Create("NumericUpDown", FormControlType.NumericUpDown),
+                    Tuple.Create("DatePicker", FormControlType.DatePicker),
+                    Tuple.Create("DateTimePicker", FormControlType.DateTimePicker),
+                    Tuple.Create("PictureBox", FormControlType.PictureBox),
+                    Tuple.Create("DataGrid", FormControlType.DataGrid)
+                });
+
+            var divider = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(210, 210, 210),
+                Margin = Padding.Empty
+            };
+
+            Control containers = BuildToolboxCategoryScroll(
+                "Containers",
+                new[]
+                {
+                    Tuple.Create("Panel", FormControlType.Panel),
+                    Tuple.Create("ScrollContainer", FormControlType.ScrollContainer),
+                    Tuple.Create("TableLayout", FormControlType.TableLayout),
+                    Tuple.Create("GroupBox", FormControlType.GroupBox),
+                    Tuple.Create("TabControl", FormControlType.TabControl),
+                    Tuple.Create("TabPage", FormControlType.TabPage)
+                });
+
+            split.Controls.Add(operators, 0, 0);
+            split.Controls.Add(divider, 1, 0);
+            split.Controls.Add(containers, 2, 0);
+            root.Controls.Add(split);
+            return root;
+        }
+
+        private Control BuildToolboxCategoryScroll(string title, Tuple<string, string>[] items)
+        {
+            var host = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = false,
+                BackColor = Color.FromArgb(250, 250, 250),
+                Margin = Padding.Empty,
+                Padding = new Padding(4, 4, 4, 2)
+            };
+
+            var header = new Label
+            {
+                Text = title,
+                Dock = DockStyle.Top,
+                Height = 20,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(90, 90, 90),
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
+
+            var strip = new ToolStrip
             {
                 GripStyle = ToolStripGripStyle.Hidden,
                 Renderer = new ControlsToolStripRenderer(),
                 BackColor = Color.FromArgb(250, 250, 250),
-                Padding = new Padding(10, 8, 10, 8),
+                Padding = new Padding(4, 2, 4, 2),
                 ImageScalingSize = new Size(ControlToolboxThumbnails.Width, ControlToolboxThumbnails.Height),
-                AutoSize = true,
-                Font = new Font("Segoe UI", 8.25f)
+                AutoSize = false,
+                CanOverflow = false,
+                Font = new Font("Segoe UI", 8.25f),
+                Dock = DockStyle.None,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left,
+                Margin = Padding.Empty,
+                Location = new Point(0, 0)
             };
 
-            bar.Items.Add(MakeAddToolButton("Button", FormControlType.Button));
-            bar.Items.Add(MakeAddToolButton("Label", FormControlType.Label));
-            bar.Items.Add(MakeAddToolButton("TextBox", FormControlType.TextBox));
-            bar.Items.Add(MakeAddToolButton("TextArea", FormControlType.TextArea));
-            bar.Items.Add(MakeAddToolButton("CheckBox", FormControlType.CheckBox));
-            bar.Items.Add(MakeAddToolButton("ComboBox", FormControlType.ComboBox));
-            bar.Items.Add(MakeAddToolButton("DatePicker", FormControlType.DatePicker));
-            bar.Items.Add(MakeAddToolButton("DateTimePicker", FormControlType.DateTimePicker));
-            bar.Items.Add(MakeAddToolButton("Panel", FormControlType.Panel));
-            bar.Items.Add(MakeAddToolButton("ScrollContainer", FormControlType.ScrollContainer));
-            bar.Items.Add(MakeAddToolButton("TableLayout", FormControlType.TableLayout));
-            bar.Items.Add(MakeAddToolButton("DataGrid", FormControlType.DataGrid));
-            bar.Items.Add(MakeAddToolButton("GroupBox", FormControlType.GroupBox));
-            bar.Items.Add(MakeAddToolButton("TabControl", FormControlType.TabControl));
-            bar.Items.Add(MakeAddToolButton("TabPage", FormControlType.TabPage));
-            return bar;
+            foreach (Tuple<string, string> item in items)
+            {
+                strip.Items.Add(MakeAddToolButton(item.Item1, item.Item2));
+            }
+
+            Size preferred = strip.GetPreferredSize(Size.Empty);
+            strip.Size = preferred;
+
+            // AutoScroll needs a child that can grow wider than the host.
+            var stripHost = new Panel
+            {
+                AutoSize = false,
+                Size = preferred,
+                BackColor = Color.FromArgb(250, 250, 250),
+                Location = Point.Empty,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
+            stripHost.Controls.Add(strip);
+
+            void SyncStripHostSize(object sender, EventArgs e)
+            {
+                Size next = strip.GetPreferredSize(Size.Empty);
+                if (next.Width < 1)
+                {
+                    next = strip.PreferredSize;
+                }
+
+                strip.Size = next;
+                stripHost.Size = next;
+            }
+
+            strip.Layout += SyncStripHostSize;
+            strip.SizeChanged += SyncStripHostSize;
+            SyncStripHostSize(strip, EventArgs.Empty);
+
+            // Dock Top header first in z-order last; fill area is the scroll body under header.
+            var body = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true,
+                BackColor = Color.FromArgb(250, 250, 250),
+                Margin = Padding.Empty,
+                Padding = Padding.Empty,
+                Tag = "ControlsToolboxScroll"
+            };
+            body.Controls.Add(stripHost);
+
+            host.Controls.Add(body);
+            host.Controls.Add(header);
+            AttachControlsToolboxMouseWheel(host);
+            return host;
+        }
+
+        private void AttachControlsToolboxMouseWheel(Control root)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            root.MouseWheel += ControlsToolbox_MouseWheel;
+            foreach (Control child in root.Controls)
+            {
+                AttachControlsToolboxMouseWheel(child);
+            }
+        }
+
+        private void ControlsToolbox_MouseWheel(object sender, MouseEventArgs e)
+        {
+            Panel host = FindControlsToolboxScrollHost(sender as Control);
+            if (host == null || !host.HorizontalScroll.Visible)
+            {
+                return;
+            }
+
+            int x = -host.AutoScrollPosition.X - Math.Sign(e.Delta) * 48;
+            if (x < 0)
+            {
+                x = 0;
+            }
+
+            host.AutoScrollPosition = new Point(x, 0);
+            if (e is HandledMouseEventArgs handled)
+            {
+                handled.Handled = true;
+            }
+        }
+
+        private static Panel FindControlsToolboxScrollHost(Control control)
+        {
+            Control current = control;
+            while (current != null)
+            {
+                if (current is Panel panel
+                    && panel.Tag as string == "ControlsToolboxScroll"
+                    && panel.AutoScroll)
+                {
+                    return panel;
+                }
+
+                current = current.Parent;
+            }
+
+            return null;
         }
 
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
+            if (_isViewer)
+            {
+                return;
+            }
+
             if (e.Control && e.Alt && !e.Shift && e.KeyCode == Keys.S)
             {
                 SaveForm(true);
@@ -781,7 +1008,7 @@ namespace F2B.Forms.Designer
         /// </summary>
         private bool PromptSaveIfDirty()
         {
-            if (!_isDirty)
+            if (_isViewer || !_isDirty)
             {
                 return true;
             }
@@ -809,7 +1036,7 @@ namespace F2B.Forms.Designer
 
         private void MarkDirty()
         {
-            if (_isDirty)
+            if (_isViewer || _isDirty)
             {
                 return;
             }
@@ -1007,8 +1234,11 @@ namespace F2B.Forms.Designer
 
         private void UpdateWindowTitle()
         {
-            string doc = string.IsNullOrEmpty(_currentPath) ? "New Form" : _currentPath;
-            Text = "F2B.Forms.Designer（" + doc + "）" + (_isDirty ? " *" : string.Empty);
+            string app = _isViewer ? "F2B.Forms.Viewer" : "F2B.Forms.Designer";
+            string doc = string.IsNullOrEmpty(_currentPath)
+                ? (_isViewer ? "No Form" : "New Form")
+                : _currentPath;
+            Text = app + "（" + doc + "）" + (!_isViewer && _isDirty ? " *" : string.Empty);
         }
 
         private void TryNewForm()
@@ -1107,10 +1337,33 @@ namespace F2B.Forms.Designer
             PushHistoryBeforeEdit();
             DesignItem item = CreateDesignItem(type, parent, x, y);
 
-            if (type == FormControlType.ComboBox)
+            if (type == FormControlType.ComboBox
+                || type == FormControlType.ListBox
+                || type == FormControlType.CheckedListBox)
             {
                 item.Items = new List<string> { "Option1", "Option2" };
                 item.SelectedIndex = 0;
+                item.Text = string.Empty;
+            }
+
+            if (type == FormControlType.NumericUpDown)
+            {
+                item.Text = "0";
+                item.Minimum = 0;
+                item.Maximum = 100;
+                item.Increment = 1;
+                item.DecimalPlaces = 0;
+            }
+
+            if (type == FormControlType.MaskedTextBox)
+            {
+                item.Mask = "000-000-0000";
+                item.Text = string.Empty;
+            }
+
+            if (type == FormControlType.PictureBox)
+            {
+                item.SizeMode = "Zoom";
                 item.Text = string.Empty;
             }
 
@@ -1507,6 +1760,38 @@ namespace F2B.Forms.Designer
                 _propertyGrid.SelectedObject = null;
                 _propertyGrid.SelectedObjects = _selection.Cast<object>().ToArray();
             }
+
+            if (_isViewer)
+            {
+                MakePropertyGridSelectionReadOnly();
+                _propertyGrid.Refresh();
+            }
+        }
+
+        private void MakePropertyGridSelectionReadOnly()
+        {
+            foreach (DesignItem item in _selection)
+            {
+                if (item != null)
+                {
+                    item.ViewOnlyProperties = true;
+                }
+            }
+
+            TypeDescriptor.AddAttributes(_formSettings, new ReadOnlyAttribute(true));
+
+            object[] targets = _propertyGrid.SelectedObjects;
+            if (targets != null && targets.Length > 0)
+            {
+                _propertyGrid.SelectedObjects = targets;
+                return;
+            }
+
+            object single = _propertyGrid.SelectedObject;
+            if (single != null)
+            {
+                _propertyGrid.SelectedObject = single;
+            }
         }
 
         private bool IsItemSelected(DesignItem item)
@@ -1820,6 +2105,11 @@ namespace F2B.Forms.Designer
 
         private void UpdateContextLabel()
         {
+            if (_isViewer || _contextLabel == null)
+            {
+                return;
+            }
+
             DesignItem target = GetAddTargetParent();
             if (target == null)
             {
@@ -1981,6 +2271,11 @@ namespace F2B.Forms.Designer
         /// </summary>
         private bool SaveForm(bool saveAs)
         {
+            if (_isViewer)
+            {
+                return true;
+            }
+
             if (saveAs || string.IsNullOrEmpty(_currentPath))
             {
                 using (var dialog = new SaveFileDialog())
@@ -2044,6 +2339,12 @@ namespace F2B.Forms.Designer
 
             Point logical = ToLogical(e.Location);
             bool ctrl = (ModifierKeys & Keys.Control) == Keys.Control;
+
+            if (_isViewer)
+            {
+                CanvasOnMouseDownViewOnly(logical, ctrl);
+                return;
+            }
 
             DesignItem tabHit = HitTestTabHeader(logical);
             if (tabHit != null)
@@ -2143,6 +2444,47 @@ namespace F2B.Forms.Designer
                 {
                     _canvas.Cursor = Cursors.Default;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Viewer: select controls only (no move / resize / form size edit).
+        /// </summary>
+        private void CanvasOnMouseDownViewOnly(Point logical, bool ctrl)
+        {
+            DesignItem tabHit = HitTestTabHeader(logical);
+            if (tabHit != null)
+            {
+                if (ctrl)
+                {
+                    ToggleSelection(tabHit, syncTree: true);
+                }
+                else
+                {
+                    SelectItem(tabHit, syncTree: true);
+                }
+
+                return;
+            }
+
+            DesignItem hit = HitTest(logical);
+            if (hit != null)
+            {
+                if (ctrl)
+                {
+                    ToggleSelection(hit, syncTree: true);
+                }
+                else
+                {
+                    SelectItem(hit, syncTree: true);
+                }
+
+                return;
+            }
+
+            if (!ctrl)
+            {
+                SelectFormRoot(syncTree: true);
             }
         }
 
@@ -2333,6 +2675,12 @@ namespace F2B.Forms.Designer
 
         private void UpdateHoverCursor(Point surfacePoint)
         {
+            if (_isViewer)
+            {
+                _canvas.Cursor = Cursors.Default;
+                return;
+            }
+
             if (_selection.Count == 1 && _selected != null && !FormControlType.IsTabPage(_selected.Type))
             {
                 ResizeHandle handle = HitTestHandleZoomAware(GetAbsoluteBounds(_selected), surfacePoint);
@@ -2762,7 +3110,7 @@ namespace F2B.Forms.Designer
                 }
                 else if (_selection.Count == 0)
                 {
-                    DesignSurfacePainter.DrawSelectionChrome(g, new Rectangle(0, 0, w, h));
+                    DesignSurfacePainter.DrawSelectionChrome(g, new Rectangle(0, 0, w, h), showResizeHandles: !_isViewer);
                 }
             }
 
@@ -2907,7 +3255,7 @@ namespace F2B.Forms.Designer
                             item.BackColor);
                         if (selected)
                         {
-                            DesignSurfacePainter.DrawSelectionChrome(g, rect);
+                            DesignSurfacePainter.DrawSelectionChrome(g, rect, showResizeHandles: !_isViewer);
                         }
                     }
 
@@ -2936,7 +3284,8 @@ namespace F2B.Forms.Designer
                         item.TextAlignV,
                         paintFont,
                         item.ForeColor,
-                        item.BackColor);
+                        item.BackColor,
+                        showResizeHandles: !_isViewer);
                 }
 
                 if (item.Children != null && item.Children.Count > 0)
@@ -2953,7 +3302,7 @@ namespace F2B.Forms.Designer
                 return string.Empty;
             }
 
-            if (IsComboBox(item))
+            if (IsComboBox(item) || IsListControl(item))
             {
                 if (item.Items != null
                     && item.SelectedIndex >= 0
@@ -2968,6 +3317,16 @@ namespace F2B.Forms.Designer
                 }
             }
 
+            if (FormControlType.IsNumericUpDown(item.Type))
+            {
+                return string.IsNullOrWhiteSpace(item.Text) ? "0" : item.Text;
+            }
+
+            if (FormControlType.IsMaskedTextBox(item.Type))
+            {
+                return string.IsNullOrEmpty(item.Text) ? (item.Mask ?? string.Empty) : item.Text;
+            }
+
             return item.Text ?? string.Empty;
         }
 
@@ -2975,6 +3334,13 @@ namespace F2B.Forms.Designer
         {
             return item != null
                 && string.Equals(item.Type, FormControlType.ComboBox, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsListControl(DesignItem item)
+        {
+            return item != null
+                && (string.Equals(item.Type, FormControlType.ListBox, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(item.Type, FormControlType.CheckedListBox, StringComparison.OrdinalIgnoreCase));
         }
 
         private static string GetDefaultText(string type)
@@ -2987,11 +3353,18 @@ namespace F2B.Forms.Designer
                     return "Label";
                 case FormControlType.CheckBox:
                     return "CheckBox";
+                case FormControlType.RadioButton:
+                    return "RadioButton";
                 case FormControlType.TextBox:
                 case FormControlType.TextArea:
                 case FormControlType.ComboBox:
+                case FormControlType.ListBox:
+                case FormControlType.CheckedListBox:
+                case FormControlType.MaskedTextBox:
+                case FormControlType.NumericUpDown:
                 case FormControlType.DatePicker:
                 case FormControlType.DateTimePicker:
+                case FormControlType.PictureBox:
                 case FormControlType.Panel:
                 case FormControlType.ScrollContainer:
                 case FormControlType.TableLayout:
@@ -3014,6 +3387,11 @@ namespace F2B.Forms.Designer
             {
                 case FormControlType.TextArea:
                     return 240;
+                case FormControlType.ListBox:
+                case FormControlType.CheckedListBox:
+                    return 160;
+                case FormControlType.PictureBox:
+                    return 120;
                 case FormControlType.Panel:
                 case FormControlType.GroupBox:
                     return 200;
@@ -3029,11 +3407,15 @@ namespace F2B.Forms.Designer
                 case FormControlType.Label:
                     return 80;
                 case FormControlType.CheckBox:
+                case FormControlType.RadioButton:
                     return 100;
                 case FormControlType.Button:
                     return 90;
                 case FormControlType.DateTimePicker:
+                case FormControlType.MaskedTextBox:
                     return 160;
+                case FormControlType.NumericUpDown:
+                    return 100;
                 default:
                     return 120;
             }
@@ -3046,6 +3428,11 @@ namespace F2B.Forms.Designer
             {
                 case FormControlType.TextArea:
                     return 80;
+                case FormControlType.ListBox:
+                case FormControlType.CheckedListBox:
+                    return 100;
+                case FormControlType.PictureBox:
+                    return 120;
                 case FormControlType.Panel:
                 case FormControlType.GroupBox:
                     return 140;
@@ -3310,11 +3697,46 @@ namespace F2B.Forms.Designer
         [DisplayName("Selected Index")]
         public int SelectedIndex { get; set; } = -1;
 
+        [Category("Appearance")]
+        [DisplayName("Mask")]
+        public string Mask { get; set; }
+
+        [Category("Data")]
+        [DisplayName("Minimum")]
+        public decimal Minimum { get; set; }
+
+        [Category("Data")]
+        [DisplayName("Maximum")]
+        public decimal Maximum { get; set; } = 100;
+
+        [Category("Data")]
+        [DisplayName("Increment")]
+        public decimal Increment { get; set; } = 1;
+
+        [Category("Data")]
+        [DisplayName("Decimal Places")]
+        public int DecimalPlaces { get; set; }
+
+        [Category("Appearance")]
+        [DisplayName("Image Path")]
+        public string ImagePath { get; set; }
+
+        [Category("Appearance")]
+        [DisplayName("Size Mode")]
+        [Description("Normal | StretchImage | Zoom | CenterImage | AutoSize")]
+        public string SizeMode { get; set; } = "Zoom";
+
         [Browsable(false)]
         public DesignItem Parent { get; set; }
 
         [Browsable(false)]
         public BindingList<DesignItem> Children { get; private set; }
+
+        /// <summary>
+        /// When true, PropertyGrid shows all applicable properties as read-only (Viewer mode).
+        /// </summary>
+        [Browsable(false)]
+        public bool ViewOnlyProperties { get; set; }
 
         [Browsable(false)]
         public string Display
@@ -3331,7 +3753,16 @@ namespace F2B.Forms.Designer
 
         AttributeCollection ICustomTypeDescriptor.GetAttributes()
         {
-            return TypeDescriptor.GetAttributes(typeof(DesignItem));
+            AttributeCollection typeAttrs = TypeDescriptor.GetAttributes(typeof(DesignItem));
+            if (!ViewOnlyProperties)
+            {
+                return typeAttrs;
+            }
+
+            var merged = new Attribute[typeAttrs.Count + 1];
+            typeAttrs.CopyTo(merged, 0);
+            merged[merged.Length - 1] = new ReadOnlyAttribute(true);
+            return new AttributeCollection(merged);
         }
 
         string ICustomTypeDescriptor.GetClassName()
@@ -3398,10 +3829,17 @@ namespace F2B.Forms.Designer
             var filtered = new List<PropertyDescriptor>();
             foreach (PropertyDescriptor property in all)
             {
-                if (IsPropertyApplicable(property.Name))
+                if (!IsPropertyApplicable(property.Name))
                 {
-                    filtered.Add(property);
+                    continue;
                 }
+
+                filtered.Add(ViewOnlyProperties
+                    ? TypeDescriptor.CreateProperty(
+                        typeof(DesignItem),
+                        property,
+                        new ReadOnlyAttribute(true))
+                    : property);
             }
 
             return new PropertyDescriptorCollection(filtered.ToArray());
@@ -3451,6 +3889,9 @@ namespace F2B.Forms.Designer
                         || type == FormControlType.TextBox
                         || type == FormControlType.TextArea
                         || type == FormControlType.CheckBox
+                        || type == FormControlType.RadioButton
+                        || type == FormControlType.MaskedTextBox
+                        || type == FormControlType.NumericUpDown
                         || type == FormControlType.DatePicker
                         || type == FormControlType.DateTimePicker
                         || type == FormControlType.GroupBox
@@ -3461,13 +3902,16 @@ namespace F2B.Forms.Designer
                         || type == FormControlType.Label
                         || type == FormControlType.TextBox
                         || type == FormControlType.TextArea
-                        || type == FormControlType.CheckBox;
+                        || type == FormControlType.MaskedTextBox
+                        || type == FormControlType.CheckBox
+                        || type == FormControlType.RadioButton;
 
                 case "TextAlignV":
                     // WinForms TextBox only supports horizontal alignment.
                     return type == FormControlType.Button
                         || type == FormControlType.Label
-                        || type == FormControlType.CheckBox;
+                        || type == FormControlType.CheckBox
+                        || type == FormControlType.RadioButton;
 
                 case "FontFamily":
                 case "FontSize":
@@ -3481,21 +3925,41 @@ namespace F2B.Forms.Designer
                     return SupportsFont(type)
                         || FormControlType.IsContainer(type)
                         || FormControlType.IsTabControl(type)
-                        || FormControlType.IsDataGrid(type);
+                        || FormControlType.IsDataGrid(type)
+                        || FormControlType.IsPictureBox(type);
 
                 case "ReadOnly":
                     return type == FormControlType.TextBox
-                        || type == FormControlType.TextArea;
+                        || type == FormControlType.TextArea
+                        || type == FormControlType.MaskedTextBox;
 
                 case "Checked":
-                    return type == FormControlType.CheckBox;
+                    return type == FormControlType.CheckBox
+                        || type == FormControlType.RadioButton;
 
                 case "Items":
-                    return type == FormControlType.ComboBox;
+                    return type == FormControlType.ComboBox
+                        || type == FormControlType.ListBox
+                        || type == FormControlType.CheckedListBox;
 
                 case "SelectedIndex":
                     return type == FormControlType.ComboBox
+                        || type == FormControlType.ListBox
+                        || type == FormControlType.CheckedListBox
                         || type == FormControlType.TabControl;
+
+                case "Mask":
+                    return type == FormControlType.MaskedTextBox;
+
+                case "Minimum":
+                case "Maximum":
+                case "Increment":
+                case "DecimalPlaces":
+                    return type == FormControlType.NumericUpDown;
+
+                case "ImagePath":
+                case "SizeMode":
+                    return type == FormControlType.PictureBox;
 
                 case "RowCount":
                 case "ColumnCount":
@@ -3555,22 +4019,51 @@ namespace F2B.Forms.Designer
                 def.BackColor = FontStyleUtil.ToHtmlColor(BackColor);
             }
 
-            if (Type == FormControlType.TextBox || Type == FormControlType.TextArea)
+            if (Type == FormControlType.TextBox || Type == FormControlType.TextArea
+                || Type == FormControlType.MaskedTextBox)
             {
                 def.ReadOnly = ReadOnly;
             }
 
-            if (Type == FormControlType.CheckBox)
+            if (Type == FormControlType.CheckBox || Type == FormControlType.RadioButton)
             {
                 def.Checked = Checked;
             }
 
-            if (Type == FormControlType.ComboBox)
+            if (Type == FormControlType.ComboBox
+                || Type == FormControlType.ListBox
+                || Type == FormControlType.CheckedListBox)
             {
                 def.Items = Items ?? new List<string>();
                 if (SelectedIndex >= 0)
                 {
                     def.SelectedIndex = SelectedIndex;
+                }
+            }
+
+            if (Type == FormControlType.MaskedTextBox && !string.IsNullOrEmpty(Mask))
+            {
+                def.Mask = Mask;
+            }
+
+            if (Type == FormControlType.NumericUpDown)
+            {
+                def.Minimum = Minimum;
+                def.Maximum = Maximum;
+                def.Increment = Increment;
+                def.DecimalPlaces = DecimalPlaces;
+            }
+
+            if (Type == FormControlType.PictureBox)
+            {
+                if (!string.IsNullOrWhiteSpace(ImagePath))
+                {
+                    def.ImagePath = ImagePath;
+                }
+
+                if (!string.IsNullOrWhiteSpace(SizeMode))
+                {
+                    def.SizeMode = SizeMode;
                 }
             }
 
@@ -3618,14 +4111,17 @@ namespace F2B.Forms.Designer
                 || type == FormControlType.Label
                 || type == FormControlType.TextBox
                 || type == FormControlType.TextArea
-                || type == FormControlType.CheckBox;
+                || type == FormControlType.MaskedTextBox
+                || type == FormControlType.CheckBox
+                || type == FormControlType.RadioButton;
         }
 
         private static bool SupportsTextAlignV(string type)
         {
             return type == FormControlType.Button
                 || type == FormControlType.Label
-                || type == FormControlType.CheckBox;
+                || type == FormControlType.CheckBox
+                || type == FormControlType.RadioButton;
         }
 
         private static bool SupportsFont(string type)
@@ -3634,8 +4130,13 @@ namespace F2B.Forms.Designer
                 || type == FormControlType.Label
                 || type == FormControlType.TextBox
                 || type == FormControlType.TextArea
+                || type == FormControlType.MaskedTextBox
+                || type == FormControlType.NumericUpDown
                 || type == FormControlType.CheckBox
+                || type == FormControlType.RadioButton
                 || type == FormControlType.ComboBox
+                || type == FormControlType.ListBox
+                || type == FormControlType.CheckedListBox
                 || type == FormControlType.DatePicker
                 || type == FormControlType.DateTimePicker
                 || type == FormControlType.GroupBox
@@ -3663,6 +4164,13 @@ namespace F2B.Forms.Designer
                 Checked = c.Checked == true,
                 Items = c.Items,
                 SelectedIndex = c.SelectedIndex ?? (FormControlType.IsTabControl(c.Type) ? 0 : -1),
+                Mask = c.Mask,
+                Minimum = c.Minimum ?? 0m,
+                Maximum = c.Maximum ?? 100m,
+                Increment = c.Increment ?? 1m,
+                DecimalPlaces = c.DecimalPlaces ?? 0,
+                ImagePath = c.ImagePath,
+                SizeMode = string.IsNullOrWhiteSpace(c.SizeMode) ? "Zoom" : c.SizeMode,
                 RowCount = c.RowCount ?? 3,
                 ColumnCount = c.ColumnCount ?? 3,
                 Row = c.Row ?? 0,

@@ -26,11 +26,7 @@ namespace F2B.Forms.Designer
 
         protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
         {
-            using (var pen = new Pen(Color.FromArgb(225, 225, 225)))
-            {
-                int y = e.AffectedBounds.Bottom - 1;
-                e.Graphics.DrawLine(pen, e.AffectedBounds.Left, y, e.AffectedBounds.Right, y);
-            }
+            // Bottom edge is drawn once by the toolbox root panel (avoids dual half-width lines).
         }
 
         protected override void OnRenderButtonBackground(ToolStripItemRenderEventArgs e)

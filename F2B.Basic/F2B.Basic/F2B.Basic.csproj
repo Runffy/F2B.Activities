@@ -61,6 +61,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActivityFaultPathBuilder.cs" />
+    <Compile Include="ActivityBodyExpandHelper.cs" />
     <!-- Temporarily disabled: Multiple Assign / Number Increment
     <Compile Include="AssignEntry.cs" />
     -->

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net462</TargetFramework>
+    <RootNamespace>F2B.Forms.Viewer</RootNamespace>
+    <AssemblyName>F2B.Forms.Viewer</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\F2B.Forms.Designer\F2B.Forms.Designer.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 using F2B.Forms.Model;
 
@@ -79,6 +80,37 @@ namespace F2B.Forms.Engine
                 return;
             }
 
+            if (control is RadioButton radioButton)
+            {
+                radioButton.Checked = ToBool(value);
+                return;
+            }
+
+            if (control is NumericUpDown numeric)
+            {
+                if (value != null && decimal.TryParse(Convert.ToString(value), out decimal number))
+                {
+                    if (number < numeric.Minimum)
+                    {
+                        number = numeric.Minimum;
+                    }
+                    else if (number > numeric.Maximum)
+                    {
+                        number = numeric.Maximum;
+                    }
+
+                    numeric.Value = number;
+                }
+
+                return;
+            }
+
+            if (control is ListBox listBox)
+            {
+                ApplyListBoxValue(listBox, value);
+                return;
+            }
+
             if (control is ComboBox comboBox)
             {
                 if (value is System.Collections.IEnumerable enumerable && !(value is string))
@@ -115,7 +147,31 @@ namespace F2B.Forms.Engine
                 return;
             }
 
+            if (control is PictureBox pictureBox)
+            {
+                ApplyPicturePath(pictureBox, value == null ? null : Convert.ToString(value));
+                return;
+            }
+
             control.Text = value == null ? string.Empty : Convert.ToString(value);
+        }
+
+        /// <summary>
+        /// Load a PictureBox from a local file path. Empty/null clears the image.
+        /// </summary>
+        public static void ApplyPicturePath(PictureBox picture, string imagePath)
+        {
+            TryLoadPicture(picture, imagePath);
+        }
+
+        public static string ReadPicturePath(PictureBox picture)
+        {
+            if (picture == null)
+            {
+                return string.Empty;
+            }
+
+            return picture.Tag as string ?? string.Empty;
         }
 
         public static string ReadDateTimePickerValue(DateTimePicker picker)
@@ -253,8 +309,31 @@ namespace F2B.Forms.Engine
                         AutoSize = false
                     };
                     break;
+                case FormControlType.RadioButton:
+                    control = new RadioButton
+                    {
+                        Text = definition.Text ?? string.Empty,
+                        Checked = definition.Checked == true,
+                        AutoSize = false
+                    };
+                    break;
                 case FormControlType.ComboBox:
                     control = CreateComboBox(definition);
+                    break;
+                case FormControlType.ListBox:
+                    control = CreateListBox(definition);
+                    break;
+                case FormControlType.CheckedListBox:
+                    control = CreateCheckedListBox(definition);
+                    break;
+                case FormControlType.MaskedTextBox:
+                    control = CreateMaskedTextBox(definition);
+                    break;
+                case FormControlType.NumericUpDown:
+                    control = CreateNumericUpDown(definition);
+                    break;
+                case FormControlType.PictureBox:
+                    control = CreatePictureBox(definition);
                     break;
                 case FormControlType.DatePicker:
                     control = CreateDateTimePicker(definition, includeTime: false);
@@ -401,7 +480,12 @@ namespace F2B.Forms.Engine
                 || type == FormControlType.TextBox
                 || type == FormControlType.TextArea
                 || type == FormControlType.CheckBox
+                || type == FormControlType.RadioButton
                 || type == FormControlType.ComboBox
+                || type == FormControlType.ListBox
+                || type == FormControlType.CheckedListBox
+                || type == FormControlType.MaskedTextBox
+                || type == FormControlType.NumericUpDown
                 || type == FormControlType.DatePicker
                 || type == FormControlType.DateTimePicker
                 || type == FormControlType.GroupBox
@@ -409,14 +493,16 @@ namespace F2B.Forms.Engine
                 || type == FormControlType.TableLayout
                 || type == FormControlType.DataGrid
                 || type == FormControlType.TabControl
-                || type == FormControlType.TabPage;
+                || type == FormControlType.TabPage
+                || type == FormControlType.PictureBox;
         }
 
         private static bool SupportsBackColor(string type)
         {
             return SupportsFont(type)
                 || FormControlType.IsContainer(type)
-                || FormControlType.IsDataGrid(type);
+                || FormControlType.IsDataGrid(type)
+                || FormControlType.IsPictureBox(type);
         }
 
         private static void ApplyDesignedSize(Control control, ControlDefinition definition)
@@ -471,10 +557,17 @@ namespace F2B.Forms.Engine
                     ((CheckBox)control).TextAlign = TextAlignUtil.ToContentAlignment(h, v);
                     ((CheckBox)control).AutoSize = false;
                     break;
+                case FormControlType.RadioButton:
+                    ((RadioButton)control).TextAlign = TextAlignUtil.ToContentAlignment(h, v);
+                    ((RadioButton)control).AutoSize = false;
+                    break;
                 case FormControlType.TextBox:
                 case FormControlType.TextArea:
                     // TextBox only supports horizontal alignment.
                     ((TextBox)control).TextAlign = TextAlignUtil.ToHorizontalAlignment(h);
+                    break;
+                case FormControlType.MaskedTextBox:
+                    ((MaskedTextBox)control).TextAlign = TextAlignUtil.ToHorizontalAlignment(h);
                     break;
             }
         }
@@ -597,6 +690,235 @@ namespace F2B.Forms.Engine
             }
 
             return combo;
+        }
+
+        private static ListBox CreateListBox(ControlDefinition definition)
+        {
+            var list = new ListBox
+            {
+                IntegralHeight = false,
+                SelectionMode = SelectionMode.One
+            };
+            PopulateItems(item => list.Items.Add(item), definition);
+            ApplySelectedIndex(list, definition);
+            return list;
+        }
+
+        private static CheckedListBox CreateCheckedListBox(ControlDefinition definition)
+        {
+            var list = new CheckedListBox
+            {
+                IntegralHeight = false,
+                CheckOnClick = true
+            };
+            PopulateItems(item => list.Items.Add(item), definition);
+            ApplySelectedIndex(list, definition);
+            return list;
+        }
+
+        private static MaskedTextBox CreateMaskedTextBox(ControlDefinition definition)
+        {
+            var box = new MaskedTextBox
+            {
+                Text = definition.Text ?? string.Empty,
+                ReadOnly = definition.ReadOnly == true,
+                Mask = definition.Mask ?? string.Empty,
+                AsciiOnly = false,
+                AllowPromptAsInput = true
+            };
+
+            if (definition.MaxLength.HasValue && definition.MaxLength.Value > 0)
+            {
+                box.MaxLength = definition.MaxLength.Value;
+            }
+
+            return box;
+        }
+
+        private static NumericUpDown CreateNumericUpDown(ControlDefinition definition)
+        {
+            var numeric = new NumericUpDown
+            {
+                Minimum = definition.Minimum ?? 0m,
+                Maximum = definition.Maximum ?? 100m,
+                Increment = definition.Increment ?? 1m,
+                DecimalPlaces = definition.DecimalPlaces ?? 0,
+                ThousandsSeparator = false
+            };
+
+            if (numeric.Minimum > numeric.Maximum)
+            {
+                decimal swap = numeric.Minimum;
+                numeric.Minimum = numeric.Maximum;
+                numeric.Maximum = swap;
+            }
+
+            decimal value = numeric.Minimum;
+            if (!string.IsNullOrWhiteSpace(definition.Text)
+                && decimal.TryParse(definition.Text.Trim(), out decimal parsed))
+            {
+                value = parsed;
+            }
+
+            if (value < numeric.Minimum)
+            {
+                value = numeric.Minimum;
+            }
+            else if (value > numeric.Maximum)
+            {
+                value = numeric.Maximum;
+            }
+
+            numeric.Value = value;
+            return numeric;
+        }
+
+        private static PictureBox CreatePictureBox(ControlDefinition definition)
+        {
+            var picture = new PictureBox
+            {
+                BorderStyle = BorderStyle.FixedSingle,
+                SizeMode = ParsePictureSizeMode(definition.SizeMode),
+                WaitOnLoad = false
+            };
+
+            TryLoadPicture(picture, definition.ImagePath);
+            return picture;
+        }
+
+        private static void PopulateItems(Action<string> add, ControlDefinition definition)
+        {
+            if (add == null || definition == null || definition.Items == null)
+            {
+                return;
+            }
+
+            foreach (string item in definition.Items)
+            {
+                add(item ?? string.Empty);
+            }
+        }
+
+        private static void ApplySelectedIndex(ListControl list, ControlDefinition definition)
+        {
+            if (list == null || definition == null || !definition.SelectedIndex.HasValue)
+            {
+                return;
+            }
+
+            int index = definition.SelectedIndex.Value;
+            int count = list is ListBox listBox
+                ? listBox.Items.Count
+                : (list is ComboBox combo ? combo.Items.Count : 0);
+            if (index >= 0 && index < count)
+            {
+                list.SelectedIndex = index;
+            }
+        }
+        private static void ApplyListBoxValue(ListBox listBox, object value)
+        {
+            if (value is System.Collections.IEnumerable enumerable && !(value is string))
+            {
+                listBox.Items.Clear();
+                foreach (object item in enumerable)
+                {
+                    if (item != null)
+                    {
+                        listBox.Items.Add(Convert.ToString(item));
+                    }
+                }
+
+                return;
+            }
+
+            string text = Convert.ToString(value) ?? string.Empty;
+            int index = listBox.FindStringExact(text);
+            listBox.SelectedIndex = index;
+        }
+
+        private static void ApplyCheckedListBoxValue(CheckedListBox list, object value)
+        {
+            if (value is System.Collections.IEnumerable enumerable && !(value is string))
+            {
+                list.Items.Clear();
+                foreach (object item in enumerable)
+                {
+                    if (item != null)
+                    {
+                        list.Items.Add(Convert.ToString(item));
+                    }
+                }
+
+                return;
+            }
+
+            string text = Convert.ToString(value) ?? string.Empty;
+            int index = list.FindStringExact(text);
+            list.SelectedIndex = index;
+        }
+
+        private static PictureBoxSizeMode ParsePictureSizeMode(string sizeMode)
+        {
+            if (string.IsNullOrWhiteSpace(sizeMode))
+            {
+                return PictureBoxSizeMode.Zoom;
+            }
+
+            switch (sizeMode.Trim())
+            {
+                case "Normal":
+                    return PictureBoxSizeMode.Normal;
+                case "StretchImage":
+                    return PictureBoxSizeMode.StretchImage;
+                case "AutoSize":
+                    return PictureBoxSizeMode.AutoSize;
+                case "CenterImage":
+                    return PictureBoxSizeMode.CenterImage;
+                case "Zoom":
+                default:
+                    return PictureBoxSizeMode.Zoom;
+            }
+        }
+
+        private static void TryLoadPicture(PictureBox picture, string imagePath)
+        {
+            if (picture == null)
+            {
+                return;
+            }
+
+            Image previous = picture.Image;
+            picture.Image = null;
+            if (previous != null)
+            {
+                previous.Dispose();
+            }
+
+            if (string.IsNullOrWhiteSpace(imagePath))
+            {
+                picture.Tag = string.Empty;
+                return;
+            }
+
+            string path = imagePath.Trim();
+            picture.Tag = path;
+            if (!File.Exists(path))
+            {
+                return;
+            }
+
+            try
+            {
+                // Clone so the file is not locked by the PictureBox.
+                using (var loaded = Image.FromFile(path))
+                {
+                    picture.Image = new Bitmap(loaded);
+                }
+            }
+            catch
+            {
+                // Keep empty PictureBox when path/file is invalid; Tag still holds the requested path.
+            }
         }
 
         private static Panel CreatePanel(ControlDefinition definition, Dictionary<string, Control> map)

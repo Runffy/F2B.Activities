@@ -22,10 +22,15 @@ namespace F2B.Basic
             {
                 BorderBrush = Brushes.Gray,
                 BorderThickness = new Thickness(1),
-                Padding = new Thickness(6)
+                Padding = new Thickness(6),
+                MinWidth = 320,
+                HorizontalAlignment = HorizontalAlignment.Stretch
             };
 
-            var panel = new StackPanel();
+            var panel = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
             panel.Children.Add(CreateLabeledExpressionEditor(
                 "Condition",
                 "ModelItem.Condition",
@@ -52,7 +57,7 @@ namespace F2B.Basic
             {
                 Mode = BindingMode.TwoWay
             });
-            panel.Children.Add(thenPresenter);
+            panel.Children.Add(ActivityBodyExpandHelper.WrapExpandingBody(this, thenPresenter));
 
             border.Child = panel;
             Content = border;

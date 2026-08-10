@@ -16,10 +16,14 @@ namespace F2B.Basic
                 BorderBrush = Brushes.Gray,
                 BorderThickness = new Thickness(1),
                 Padding = new Thickness(6),
-                MinWidth = 320
+                MinWidth = 300,
+                HorizontalAlignment = HorizontalAlignment.Stretch
             };
 
-            var panel = new StackPanel();
+            var panel = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
             panel.Children.Add(CreateExpandableActivitySection(
                 "Try",
                 "ModelItem.Try",
@@ -38,6 +42,9 @@ namespace F2B.Basic
                 FontSize = 10,
                 Foreground = Brushes.DimGray,
                 TextWrapping = TextWrapping.Wrap,
+                // Without MaxWidth, TextBlock DesiredWidth is the full unwrapped line and forces a huge designer.
+                MaxWidth = 280,
+                HorizontalAlignment = HorizontalAlignment.Center,
                 Margin = new Thickness(0, 6, 0, 0)
             };
             panel.Children.Add(hint);
@@ -46,12 +53,12 @@ namespace F2B.Basic
             Content = border;
         }
 
-        private static FrameworkElement CreateExpandableCatchSection(bool expandedByDefault)
+        private FrameworkElement CreateExpandableCatchSection(bool expandedByDefault)
         {
             var presenter = new WorkflowItemPresenter
             {
                 HintText = "Drop Catch activities here — use exception.Source in expressions",
-                MinWidth = 280,
+                MinWidth = 240,
                 MinHeight = 40,
                 Margin = new Thickness(4, 2, 0, 0)
             };
@@ -60,10 +67,10 @@ namespace F2B.Basic
                 Mode = BindingMode.TwoWay
             });
 
-            return CreateExpander("Catch  (argument: exception)", presenter, expandedByDefault);
+            return CreateExpander("Catch  (argument: exception)", ActivityBodyExpandHelper.WrapExpandingBody(this, presenter), expandedByDefault);
         }
 
-        private static FrameworkElement CreateExpandableActivitySection(
+        private FrameworkElement CreateExpandableActivitySection(
             string title,
             string bindingPath,
             string hint,
@@ -72,7 +79,7 @@ namespace F2B.Basic
             var presenter = new WorkflowItemPresenter
             {
                 HintText = hint,
-                MinWidth = 280,
+                MinWidth = 240,
                 MinHeight = 40,
                 Margin = new Thickness(4, 2, 0, 0)
             };
@@ -81,7 +88,7 @@ namespace F2B.Basic
                 Mode = BindingMode.TwoWay
             });
 
-            return CreateExpander(title, presenter, expandedByDefault);
+            return CreateExpander(title, ActivityBodyExpandHelper.WrapExpandingBody(this, presenter), expandedByDefault);
         }
 
         private static Expander CreateExpander(string header, UIElement content, bool expandedByDefault)
@@ -92,6 +99,8 @@ namespace F2B.Basic
                 IsExpanded = expandedByDefault,
                 Margin = new Thickness(0, 0, 0, 6),
                 FontWeight = FontWeights.SemiBold,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 Content = content
             };
         }

@@ -12,6 +12,12 @@ namespace F2B.Forms.Model
         public const string ComboBox = "ComboBox";
         public const string DatePicker = "DatePicker";
         public const string DateTimePicker = "DateTimePicker";
+        public const string CheckedListBox = "CheckedListBox";
+        public const string ListBox = "ListBox";
+        public const string MaskedTextBox = "MaskedTextBox";
+        public const string NumericUpDown = "NumericUpDown";
+        public const string PictureBox = "PictureBox";
+        public const string RadioButton = "RadioButton";
         public const string Panel = "Panel";
         public const string GroupBox = "GroupBox";
         public const string ScrollContainer = "ScrollContainer";
@@ -38,6 +44,12 @@ namespace F2B.Forms.Model
                 case ComboBox:
                 case DatePicker:
                 case DateTimePicker:
+                case CheckedListBox:
+                case ListBox:
+                case MaskedTextBox:
+                case NumericUpDown:
+                case PictureBox:
+                case RadioButton:
                 case Panel:
                 case GroupBox:
                 case ScrollContainer:
@@ -51,6 +63,42 @@ namespace F2B.Forms.Model
             }
         }
 
+        public static bool IsListControl(string type)
+        {
+            if (string.IsNullOrWhiteSpace(type))
+            {
+                return false;
+            }
+
+            string t = type.Trim();
+            return string.Equals(t, ListBox, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(t, CheckedListBox, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(t, ComboBox, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool IsRadioButton(string type)
+        {
+            return !string.IsNullOrWhiteSpace(type)
+                && string.Equals(type.Trim(), RadioButton, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool IsMaskedTextBox(string type)
+        {
+            return !string.IsNullOrWhiteSpace(type)
+                && string.Equals(type.Trim(), MaskedTextBox, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool IsNumericUpDown(string type)
+        {
+            return !string.IsNullOrWhiteSpace(type)
+                && string.Equals(type.Trim(), NumericUpDown, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool IsPictureBox(string type)
+        {
+            return !string.IsNullOrWhiteSpace(type)
+                && string.Equals(type.Trim(), PictureBox, StringComparison.OrdinalIgnoreCase);
+        }
         public static bool IsDatePicker(string type)
         {
             return !string.IsNullOrWhiteSpace(type)
