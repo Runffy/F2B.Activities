@@ -2,6 +2,7 @@ using OpenRPA.Interfaces;
 using System;
 using System.Activities;
 using System.Activities.Presentation;
+using F2B.OpenRpa.Design;
 using System.Activities.Presentation.Converters;
 using System.Activities.Presentation.Model;
 using System.Activities.Presentation.View;
@@ -32,7 +33,7 @@ namespace F2B.Basic
             panel.Children.Add(CreateLabeledExpressionEditor("Command", "ModelItem.Command", typeof(string), "cmd /c ...", out _commandEditorBorder, out _commandExpressionBox));
 
             border.Child = panel;
-            Content = border;
+            ActivityDesignerCollapseHelper.Attach(this, border);
             Loaded += OnLoaded;
         }
 

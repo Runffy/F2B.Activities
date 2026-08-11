@@ -1,3 +1,4 @@
+using F2B.OpenRpa.Design;
 using System.Activities.Presentation;
 using System.Activities.Presentation.View;
 using System.Windows;
@@ -33,7 +34,7 @@ namespace F2B.Basic
             });
 
             root.Child = ActivityBodyExpandHelper.WrapExpandingBody(this, presenter);
-            Content = root;
+            ActivityDesignerCollapseHelper.Attach(this, root);
         }
     }
 }

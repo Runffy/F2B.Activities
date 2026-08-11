@@ -108,7 +108,7 @@ namespace F2B.Forms.Designers
             });
             root.Children.Add(presenter);
 
-            Content = new Border
+            var border = new Border
             {
                 BorderBrush = Brushes.SteelBlue,
                 BorderThickness = new Thickness(1),
@@ -116,6 +116,7 @@ namespace F2B.Forms.Designers
                 MinWidth = 320,
                 Child = root
             };
+            F2B.OpenRpa.Design.ActivityDesignerCollapseHelper.Attach(this, border);
 
             Loaded += (s, e) =>
             {

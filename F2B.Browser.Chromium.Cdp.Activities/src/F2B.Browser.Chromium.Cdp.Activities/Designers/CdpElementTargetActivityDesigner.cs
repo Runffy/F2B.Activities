@@ -214,7 +214,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
 
             _rootPanel.Child = body;
             host.Children.Add(_rootPanel);
-            Content = host;
+            ActivityDesignerCollapseHelper.Attach(this, host);
             Loaded += OnLoaded;
         }
 
@@ -608,7 +608,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
                 _setValueEditorBorder,
                 _setValueRow.Visibility == Visibility.Visible,
                 CdpDesignerShared.IsArgumentFilled(ModelItem, "SetValue", _setValueExpressionBox));
-            // Output Result is optional (property grid only) â€” never mark required on canvas.
+            // Output Result is optional (property grid only) â€?never mark required on canvas.
             CdpDesignerShared.SetRequiredBorder(
                 _outputResultEditorBorder,
                 false,

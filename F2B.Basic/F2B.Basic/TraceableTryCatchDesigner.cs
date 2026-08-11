@@ -1,4 +1,5 @@
 using System.Activities.Presentation;
+using F2B.OpenRpa.Design;
 using System.Activities.Presentation.View;
 using System.Windows;
 using System.Windows.Controls;
@@ -50,14 +51,14 @@ namespace F2B.Basic
             panel.Children.Add(hint);
 
             border.Child = panel;
-            Content = border;
+            ActivityDesignerCollapseHelper.Attach(this, border);
         }
 
         private FrameworkElement CreateExpandableCatchSection(bool expandedByDefault)
         {
             var presenter = new WorkflowItemPresenter
             {
-                HintText = "Drop Catch activities here â€” use exception.Source in expressions",
+                HintText = "Drop Catch activities here â€?use exception.Source in expressions",
                 MinWidth = 240,
                 MinHeight = 40,
                 Margin = new Thickness(4, 2, 0, 0)

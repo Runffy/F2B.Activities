@@ -14,12 +14,18 @@ namespace F2B.Basic
     /// </summary>
     [Designer(typeof(TraceableTryCatchDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("Traceable TryCatch")]
-    [Description("Try/Catch/Finally that attributes faults to a relative activity path (XPath-like) and DisplayName breadcrumb.")]
+    [Description("Try/Catch/Finally that attributes faults to a relative activity path (XPath-like) and DisplayName breadcrumb. Message \"Return\" skips Catch/Finally. Use Traceable Rethrow in Catch to propagate the original exception (keeps Source) after Finally.")]
     public sealed class TraceableTryCatchActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {
+        /// <summary>
+        /// Throw with this message inside Try to exit the TraceableTryCatch without Catch/Finally (early return).
+        /// </summary>
+        public const string ReturnMessage = "Return";
+
         private readonly Variable<Exception> _caughtException = new Variable<Exception>("CaughtException");
         private readonly Variable<bool> _exceptionHandled = new Variable<bool>("ExceptionHandled");
         private readonly Variable<bool> _suppressCancel = new Variable<bool>("SuppressCancel");
+        private readonly Variable<bool> _skipFinally = new Variable<bool>("SkipFinally");
 
         public TraceableTryCatchActivity()
         {
@@ -95,6 +101,7 @@ namespace F2B.Basic
             metadata.AddImplementationVariable(_caughtException);
             metadata.AddImplementationVariable(_exceptionHandled);
             metadata.AddImplementationVariable(_suppressCancel);
+            metadata.AddImplementationVariable(_skipFinally);
 
             // Tracking extension: first Faulted Id (leaf) for accurate path attribution.
             metadata.AddDefaultExtensionProvider(() => new FaultPathTrackingExtension());
@@ -111,6 +118,7 @@ namespace F2B.Basic
             context.SetValue(_caughtException, null);
             context.SetValue(_exceptionHandled, false);
             context.SetValue(_suppressCancel, false);
+            context.SetValue(_skipFinally, false);
 
             FaultPathTrackingExtension tracker = context.GetExtension<FaultPathTrackingExtension>();
             if (tracker != null)
@@ -138,6 +146,13 @@ namespace F2B.Basic
 
         private void OnExceptionFromTry(NativeActivityFaultContext faultContext, Exception propagatedException, ActivityInstance propagatedFrom)
         {
+            // Early-return signal: swallow, skip Catch/Finally, continue after this TryCatch.
+            if (IsReturnSignal(propagatedException))
+            {
+                AcceptReturnSignal(faultContext, propagatedFrom);
+                return;
+            }
+
             string preferredId = null;
             FaultPathTrackingExtension tracker = faultContext.GetExtension<FaultPathTrackingExtension>();
             if (tracker != null)
@@ -177,6 +192,26 @@ namespace F2B.Basic
             }
         }
 
+        private static bool IsReturnSignal(Exception exception)
+        {
+            return exception != null
+                && string.Equals(exception.Message, ReturnMessage, StringComparison.Ordinal);
+        }
+
+        private void AcceptReturnSignal(NativeActivityFaultContext faultContext, ActivityInstance propagatedFrom)
+        {
+            faultContext.HandleFault();
+            if (propagatedFrom != null)
+            {
+                faultContext.CancelChild(propagatedFrom);
+            }
+
+            faultContext.SetValue(_suppressCancel, true);
+            faultContext.SetValue(_exceptionHandled, true);
+            faultContext.SetValue(_caughtException, null);
+            faultContext.SetValue(_skipFinally, true);
+        }
+
         private void OnTryComplete(NativeActivityContext context, ActivityInstance completedInstance)
         {
             if (completedInstance != null && completedInstance.State == ActivityInstanceState.Faulted)
@@ -195,11 +230,38 @@ namespace F2B.Basic
 
         private void OnExceptionFromCatchOrFinally(NativeActivityFaultContext faultContext, Exception propagatedException, ActivityInstance propagatedFrom)
         {
+            if (IsReturnSignal(propagatedException))
+            {
+                AcceptReturnSignal(faultContext, propagatedFrom);
+                return;
+            }
+
+            // Rethrow activity: swallow marker, keep original exception, run Finally, then rethrow original (Source intact).
+            if (propagatedException is TraceableRethrowSignal)
+            {
+                faultContext.HandleFault();
+                if (propagatedFrom != null)
+                {
+                    faultContext.CancelChild(propagatedFrom);
+                }
+
+                faultContext.SetValue(_suppressCancel, true);
+                // Catch was marked handled when scheduled; clear so RethrowIfNeeded throws _caughtException.
+                faultContext.SetValue(_exceptionHandled, false);
+                return;
+            }
+
             faultContext.SetValue(_suppressCancel, false);
         }
 
         private void ScheduleFinally(NativeActivityContext context)
         {
+            if (context.GetValue(_skipFinally))
+            {
+                OnFinallyComplete(context, null);
+                return;
+            }
+
             if (Finally != null)
             {
                 context.ScheduleActivity(Finally, OnFinallyComplete, OnExceptionFromCatchOrFinally);

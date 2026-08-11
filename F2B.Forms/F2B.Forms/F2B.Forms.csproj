@@ -10,10 +10,14 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="System.Activities" />
     <Reference Include="System.Activities.Presentation" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\F2B.OpenRpa.Design\F2B.OpenRpa.Design.csproj" />
   </ItemGroup>
 </Project>

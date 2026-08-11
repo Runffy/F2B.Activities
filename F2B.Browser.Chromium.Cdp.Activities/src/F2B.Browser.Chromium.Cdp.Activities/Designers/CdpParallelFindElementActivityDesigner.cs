@@ -65,7 +65,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
 
             _rootPanel.Child = _body;
             host.Children.Add(_rootPanel);
-            Content = host;
+            ActivityDesignerCollapseHelper.Attach(this, host);
             Loaded += OnLoaded;
         }
 

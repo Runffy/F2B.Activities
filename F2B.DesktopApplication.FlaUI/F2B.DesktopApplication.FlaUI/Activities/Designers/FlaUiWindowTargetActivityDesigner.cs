@@ -71,7 +71,7 @@ namespace F2B.DesktopApplication.FlaUI
 
             _rootPanel.Child = body;
             host.Children.Add(_rootPanel);
-            Content = host;
+            ActivityDesignerCollapseHelper.Attach(this, host);
             Loaded += OnLoaded;
         }
 

@@ -69,6 +69,11 @@
     <Compile Include="GetRuntimeDirectoryActivity.cs" />
     <Compile Include="GetRuntimeDirectoryDesigner.cs" />
     <Compile Include="GetWindowsCredentialActivity.cs" />
+    <Compile Include="Global.cs" />
+    <Compile Include="GlobalValueActivities.cs" />
+    <Compile Include="GetAllWindowsCredentialsActivity.cs" />
+    <Compile Include="BasicSimpleActivityDesigner.cs" />
+    <Compile Include="..\..\F2B.OpenRpa.Design\ActivityDesignerCollapseHelper.cs" Link="OpenRpa.Design\ActivityDesignerCollapseHelper.cs" />
     <Compile Include="GetWindowsCredentialDesigner.cs" />
     <Compile Include="HouseKeepingActivity.cs" />
     <Compile Include="HouseKeepingDesigner.cs" />
@@ -107,6 +112,8 @@
     <Compile Include="StartFileDesigner.cs" />
     <Compile Include="ThrowSystemExceptionActivity.cs" />
     <Compile Include="ThrowSystemExceptionDesigner.cs" />
+    <Compile Include="ReturnActivity.cs" />
+    <Compile Include="TraceableRethrowActivity.cs" />
     <Compile Include="TraceableTryCatchActivity.cs" />
     <Compile Include="TraceableTryCatchDesigner.cs" />
     <Compile Include="UnitTestScopeActivity.cs" />

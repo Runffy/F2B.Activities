@@ -1,3 +1,4 @@
+using F2B.OpenRpa.Design;
 using System;
 using System.Activities.Presentation;
 using System.Activities.Presentation.Converters;
@@ -99,7 +100,7 @@ namespace F2B.Terminal.PCOMM
 
             _rootPanel.Child = body;
             _host.Children.Add(_rootPanel);
-            Content = _host;
+            ActivityDesignerCollapseHelper.Attach(this, _host);
 
             Loaded += OnLoaded;
         }

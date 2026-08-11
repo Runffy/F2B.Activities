@@ -49,7 +49,8 @@ namespace F2B.Forms.Activities
         public Activity Init { get; set; }
 
         /// <summary>
-        /// Runs when the user tries to close the form (X). Cancelled until this scope calls Close Form (or form otherwise closes).
+        /// Runs when the user tries to close the form (X). Cancelled until Close Scope finishes
+        /// (auto-closes afterward). Optional Close Form inside other event handlers can close early.
         /// Null = allow immediate user close.
         /// </summary>
         [Browsable(false)]
@@ -293,7 +294,7 @@ namespace F2B.Forms.Activities
                 if (Close != null)
                 {
                     session.BeginHandler(UiBehavior.LockQueue);
-                    context.ScheduleActivity(Close, OnHandlerComplete, OnHandlerFault);
+                    context.ScheduleActivity(Close, OnCloseScopeComplete, OnHandlerFault);
                 }
                 else
                 {
@@ -342,6 +343,22 @@ namespace F2B.Forms.Activities
             return formEvent != null
                 && string.Equals(formEvent.ControlId, "form", StringComparison.OrdinalIgnoreCase)
                 && string.Equals(formEvent.EventName, "Closing", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void OnCloseScopeComplete(NativeActivityContext context, ActivityInstance completed)
+        {
+            FormSession session = context.GetValue(_session);
+            if (session != null)
+            {
+                session.EndHandler();
+                // Close Scope finished: auto-dismiss the form unless Close Form already closed it.
+                if (!session.IsClosed)
+                {
+                    session.Close(FormCloseReason.UserClose);
+                }
+            }
+
+            CompleteWithOutputs(context, session);
         }
 
         private void OnHandlerComplete(NativeActivityContext context, ActivityInstance completed)

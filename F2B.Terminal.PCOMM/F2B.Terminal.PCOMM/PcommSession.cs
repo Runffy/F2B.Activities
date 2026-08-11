@@ -109,7 +109,15 @@ namespace F2B.Terminal.PCOMM
             {
                 try
                 {
-                    if (IsWaitForStringSuccess(presentationSpace.WaitForString(text, intervalMs)))
+                    // AutECLPS: WaitForString(text, row, col, timeoutMs). Two-arg overload binds
+                    // interval as Row and leaves timeout as INFINITE — use explicit timeout.
+                    int remaining = timeoutMs - (int)stopwatch.ElapsedMilliseconds;
+                    if (remaining < 0)
+                    {
+                        remaining = 0;
+                    }
+
+                    if (IsWaitForStringSuccess(presentationSpace.WaitForString(text, 0, 0, remaining)))
                     {
                         return true;
                     }
@@ -123,6 +131,8 @@ namespace F2B.Terminal.PCOMM
                 {
                     break;
                 }
+
+                Thread.Sleep(Math.Min(intervalMs, Math.Max(1, timeoutMs - (int)stopwatch.ElapsedMilliseconds)));
             }
 
             throw new TimeoutException(

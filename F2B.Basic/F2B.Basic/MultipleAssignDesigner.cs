@@ -1,6 +1,7 @@
 using System;
 using System.Activities;
 using System.Activities.Presentation;
+using F2B.OpenRpa.Design;
 using System.Activities.Presentation.Converters;
 using System.Activities.Presentation.Model;
 using System.Activities.Presentation.View;
@@ -48,7 +49,7 @@ namespace F2B.Basic
             root.Children.Add(_addButton);
 
             border.Child = root;
-            Content = border;
+            ActivityDesignerCollapseHelper.Attach(this, border);
             Loaded += OnLoaded;
             Unloaded += OnUnloaded;
         }
@@ -251,7 +252,7 @@ namespace F2B.Basic
             var expressionTextBox = new ExpressionTextBox
             {
                 HintText = hint,
-                // Must match the row's assign type (String/Int32/â€¦) â€” object alone cannot L-value an Int32 var.
+                // Must match the row's assign type (String/Int32/â€? â€?object alone cannot L-value an Int32 var.
                 ExpressionType = expressionType ?? typeof(object),
                 UseLocationExpression = useLocationExpression,
                 PathToArgument = propertyName,

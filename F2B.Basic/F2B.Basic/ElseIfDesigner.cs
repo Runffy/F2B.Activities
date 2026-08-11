@@ -1,5 +1,6 @@
 using System;
 using System.Activities.Presentation;
+using F2B.OpenRpa.Design;
 using System.Activities.Presentation.Converters;
 using System.Activities.Presentation.Model;
 using System.Activities.Presentation.View;
@@ -98,7 +99,7 @@ namespace F2B.Basic
             _root.Children.Add(_elseSection);
 
             border.Child = _root;
-            Content = border;
+            ActivityDesignerCollapseHelper.Attach(this, border);
             Loaded += OnLoaded;
             Unloaded += OnUnloaded;
         }
@@ -149,7 +150,7 @@ namespace F2B.Basic
                 SharedSizeGroup = LabelColumnGroup,
                 MinWidth = LabelColumnWidth
             });
-            // Fixed-width condition editor â€” do not grow with expression text length.
+            // Fixed-width condition editor â€?do not grow with expression text length.
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var label = new TextBlock

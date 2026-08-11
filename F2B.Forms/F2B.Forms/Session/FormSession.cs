@@ -1375,6 +1375,146 @@ namespace F2B.Forms.Session
             });
         }
 
+        /// <summary>
+        /// Show a Yes/No confirmation owned by the active form. Returns true when Yes is chosen.
+        /// </summary>
+        public bool RequestConfirm(
+            string message,
+            string title = null,
+            string yesText = null,
+            string noText = null)
+        {
+            bool confirmed = false;
+            InvokeOnUi(() =>
+            {
+                confirmed = ShowConfirmDialog(
+                    _form,
+                    message ?? string.Empty,
+                    string.IsNullOrWhiteSpace(title) ? (_form == null ? "Form" : _form.Text) : title,
+                    string.IsNullOrWhiteSpace(yesText) ? "Yes" : yesText,
+                    string.IsNullOrWhiteSpace(noText) ? "No" : noText);
+            });
+            return confirmed;
+        }
+
+        public string GetControlText(string controlId)
+        {
+            string result = string.Empty;
+            InvokeOnUi(() =>
+            {
+                Control control = GetControl(controlId);
+                result = ReadTextLocal(control);
+            });
+            return result ?? string.Empty;
+        }
+
+        private static string ReadTextLocal(Control control)
+        {
+            if (control == null)
+            {
+                return string.Empty;
+            }
+
+            if (control is DateTimePicker dateTimePicker)
+            {
+                return FormRenderer.ReadDateTimePickerValue(dateTimePicker);
+            }
+
+            if (control is NumericUpDown numeric)
+            {
+                return Convert.ToString(numeric.Value) ?? string.Empty;
+            }
+
+            if (control is CheckBox checkBox)
+            {
+                return checkBox.Text ?? string.Empty;
+            }
+
+            if (control is RadioButton radioButton)
+            {
+                return radioButton.Text ?? string.Empty;
+            }
+
+            if (control is ListBox listBox && !(control is CheckedListBox))
+            {
+                return listBox.SelectedItem == null
+                    ? string.Empty
+                    : (Convert.ToString(listBox.SelectedItem) ?? string.Empty);
+            }
+
+            if (control is CheckedListBox checkedList)
+            {
+                return checkedList.SelectedItem == null
+                    ? string.Empty
+                    : (Convert.ToString(checkedList.SelectedItem) ?? string.Empty);
+            }
+
+            if (control is ComboBox comboBox)
+            {
+                return comboBox.SelectedItem == null
+                    ? (comboBox.Text ?? string.Empty)
+                    : (Convert.ToString(comboBox.SelectedItem) ?? string.Empty);
+            }
+
+            if (control is PictureBox pictureBox)
+            {
+                return FormRenderer.ReadPicturePath(pictureBox);
+            }
+
+            return control.Text ?? string.Empty;
+        }
+
+        private static bool ShowConfirmDialog(
+            IWin32Window owner,
+            string message,
+            string title,
+            string yesText,
+            string noText)
+        {
+            using (var dialog = new Form())
+            {
+                dialog.Text = title ?? "Confirm";
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.MinimizeBox = false;
+                dialog.MaximizeBox = false;
+                dialog.ShowInTaskbar = false;
+                dialog.ClientSize = new Size(420, 160);
+                dialog.Font = SystemFonts.MessageBoxFont;
+
+                var label = new Label
+                {
+                    AutoSize = false,
+                    Text = message ?? string.Empty,
+                    Location = new Point(16, 16),
+                    Size = new Size(388, 72)
+                };
+
+                var yesButton = new Button
+                {
+                    Text = yesText,
+                    DialogResult = DialogResult.Yes,
+                    Size = new Size(100, 28),
+                    Location = new Point(200, 110)
+                };
+                var noButton = new Button
+                {
+                    Text = noText,
+                    DialogResult = DialogResult.No,
+                    Size = new Size(100, 28),
+                    Location = new Point(310, 110)
+                };
+
+                dialog.Controls.Add(label);
+                dialog.Controls.Add(yesButton);
+                dialog.Controls.Add(noButton);
+                dialog.AcceptButton = yesButton;
+                dialog.CancelButton = noButton;
+
+                return dialog.ShowDialog(owner) == DialogResult.Yes;
+            }
+        }
+
         public string BuildResultJson()
         {
             var snapshot = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);

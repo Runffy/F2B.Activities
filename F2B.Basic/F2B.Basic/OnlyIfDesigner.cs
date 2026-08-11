@@ -1,5 +1,6 @@
 using System;
 using System.Activities.Presentation;
+using F2B.OpenRpa.Design;
 using System.Activities.Presentation.Converters;
 using System.Activities.Presentation.View;
 using System.ComponentModel;
@@ -60,7 +61,7 @@ namespace F2B.Basic
             panel.Children.Add(ActivityBodyExpandHelper.WrapExpandingBody(this, thenPresenter));
 
             border.Child = panel;
-            Content = border;
+            ActivityDesignerCollapseHelper.Attach(this, border);
             Loaded += OnLoaded;
         }
 

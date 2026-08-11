@@ -1,0 +1,81 @@
+## Visual Studio
+.vs/
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+UpgradeLog*.htm
+UpgradeLog*.XML
+*_UpgradeReport_Files/
+*.sdf
+*.opendb
+*.VC.db
+*.VC.VC.opendb
+
+## Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+[Xx]64/
+[Xx]86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+bld/
+[Bb]uild/
+
+## NuGet
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## MSTest / NUnit / coverage
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+
+## ReSharper / Rider / JetBrains
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+.idea/
+
+## Publish
+*.publish.xml
+*.azurePubxml
+*.pubxml
+*.publishproj
+PublishScripts/
+
+## Project-specific
+F2B.Basic/packages/
+F2B.Basic/resources/
+F2B.Browser.Chromium.Cdp.Activities/reference/
+F2B.Forms/samples/
+
+## Others
+*.dbmdl
+*.jfm
+*.pfx
+*.publishsettings
+~$*
+*~
+*.swp
+*.bak
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store

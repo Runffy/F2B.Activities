@@ -61,7 +61,7 @@ namespace F2B.Forms.Designers
             _foreColorBox.LostFocus += (s, e) => CommitOptionalText(_foreColorBox, "ForeColor");
             root.Children.Add(_foreColorBox);
 
-            Content = new Border
+            var border = new Border
             {
                 BorderBrush = Brushes.Gray,
                 BorderThickness = new Thickness(1),
@@ -69,6 +69,7 @@ namespace F2B.Forms.Designers
                 MinWidth = 280,
                 Child = root
             };
+            F2B.OpenRpa.Design.ActivityDesignerCollapseHelper.Attach(this, border);
 
             Loaded += (s, e) =>
             {

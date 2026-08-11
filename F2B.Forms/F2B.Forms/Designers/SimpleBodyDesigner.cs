@@ -22,13 +22,14 @@ namespace F2B.Forms.Designers
                 Mode = BindingMode.TwoWay
             });
 
-            Content = new Border
+            var border = new Border
             {
                 BorderBrush = Brushes.Gray,
                 BorderThickness = new Thickness(1),
                 Padding = new Thickness(6),
                 Child = presenter
             };
+            F2B.OpenRpa.Design.ActivityDesignerCollapseHelper.Attach(this, border);
         }
     }
 }

@@ -1,14 +1,17 @@
+using System.Activities.Presentation;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using F2B.OpenRpa.Design;
-using System.Activities.Presentation;
 
-namespace F2B.Forms.Designers
+namespace F2B.Basic
 {
-    public sealed class SimpleActivityDesigner : ActivityDesigner
+    /// <summary>
+    /// Minimal canvas designer: property-grid configuration + OpenRPA collapse support.
+    /// </summary>
+    public sealed class BasicSimpleActivityDesigner : ActivityDesigner
     {
-        public SimpleActivityDesigner()
+        public BasicSimpleActivityDesigner()
         {
             var border = new Border
             {

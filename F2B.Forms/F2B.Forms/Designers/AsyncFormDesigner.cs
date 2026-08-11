@@ -28,19 +28,19 @@ namespace F2B.Forms.Designers
             root.Children.Add(CreateSection(
                 "Close Scope",
                 "ModelItem.Close",
-                "Drop close activities here (runs on user X / Closing). Call Close Form to dismiss.",
+                "Drop close activities here (runs on user X). Form closes automatically when this scope finishes — Close Form is optional and meant for other event handlers.",
                 expandedByDefault: false));
 
             root.Children.Add(new TextBlock
             {
-                Text = "Form Path / Timeout → Property Grid. Defaults → Init Scope. User close → Close Scope.",
+                Text = "Form Path / Timeout → Property Grid. Defaults → Init Scope. User close → Close Scope (auto-close).",
                 FontSize = 10,
                 Foreground = Brushes.DimGray,
                 Margin = new Thickness(0, 8, 0, 0),
                 TextWrapping = TextWrapping.Wrap
             });
 
-            Content = new Border
+            var border = new Border
             {
                 BorderBrush = Brushes.DarkSlateGray,
                 BorderThickness = new Thickness(1),
@@ -48,6 +48,7 @@ namespace F2B.Forms.Designers
                 MinWidth = 360,
                 Child = root
             };
+            F2B.OpenRpa.Design.ActivityDesignerCollapseHelper.Attach(this, border);
         }
 
         private FrameworkElement CreateBindEventsSection()

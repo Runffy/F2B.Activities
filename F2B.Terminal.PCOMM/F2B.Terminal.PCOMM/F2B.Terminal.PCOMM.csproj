@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\F2B.OpenRpa.Design\ActivityDesignerCollapseHelper.cs" Link="OpenRpa.Design\ActivityDesignerCollapseHelper.cs" />
     <Compile Include="Activities\CloseTerminalActivity.cs" />
     <Compile Include="Activities\ConnectToTerminalActivity.cs" />
     <Compile Include="Activities\Designers\PcommCanvasFieldsActivityDesigner.cs" />

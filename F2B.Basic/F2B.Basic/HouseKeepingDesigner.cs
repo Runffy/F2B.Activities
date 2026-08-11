@@ -1,5 +1,6 @@
 using System;
 using System.Activities.Presentation;
+using F2B.OpenRpa.Design;
 using System.Activities.Presentation.Converters;
 using System.Activities.Presentation.View;
 using System.ComponentModel;
@@ -59,7 +60,7 @@ namespace F2B.Basic
             row.Children.Add(_beforeBorder);
 
             border.Child = row;
-            Content = border;
+            ActivityDesignerCollapseHelper.Attach(this, border);
             Loaded += OnLoaded;
         }
 

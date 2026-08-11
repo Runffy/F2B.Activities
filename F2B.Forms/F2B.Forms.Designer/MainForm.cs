@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Design;
 using System.Drawing.Drawing2D;
@@ -61,15 +62,23 @@ namespace F2B.Forms.Designer
         private string _toolboxDragType;
         private bool _toolboxDidDrag;
         private readonly bool _isViewer;
+        private readonly string _initialPath;
+        private bool _switchingPeer;
 
         public MainForm()
-            : this(isViewer: false)
+            : this(isViewer: false, initialPath: null)
         {
         }
 
         public MainForm(bool isViewer)
+            : this(isViewer, initialPath: null)
+        {
+        }
+
+        public MainForm(bool isViewer, string initialPath)
         {
             _isViewer = isViewer;
+            _initialPath = string.IsNullOrWhiteSpace(initialPath) ? null : initialPath.Trim().Trim('"');
             Text = _isViewer ? "F2B.Forms.Viewer" : "F2B.Forms.Designer（New Form）";
             Width = 1200;
             Height = 780;
@@ -213,7 +222,18 @@ namespace F2B.Forms.Designer
             Controls.Add(menu);
             MainMenuStrip = menu;
 
-            Shown += (s, e) => UpdateDesignAreaSize();
+            Shown += (s, e) =>
+            {
+                UpdateDesignAreaSize();
+                if (!string.IsNullOrEmpty(_initialPath) && File.Exists(_initialPath))
+                {
+                    BeginInvoke(new Action(() => LoadFormFromPath(_initialPath)));
+                }
+                else if (_isViewer)
+                {
+                    BeginInvoke(new Action(() => TryOpenForm()));
+                }
+            };
             NewForm();
         }
 
@@ -468,6 +488,7 @@ namespace F2B.Forms.Designer
             {
                 menu.Items.Add(new ToolStripMenuItem("Open", null, (s, e) => TryOpenForm()));
                 menu.Items.Add(new ToolStripMenuItem("Preview", null, (s, e) => Preview()));
+                menu.Items.Add(new ToolStripMenuItem("Switch To Designer", null, (s, e) => SwitchToPeer()));
                 return menu;
             }
 
@@ -476,6 +497,7 @@ namespace F2B.Forms.Designer
             menu.Items.Add(new ToolStripMenuItem("Save", null, (s, e) => SaveForm(false)));
             menu.Items.Add(new ToolStripMenuItem("SaveAs", null, (s, e) => SaveForm(true)));
             menu.Items.Add(new ToolStripMenuItem("Preview", null, (s, e) => Preview()));
+            menu.Items.Add(new ToolStripMenuItem("Switch To Viewer", null, (s, e) => SwitchToPeer()));
             return menu;
         }
 
@@ -997,6 +1019,11 @@ namespace F2B.Forms.Designer
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
+            if (_switchingPeer)
+            {
+                return;
+            }
+
             if (!PromptSaveIfDirty())
             {
                 e.Cancel = true;
@@ -2243,27 +2270,43 @@ namespace F2B.Forms.Designer
                     return;
                 }
 
-                FormDefinition def = FormJsonLoader.LoadFromFile(dialog.FileName);
-                _roots.Clear();
-                _formSettings.Title = def.Title ?? "Form";
-                _formSettings.Width = def.Width > 0 ? def.Width : 640;
-                _formSettings.Height = def.Height > 0 ? def.Height : 480;
-                _formSettings.AllowResize = def.AllowResize;
-                if (def.Controls != null)
-                {
-                    foreach (ControlDefinition c in def.Controls)
-                    {
-                        _roots.Add(DesignItem.FromDefinition(c, parent: null));
-                    }
-                }
-
-                _currentPath = dialog.FileName;
-                RebuildTreePreserveSelection();
-                SelectFormRoot(syncTree: true);
-                UpdateDesignAreaSize();
-                ClearDirty();
-                ResetHistory();
+                LoadFormFromPath(dialog.FileName);
             }
+        }
+
+        private void LoadFormFromPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            {
+                MessageBox.Show(
+                    this,
+                    "Form file not found:\n" + path,
+                    _isViewer ? "F2B.Forms.Viewer" : "F2B.Forms.Designer",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            FormDefinition def = FormJsonLoader.LoadFromFile(path);
+            _roots.Clear();
+            _formSettings.Title = def.Title ?? "Form";
+            _formSettings.Width = def.Width > 0 ? def.Width : 640;
+            _formSettings.Height = def.Height > 0 ? def.Height : 480;
+            _formSettings.AllowResize = def.AllowResize;
+            if (def.Controls != null)
+            {
+                foreach (ControlDefinition c in def.Controls)
+                {
+                    _roots.Add(DesignItem.FromDefinition(c, parent: null));
+                }
+            }
+
+            _currentPath = path;
+            RebuildTreePreserveSelection();
+            SelectFormRoot(syncTree: true);
+            UpdateDesignAreaSize();
+            ClearDirty();
+            ResetHistory();
         }
 
         /// <summary>
@@ -2295,6 +2338,118 @@ namespace F2B.Forms.Designer
             File.WriteAllText(_currentPath, FormJsonLoader.ToJson(def));
             ClearDirty(); // clears title dirty marker (*)
             return true;
+        }
+
+        private void SwitchToPeer()
+        {
+            string peerName = _isViewer ? "F2B.Forms.Designer" : "F2B.Forms.Viewer";
+            string caption = _isViewer ? "F2B.Forms.Viewer" : "F2B.Forms.Designer";
+
+            if (!_isViewer)
+            {
+                // Always persist Designer changes before handing off to Viewer.
+                if (!SaveForm(false))
+                {
+                    return;
+                }
+            }
+
+            if (string.IsNullOrEmpty(_currentPath) || !File.Exists(_currentPath))
+            {
+                MessageBox.Show(
+                    this,
+                    "Open or save a Form JSON file before switching.",
+                    caption,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            string peerExe = ResolvePeerExecutable(peerName);
+            if (string.IsNullOrEmpty(peerExe))
+            {
+                MessageBox.Show(
+                    this,
+                    "Could not find " + peerName + ".exe.\nBuild/deploy Designer and Viewer side by side.",
+                    caption,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = peerExe,
+                    Arguments = "\"" + _currentPath + "\"",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    this,
+                    "Failed to start " + peerName + ":\n" + ex.Message,
+                    caption,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
+
+            _switchingPeer = true;
+            Close();
+        }
+
+        /// <summary>
+        /// Resolves peer exe when deployed next to this app, or in the sibling project output folder (dev).
+        /// </summary>
+        private static string ResolvePeerExecutable(string assemblyName)
+        {
+            string exeName = assemblyName + ".exe";
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+
+            string sameFolder = Path.Combine(baseDir, exeName);
+            if (File.Exists(sameFolder))
+            {
+                return sameFolder;
+            }
+
+            // .../{Designer|Viewer}/bin/{Debug|Release}/net462/
+            try
+            {
+                var tfmDir = new DirectoryInfo(baseDir);
+                DirectoryInfo configDir = tfmDir.Parent;
+                DirectoryInfo binDir = configDir?.Parent;
+                DirectoryInfo projectDir = binDir?.Parent;
+                DirectoryInfo formsRoot = projectDir?.Parent;
+                if (formsRoot != null && configDir != null)
+                {
+                    string peer = Path.Combine(
+                        formsRoot.FullName,
+                        assemblyName,
+                        "bin",
+                        configDir.Name,
+                        tfmDir.Name,
+                        exeName);
+                    if (File.Exists(peer))
+                    {
+                        return peer;
+                    }
+
+                    peer = Path.Combine(formsRoot.FullName, assemblyName, "bin", configDir.Name, exeName);
+                    if (File.Exists(peer))
+                    {
+                        return peer;
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore path probing failures.
+            }
+
+            return null;
         }
 
         private void Preview()

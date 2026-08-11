@@ -109,8 +109,90 @@ namespace F2B.Basic
         [DllImport("Advapi32.dll", EntryPoint = "CredReadW", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern bool CredRead(string target, uint type, int reservedFlag, out IntPtr credentialPtr);
 
+        [DllImport("Advapi32.dll", EntryPoint = "CredEnumerateW", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern bool CredEnumerate(string filter, uint flags, out uint count, out IntPtr credentialsPtr);
+
         [DllImport("Advapi32.dll", EntryPoint = "CredFree", SetLastError = true)]
         private static extern bool CredFree([In] IntPtr cred);
+
+        /// <summary>
+        /// Enumerate all Generic credentials. Key = Internet or network address (TargetName).
+        /// Value = dictionary with username / password.
+        /// </summary>
+        internal static Dictionary<string, Dictionary<string, string>> ReadAllGenericCredentials()
+        {
+            var result = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            IntPtr credentialsPtr;
+            uint count;
+            if (!CredEnumerate(null, 0, out count, out credentialsPtr))
+            {
+                int error = Marshal.GetLastWin32Error();
+                // ERROR_NOT_FOUND
+                if (error == 1168)
+                {
+                    return result;
+                }
+
+                throw new Win32Exception(error, "CredEnumerate failed. Win32 error: " + error + ".");
+            }
+
+            try
+            {
+                int pointerSize = IntPtr.Size;
+                for (int i = 0; i < count; i++)
+                {
+                    IntPtr credPtr = Marshal.ReadIntPtr(credentialsPtr, i * pointerSize);
+                    if (credPtr == IntPtr.Zero)
+                    {
+                        continue;
+                    }
+
+                    var credential = (CREDENTIAL)Marshal.PtrToStructure(credPtr, typeof(CREDENTIAL));
+                    if (credential.Type != (uint)NativeCredentialType.Generic)
+                    {
+                        continue;
+                    }
+
+                    string targetName = ReadUnicodeString(credential.TargetName);
+                    if (string.IsNullOrWhiteSpace(targetName))
+                    {
+                        continue;
+                    }
+
+                    string displayKey = NormalizeTargetDisplayName(targetName);
+                    string userName = ReadUnicodeString(credential.UserName);
+                    string password = ReadPasswordBlob(credential.CredentialBlob, credential.CredentialBlobSize);
+
+                    result[displayKey] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "username", userName ?? string.Empty },
+                        { "password", password ?? string.Empty }
+                    };
+                }
+            }
+            finally
+            {
+                CredFree(credentialsPtr);
+            }
+
+            return result;
+        }
+
+        private static string NormalizeTargetDisplayName(string targetName)
+        {
+            string name = targetName.Trim();
+            const string legacyPrefix = "LegacyGeneric:target=";
+            if (name.StartsWith(legacyPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                name = name.Substring(legacyPrefix.Length);
+            }
+            else if (name.StartsWith("target:", StringComparison.OrdinalIgnoreCase))
+            {
+                name = name.Substring("target:".Length);
+            }
+
+            return name;
+        }
 
         private enum NativeCredentialType
         {
