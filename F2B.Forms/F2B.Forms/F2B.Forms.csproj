@@ -17,7 +17,8 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
+  <!-- Link helper into this assembly so OpenRPA only needs F2B.Forms.dll (no extra OpenRpa.Design.dll). -->
   <ItemGroup>
-    <ProjectReference Include="..\..\F2B.OpenRpa.Design\F2B.OpenRpa.Design.csproj" />
+    <Compile Include="..\..\F2B.OpenRpa.Design\ActivityDesignerCollapseHelper.cs" Link="OpenRpa.Design\ActivityDesignerCollapseHelper.cs" />
   </ItemGroup>
 </Project>
