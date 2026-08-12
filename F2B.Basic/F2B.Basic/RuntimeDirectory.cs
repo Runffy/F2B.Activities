@@ -22,17 +22,23 @@ namespace F2B.Basic
 
     /// <summary>
     /// Per-run runtime directory under OpenRPA ProjectsDirectory\Runtime\{projectname}\{timestamp}.
+    /// Resource counterpart: ProjectsDirectory\Projects\{projectname} (<see cref="ResourceDirectory"/>).
+    /// Project name and folder identity always follow the outermost source workflow
+    /// (walk OpenRPA WorkflowInstance.caller), so nested Invoke OpenRPA into another project
+    /// still resolves under the original project's Runtime folder.
     /// Usage: <c>F2B.Basic.RuntimeDirectory.Path</c> (always Second precision).
     /// Second mode shares its stamp with LogMessage when either runs first.
     /// </summary>
     public static class RuntimeDirectory
     {
+        private const int MaxCallerDepth = 32;
+
         private static readonly ConcurrentDictionary<string, string> PathsByWorkflowInstanceId =
             new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Runtime directory for the current OpenRPA workflow run (timestamp precision: Second).
-        /// Create on first access; reuse for later calls in the same run.
+        /// Create on first access; reuse for later calls in the same run (including nested invokes).
         /// </summary>
         public static string Path
         {
@@ -47,26 +53,29 @@ namespace F2B.Basic
 
         public static bool TryGetExistingPath(string workflowInstanceId, out string runtimeDirectory)
         {
-            string key = string.IsNullOrWhiteSpace(workflowInstanceId)
-                ? string.Empty
-                : workflowInstanceId.Trim();
+            string key = ResolveRootInstanceKey(workflowInstanceId);
             return PathsByWorkflowInstanceId.TryGetValue(key, out runtimeDirectory)
                    && !string.IsNullOrWhiteSpace(runtimeDirectory);
         }
 
         /// <summary>
         /// Returns the runtime directory for the given workflow instance, creating it on first use.
+        /// Nested instances are remapped to the outermost caller before creating/looking up the path.
         /// </summary>
         public static string GetOrCreate(
             string workflowInstanceId,
             string projectName,
             RuntimeDirectoryMode mode = RuntimeDirectoryMode.Second)
         {
-            string key = string.IsNullOrWhiteSpace(workflowInstanceId)
-                ? string.Empty
-                : workflowInstanceId.Trim();
+            string rootInstanceId;
+            string rootProjectName;
+            ResolveRootWorkflow(workflowInstanceId, projectName, out rootInstanceId, out rootProjectName);
 
-            return PathsByWorkflowInstanceId.GetOrAdd(key, _ => CreateDirectory(key, projectName, mode));
+            string key = string.IsNullOrWhiteSpace(rootInstanceId)
+                ? string.Empty
+                : rootInstanceId.Trim();
+
+            return PathsByWorkflowInstanceId.GetOrAdd(key, _ => CreateDirectory(key, rootProjectName, mode));
         }
 
         /// <summary>
@@ -87,6 +96,40 @@ namespace F2B.Basic
             string workflowInstanceId = context.WorkflowInstanceId.ToString();
             string projectNameFromContext = ResolveProjectName(workflowInstanceId);
             return GetOrCreate(workflowInstanceId, projectNameFromContext, mode);
+        }
+
+        /// <summary>
+        /// Outermost source workflow project name (Invoke OpenRPA caller chain). Used by ResourceDirectory too.
+        /// </summary>
+        public static string ResolveSourceProjectName(System.Activities.CodeActivityContext context)
+        {
+            if (context == null)
+            {
+                string instanceId;
+                string projectName;
+                TryResolveCurrentWorkflow(out instanceId, out projectName);
+                return string.IsNullOrWhiteSpace(projectName) ? null : projectName.Trim();
+            }
+
+            string rootInstanceId;
+            string rootProjectName;
+            ResolveRootWorkflow(
+                context.WorkflowInstanceId.ToString(),
+                projectNameHint: null,
+                out rootInstanceId,
+                out rootProjectName);
+            return string.IsNullOrWhiteSpace(rootProjectName) ? null : rootProjectName.Trim();
+        }
+
+        /// <summary>
+        /// Outermost source workflow project name for the current OpenRPA run.
+        /// </summary>
+        public static string ResolveSourceProjectName()
+        {
+            string instanceId;
+            string projectName;
+            TryResolveCurrentWorkflow(out instanceId, out projectName);
+            return string.IsNullOrWhiteSpace(projectName) ? null : projectName.Trim();
         }
 
         private static string CreateDirectory(string workflowInstanceId, string projectName, RuntimeDirectoryMode mode)
@@ -165,17 +208,84 @@ namespace F2B.Basic
                 return false;
             }
 
-            workflowInstanceId = GetStringPropertyValue(instance, "InstanceId");
-            projectName = GetStringPropertyValue(instance, "projectname", "ProjectName");
+            string localId = GetStringPropertyValue(instance, "InstanceId");
+            string localProject = GetStringPropertyValue(instance, "projectname", "ProjectName");
+            ResolveRootWorkflow(localId, localProject, out workflowInstanceId, out projectName);
             return !string.IsNullOrWhiteSpace(workflowInstanceId);
         }
 
         private static string ResolveProjectName(string workflowInstanceId)
         {
             object instance = FindWorkflowInstanceById(workflowInstanceId);
-            return instance == null
+            object root = FindRootCallerInstance(instance) ?? instance;
+            return root == null
                 ? null
-                : GetStringPropertyValue(instance, "projectname", "ProjectName");
+                : GetStringPropertyValue(root, "projectname", "ProjectName");
+        }
+
+        private static string ResolveRootInstanceKey(string workflowInstanceId)
+        {
+            string rootInstanceId;
+            string unusedProject;
+            ResolveRootWorkflow(workflowInstanceId, projectNameHint: null, out rootInstanceId, out unusedProject);
+            return string.IsNullOrWhiteSpace(rootInstanceId) ? string.Empty : rootInstanceId.Trim();
+        }
+
+        /// <summary>
+        /// Walk OpenRPA WorkflowInstance.caller to the outermost run; use that InstanceId + ProjectName.
+        /// </summary>
+        private static void ResolveRootWorkflow(
+            string workflowInstanceId,
+            string projectNameHint,
+            out string rootInstanceId,
+            out string rootProjectName)
+        {
+            rootInstanceId = string.IsNullOrWhiteSpace(workflowInstanceId)
+                ? null
+                : workflowInstanceId.Trim();
+            rootProjectName = projectNameHint;
+
+            object instance = FindWorkflowInstanceById(rootInstanceId);
+            object root = FindRootCallerInstance(instance) ?? instance;
+            if (root == null)
+            {
+                return;
+            }
+
+            string id = GetStringPropertyValue(root, "InstanceId");
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                rootInstanceId = id.Trim();
+            }
+
+            string project = GetStringPropertyValue(root, "projectname", "ProjectName");
+            if (!string.IsNullOrWhiteSpace(project))
+            {
+                rootProjectName = project;
+            }
+        }
+
+        private static object FindRootCallerInstance(object startInstance)
+        {
+            object current = startInstance;
+            for (int i = 0; i < MaxCallerDepth && current != null; i++)
+            {
+                string callerId = GetStringPropertyValue(current, "caller", "Caller");
+                if (string.IsNullOrWhiteSpace(callerId))
+                {
+                    return current;
+                }
+
+                object parent = FindWorkflowInstanceById(callerId);
+                if (parent == null)
+                {
+                    return current;
+                }
+
+                current = parent;
+            }
+
+            return current;
         }
 
         private static object FindCurrentWorkflowInstance()
@@ -197,9 +307,10 @@ namespace F2B.Basic
                 bool? completed = GetBoolPropertyValue(item, "isCompleted");
                 string state = GetStringPropertyValue(item, "state");
                 string instanceId = GetStringPropertyValue(item, "InstanceId");
+                string rootKey = ResolveRootInstanceKey(instanceId);
 
-                if (!string.IsNullOrWhiteSpace(instanceId) &&
-                    PathsByWorkflowInstanceId.ContainsKey(instanceId))
+                if (!string.IsNullOrWhiteSpace(rootKey) &&
+                    PathsByWorkflowInstanceId.ContainsKey(rootKey))
                 {
                     return item;
                 }
