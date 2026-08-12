@@ -22,7 +22,9 @@ namespace F2B.Forms.Designers
         private readonly ComboBox _uiBehaviorCombo;
         private readonly TextBlock _statusText;
         private readonly Button _refreshButton;
+        private TextBox _controlIdEditableTextBox;
         private bool _suppressUi;
+        private bool _filteringControlId;
         private List<FormEventCatalog.ControlRef> _controls = new List<FormEventCatalog.ControlRef>();
 
         public BindEventDesigner()
@@ -40,8 +42,18 @@ namespace F2B.Forms.Designers
 
             root.Children.Add(CreateLabel("Control Id"));
             _controlIdCombo = CreateEditableCombo();
+            _controlIdCombo.StaysOpenOnEdit = true;
             _controlIdCombo.SelectionChanged += OnControlIdSelectionChanged;
             _controlIdCombo.LostFocus += (s, e) => OnControlIdLostFocus();
+            _controlIdCombo.DropDownOpened += (s, e) =>
+            {
+                // Opening with empty filter shows the full loaded control list.
+                if (!_suppressUi && !_filteringControlId && string.IsNullOrWhiteSpace(_controlIdCombo.Text))
+                {
+                    PopulateControlIdItems(filter: null, preserveText: string.Empty);
+                }
+            };
+            _controlIdCombo.Loaded += OnControlIdComboLoaded;
             root.Children.Add(_controlIdCombo);
 
             root.Children.Add(CreateLabel("Control Type"));
@@ -183,19 +195,14 @@ namespace F2B.Forms.Designers
                 if (DesignTimeFormPath.TryLoadForm(ModelItem, out FormDefinition definition, out string status))
                 {
                     _controls = FormEventCatalog.CollectControls(definition);
-                    _controlIdCombo.Items.Clear();
-                    foreach (FormEventCatalog.ControlRef control in _controls)
-                    {
-                        _controlIdCombo.Items.Add(control);
-                    }
-
+                    PopulateControlIdItems(filter: null, preserveText: null);
                     _statusText.Text = status;
                     _statusText.Foreground = Brushes.DarkGreen;
                 }
                 else
                 {
                     _controls = new List<FormEventCatalog.ControlRef>();
-                    _controlIdCombo.Items.Clear();
+                    PopulateControlIdItems(filter: null, preserveText: string.Empty);
                     _statusText.Text = status;
                     _statusText.Foreground = Brushes.DarkOrange;
                 }
@@ -243,17 +250,128 @@ namespace F2B.Forms.Designers
             if (match != null && !string.IsNullOrWhiteSpace(match.Type))
             {
                 ApplyControlType(match.Type, selectFirstEvent: true);
-                // Re-select matching item so dropdown shows the ControlRef entry.
-                _suppressUi = true;
-                try
+            }
+
+            // Restore full list and show the committed id (selected when known).
+            _suppressUi = true;
+            try
+            {
+                SetControlIdCombo(controlId);
+            }
+            finally
+            {
+                _suppressUi = false;
+            }
+        }
+
+        private void OnControlIdComboLoaded(object sender, RoutedEventArgs e)
+        {
+            _controlIdCombo.Loaded -= OnControlIdComboLoaded;
+            HookControlIdEditableTextBox();
+        }
+
+        private void HookControlIdEditableTextBox()
+        {
+            if (_controlIdEditableTextBox != null)
+            {
+                return;
+            }
+
+            _controlIdCombo.ApplyTemplate();
+            _controlIdEditableTextBox = _controlIdCombo.Template != null
+                ? _controlIdCombo.Template.FindName("PART_EditableTextBox", _controlIdCombo) as TextBox
+                : null;
+            if (_controlIdEditableTextBox == null)
+            {
+                return;
+            }
+
+            _controlIdEditableTextBox.TextChanged += OnControlIdEditableTextChanged;
+        }
+
+        private void OnControlIdEditableTextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_suppressUi || _filteringControlId)
+            {
+                return;
+            }
+
+            var textBox = sender as TextBox;
+            string typed = textBox != null ? (textBox.Text ?? string.Empty) : (_controlIdCombo.Text ?? string.Empty);
+            int caret = textBox != null ? textBox.CaretIndex : typed.Length;
+
+            ApplyControlIdFilter(typed, caret, openDropDown: true);
+        }
+
+        private void ApplyControlIdFilter(string typedText, int caretIndex, bool openDropDown)
+        {
+            _filteringControlId = true;
+            _suppressUi = true;
+            try
+            {
+                PopulateControlIdItems(filter: typedText, preserveText: typedText);
+
+                if (_controlIdEditableTextBox != null)
                 {
-                    SetControlIdCombo(controlId);
+                    int caret = Math.Max(0, Math.Min(caretIndex, _controlIdEditableTextBox.Text != null
+                        ? _controlIdEditableTextBox.Text.Length
+                        : 0));
+                    _controlIdEditableTextBox.CaretIndex = caret;
                 }
-                finally
+
+                if (openDropDown && _controls != null && _controls.Count > 0)
                 {
-                    _suppressUi = false;
+                    _controlIdCombo.IsDropDownOpen = true;
                 }
             }
+            finally
+            {
+                _suppressUi = false;
+                _filteringControlId = false;
+            }
+        }
+
+        private void PopulateControlIdItems(string filter, string preserveText)
+        {
+            string filterText = filter == null ? string.Empty : filter.Trim();
+            _controlIdCombo.Items.Clear();
+            if (_controls != null)
+            {
+                foreach (FormEventCatalog.ControlRef control in _controls)
+                {
+                    if (MatchesControlIdFilter(control, filterText))
+                    {
+                        _controlIdCombo.Items.Add(control);
+                    }
+                }
+            }
+
+            if (preserveText != null)
+            {
+                _controlIdCombo.SelectedIndex = -1;
+                _controlIdCombo.Text = preserveText;
+            }
+        }
+
+        private static bool MatchesControlIdFilter(FormEventCatalog.ControlRef control, string filter)
+        {
+            if (control == null)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(filter))
+            {
+                return true;
+            }
+
+            return ContainsIgnoreCase(control.Id, filter);
+        }
+
+        private static bool ContainsIgnoreCase(string value, string filter)
+        {
+            return !string.IsNullOrEmpty(value)
+                   && value.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private void OnControlTypeSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -505,6 +623,9 @@ namespace F2B.Forms.Designers
 
         private void SetControlIdCombo(string controlId)
         {
+            // Always rebuild from the full loaded list first so selection is not limited by a prior filter.
+            PopulateControlIdItems(filter: null, preserveText: null);
+
             if (string.IsNullOrEmpty(controlId))
             {
                 _controlIdCombo.Text = string.Empty;
