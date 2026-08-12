@@ -619,6 +619,16 @@ namespace F2B.Forms.Session
             });
         }
 
+        public void SetControlReadOnly(string controlId, bool readOnly)
+        {
+            InvokeOnUi(() =>
+            {
+                Control control = GetControl(controlId);
+                ApplyReadOnly(control, controlId, readOnly);
+                FlushControlPaint(control);
+            });
+        }
+
         public void SetControlVisible(string controlId, bool visible)
         {
             InvokeOnUi(() =>
@@ -1350,6 +1360,14 @@ namespace F2B.Forms.Session
                 if (string.Equals(name, "Enabled", StringComparison.OrdinalIgnoreCase))
                 {
                     control.Enabled = value is bool b ? b : Convert.ToBoolean(value);
+                    FlushControlPaint(control);
+                    return;
+                }
+
+                if (string.Equals(name, "ReadOnly", StringComparison.OrdinalIgnoreCase))
+                {
+                    bool readOnly = value is bool b ? b : Convert.ToBoolean(value);
+                    ApplyReadOnly(control, controlId, readOnly);
                     FlushControlPaint(control);
                     return;
                 }
@@ -2250,6 +2268,37 @@ namespace F2B.Forms.Session
             controlId = key.Substring(0, sep);
             eventName = key.Substring(sep + 2);
             return true;
+        }
+
+        private static void ApplyReadOnly(Control control, string controlId, bool readOnly)
+        {
+            if (control is TextBoxBase textBoxBase)
+            {
+                textBoxBase.ReadOnly = readOnly;
+                return;
+            }
+
+            if (control is MaskedTextBox masked)
+            {
+                masked.ReadOnly = readOnly;
+                return;
+            }
+
+            if (control is NumericUpDown numeric)
+            {
+                numeric.ReadOnly = readOnly;
+                return;
+            }
+
+            if (control is DataGridView grid)
+            {
+                grid.ReadOnly = readOnly;
+                return;
+            }
+
+            throw new InvalidOperationException(
+                "SetControlReadOnly is not supported for '" + control.GetType().Name
+                + "' (control '" + controlId + "'). Supported: TextBox, TextArea, MaskedTextBox, NumericUpDown, DataGridView.");
         }
 
         private static void FlushControlPaint(Control control)
