@@ -3889,9 +3889,9 @@ namespace F2B.Forms.Designer
 
         [Category("Appearance")]
         [DisplayName("Scroll Bars")]
-        [Description("TextArea only: None | Horizontal | Vertical | Both")]
-        [DefaultValue("Vertical")]
-        public string ScrollBars { get; set; } = "Vertical";
+        [Description("TextArea only.")]
+        [DefaultValue(TextAreaScrollBars.Vertical)]
+        public TextAreaScrollBars ScrollBars { get; set; } = TextAreaScrollBars.Vertical;
 
         [Browsable(false)]
         public DesignItem Parent { get; set; }
@@ -4259,9 +4259,7 @@ namespace F2B.Forms.Designer
             if (Type == FormControlType.TextArea)
             {
                 def.WordWrap = WordWrap;
-                def.ScrollBars = string.IsNullOrWhiteSpace(ScrollBars)
-                    ? (WordWrap ? "Vertical" : "Both")
-                    : ScrollBars.Trim();
+                def.ScrollBars = ScrollBars.ToString();
             }
 
             if (FormControlType.IsTabPage(Type))
@@ -4347,9 +4345,7 @@ namespace F2B.Forms.Designer
                 ImagePath = c.ImagePath,
                 SizeMode = string.IsNullOrWhiteSpace(c.SizeMode) ? "Zoom" : c.SizeMode,
                 WordWrap = c.WordWrap ?? true,
-                ScrollBars = string.IsNullOrWhiteSpace(c.ScrollBars)
-                    ? ((c.WordWrap ?? true) ? "Vertical" : "Both")
-                    : c.ScrollBars,
+                ScrollBars = ParseTextAreaScrollBars(c.ScrollBars, c.WordWrap ?? true),
                 RowCount = c.RowCount ?? 3,
                 ColumnCount = c.ColumnCount ?? 3,
                 Row = c.Row ?? 0,
@@ -4384,6 +4380,17 @@ namespace F2B.Forms.Designer
             }
 
             return item;
+        }
+
+        private static TextAreaScrollBars ParseTextAreaScrollBars(string value, bool wordWrap)
+        {
+            if (!string.IsNullOrWhiteSpace(value)
+                && Enum.TryParse(value.Trim(), ignoreCase: true, out TextAreaScrollBars parsed))
+            {
+                return parsed;
+            }
+
+            return wordWrap ? TextAreaScrollBars.Vertical : TextAreaScrollBars.Both;
         }
 
         public static void RelayoutTableChildren(DesignItem table)
