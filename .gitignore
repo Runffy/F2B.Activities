@@ -64,6 +64,7 @@ F2B.Basic/packages/
 F2B.Basic/resources/
 F2B.Browser.Chromium.Cdp.Activities/reference/
 F2B.Forms/samples/
+F2B.Microsoft.Word/Microsoft.Office.Interop.Word.dll
 
 ## Others
 *.dbmdl

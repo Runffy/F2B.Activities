@@ -6,7 +6,7 @@ using InteropWord = Microsoft.Office.Interop.Word;
 namespace F2B.Microsoft.Word
 {
     [DisplayName("Save As")]
-    [Description("Save or export the Word document as docx, doc, or pdf.")]
+    [Description("Save or export the Word document as docx, doc, or pdf. Optional Document Label (Public/Internal/...) is applied before save when required by organization policy.")]
     [Designer(typeof(SaveAsActivityDesigner))]
     public sealed class SaveAsActivity : CodeActivity
     {
@@ -14,6 +14,7 @@ namespace F2B.Microsoft.Word
         {
             DisplayName = "Save As";
             Format = WordSaveAsFormat.Docx;
+            DocumentLabel = WordDocumentLabel.None;
             Overwrite = true;
         }
 
@@ -34,6 +35,12 @@ namespace F2B.Microsoft.Word
         [Category("Input.D")]
         [DefaultValue(WordSaveAsFormat.Docx)]
         public WordSaveAsFormat Format { get; set; }
+
+        [DisplayName("Document Label")]
+        [Description("Organization document / sensitivity label applied before save (Public, Internal, Confidential, Restricted). None skips labeling.")]
+        [Category("Input.D2")]
+        [DefaultValue(WordDocumentLabel.None)]
+        public WordDocumentLabel DocumentLabel { get; set; }
 
         [DisplayName("Overwrite")]
         [Category("Input.E")]
@@ -56,6 +63,7 @@ namespace F2B.Microsoft.Word
 
             using (var session = WordDocumentSession.Acquire(path, existing, visible, createIfMissing: false, documentBound))
             {
+                WordDocumentLabelHelper.Apply(session.Document, DocumentLabel);
                 WordDocumentOperations.SaveAs(session.Document, outputPath, Format, overwrite);
                 WordActivityHelper.SetDocument(Document, context, session.Document);
                 session.Complete();

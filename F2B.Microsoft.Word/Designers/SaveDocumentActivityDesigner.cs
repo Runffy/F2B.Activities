@@ -9,19 +9,15 @@ using InteropWord = Microsoft.Office.Interop.Word;
 
 namespace F2B.Microsoft.Word
 {
-    public sealed class SaveAsActivityDesigner : ActivityDesigner
+    public sealed class SaveDocumentActivityDesigner : ActivityDesigner
     {
-        private const string LabelColumn = "WordSaveAsLabelColumn";
+        private const string LabelColumn = "WordSaveDocumentLabelColumn";
 
         private readonly Border _rootPanel;
-        private readonly Border _outputPathEditorBorder;
-        private readonly ExpressionTextBox _outputPathExpressionBox;
-        private readonly ComboBox _formatComboBox;
         private readonly ComboBox _documentLabelComboBox;
-        private bool _isSyncingFormat;
         private bool _isSyncingLabel;
 
-        public SaveAsActivityDesigner()
+        public SaveDocumentActivityDesigner()
         {
             var host = new StackPanel
             {
@@ -34,39 +30,21 @@ namespace F2B.Microsoft.Word
             Grid.SetIsSharedSizeScope(body, true);
 
             body.Children.Add(WordDesignerShared.CreateRow(
-                "Word File Path",
-                WordDesignerShared.CreateInExpressionTextBox("WordFilePath", typeof(string)),
+                "Document",
+                WordDesignerShared.CreateInExpressionTextBox("Document", typeof(InteropWord.Document)),
                 LabelColumn));
 
             body.Children.Add(WordDesignerShared.CreateRow(
-                "Document",
-                WordDesignerShared.CreateInOutExpressionTextBox("Document", typeof(InteropWord.Document)),
+                "Word File Path",
+                WordDesignerShared.CreateInExpressionTextBox("WordFilePath", typeof(string)),
                 LabelColumn,
                 WordDesignerShared.RowSpacing));
-
-            _outputPathExpressionBox = WordDesignerShared.CreateInExpressionTextBox("OutputPath", typeof(string));
-            body.Children.Add(WordDesignerShared.CreateRow(
-                "Output Path",
-                _outputPathExpressionBox,
-                LabelColumn,
-                out _outputPathEditorBorder,
-                WordDesignerShared.RowSpacing));
-
-            _formatComboBox = WordDesignerShared.BuildDescriptionComboBox<WordSaveAsFormat>();
-            _formatComboBox.SelectionChanged += OnFormatSelectionChanged;
-            body.Children.Add(WordDesignerShared.CreateRow("Format", _formatComboBox, LabelColumn, WordDesignerShared.RowSpacing));
 
             _documentLabelComboBox = WordDesignerShared.BuildDescriptionComboBox<WordDocumentLabel>();
             _documentLabelComboBox.SelectionChanged += OnDocumentLabelSelectionChanged;
             body.Children.Add(WordDesignerShared.CreateRow(
                 "Document Label",
                 _documentLabelComboBox,
-                LabelColumn,
-                WordDesignerShared.RowSpacing));
-
-            body.Children.Add(WordDesignerShared.CreateRow(
-                "Overwrite",
-                WordDesignerShared.CreateInExpressionTextBox("Overwrite", typeof(bool)),
                 LabelColumn,
                 WordDesignerShared.RowSpacing));
 
@@ -84,36 +62,16 @@ namespace F2B.Microsoft.Word
             }
 
             WordDesignerShared.BindExpressionOwner(_rootPanel, ModelItem);
-            SyncFormat(WordDesignerShared.ReadEnum(ModelItem, "Format", WordSaveAsFormat.Docx));
             SyncDocumentLabel(WordDesignerShared.ReadEnum(ModelItem, "DocumentLabel", WordDocumentLabel.None));
             ModelItem.PropertyChanged += OnModelItemPropertyChanged;
-            RefreshRequiredBorders();
         }
 
         private void OnModelItemPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (string.Equals(e.PropertyName, "Format", StringComparison.Ordinal))
-            {
-                SyncFormat(WordDesignerShared.ReadEnum(ModelItem, "Format", WordSaveAsFormat.Docx));
-            }
-
             if (string.Equals(e.PropertyName, "DocumentLabel", StringComparison.Ordinal))
             {
                 SyncDocumentLabel(WordDesignerShared.ReadEnum(ModelItem, "DocumentLabel", WordDocumentLabel.None));
             }
-
-            Dispatcher.BeginInvoke(new Action(RefreshRequiredBorders), DispatcherPriority.Background);
-        }
-
-        private void OnFormatSelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (_isSyncingFormat || ModelItem == null)
-            {
-                return;
-            }
-
-            var format = WordDesignerShared.ReadSelectedEnum(_formatComboBox, WordSaveAsFormat.Docx);
-            ModelItem.Properties["Format"].SetValue(format);
         }
 
         private void OnDocumentLabelSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -127,30 +85,11 @@ namespace F2B.Microsoft.Word
             ModelItem.Properties["DocumentLabel"].SetValue(label);
         }
 
-        private void SyncFormat(WordSaveAsFormat format)
-        {
-            _isSyncingFormat = true;
-            WordDesignerShared.SelectEnumItem(_formatComboBox, format);
-            _isSyncingFormat = false;
-        }
-
         private void SyncDocumentLabel(WordDocumentLabel label)
         {
             _isSyncingLabel = true;
             WordDesignerShared.SelectEnumItem(_documentLabelComboBox, label);
             _isSyncingLabel = false;
-        }
-
-        private void RefreshRequiredBorders()
-        {
-            if (ModelItem == null)
-            {
-                return;
-            }
-
-            WordDesignerShared.SetRequiredBorder(
-                _outputPathEditorBorder,
-                WordDesignerShared.IsArgumentFilled(ModelItem, "OutputPath", _outputPathExpressionBox));
         }
     }
 }
