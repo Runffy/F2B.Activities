@@ -655,23 +655,45 @@ namespace F2B.Forms.Engine
 
             combo.DrawItem += (sender, e) =>
             {
-                e.DrawBackground();
-                if (e.Index >= 0 && e.Index < combo.Items.Count)
+                var box = (ComboBox)sender;
+                bool disabled = !box.Enabled
+                    || (e.State & DrawItemState.Disabled) == DrawItemState.Disabled;
+                bool selected = !disabled
+                    && (e.State & DrawItemState.Selected) == DrawItemState.Selected;
+
+                if (disabled)
                 {
-                    string itemText = Convert.ToString(combo.Items[e.Index]) ?? string.Empty;
-                    Color textColor = (e.State & DrawItemState.Selected) == DrawItemState.Selected
-                        ? SystemColors.HighlightText
-                        : combo.ForeColor;
+                    using (var brush = new SolidBrush(SystemColors.Control))
+                    {
+                        e.Graphics.FillRectangle(brush, e.Bounds);
+                    }
+                }
+                else
+                {
+                    e.DrawBackground();
+                }
+
+                if (e.Index >= 0 && e.Index < box.Items.Count)
+                {
+                    string itemText = Convert.ToString(box.Items[e.Index]) ?? string.Empty;
+                    Color textColor = disabled
+                        ? SystemColors.GrayText
+                        : selected
+                            ? SystemColors.HighlightText
+                            : box.ForeColor;
                     TextRenderer.DrawText(
                         e.Graphics,
                         itemText,
-                        combo.Font,
+                        box.Font,
                         e.Bounds,
                         textColor,
                         TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
                 }
 
-                e.DrawFocusRectangle();
+                if (!disabled)
+                {
+                    e.DrawFocusRectangle();
+                }
             };
 
             if (definition.Items != null)
@@ -687,6 +709,11 @@ namespace F2B.Forms.Engine
                 && definition.SelectedIndex.Value < combo.Items.Count)
             {
                 combo.SelectedIndex = definition.SelectedIndex.Value;
+            }
+
+            if (definition.ReadOnly == true)
+            {
+                ComboBoxReadOnly.Set(combo, true);
             }
 
             return combo;

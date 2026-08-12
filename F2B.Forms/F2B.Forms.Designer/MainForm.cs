@@ -4086,7 +4086,8 @@ namespace F2B.Forms.Designer
                 case "ReadOnly":
                     return type == FormControlType.TextBox
                         || type == FormControlType.TextArea
-                        || type == FormControlType.MaskedTextBox;
+                        || type == FormControlType.MaskedTextBox
+                        || type == FormControlType.ComboBox;
 
                 case "Checked":
                     return type == FormControlType.CheckBox

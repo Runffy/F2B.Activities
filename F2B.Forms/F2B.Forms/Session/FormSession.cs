@@ -1379,6 +1379,24 @@ namespace F2B.Forms.Session
                     return;
                 }
 
+                if (string.Equals(name, "BackColor", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(name, "BackgroundColor", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(name, "Background", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyControlColor(control, isBackColor: true, value);
+                    FlushControlPaint(control);
+                    return;
+                }
+
+                if (string.Equals(name, "ForeColor", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(name, "ForegroundColor", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(name, "Color", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyControlColor(control, isBackColor: false, value);
+                    FlushControlPaint(control);
+                    return;
+                }
+
                 if (control is CheckBox checkBox && string.Equals(name, "Checked", StringComparison.OrdinalIgnoreCase))
                 {
                     checkBox.Checked = value is bool b ? b : Convert.ToBoolean(value);
@@ -2296,9 +2314,86 @@ namespace F2B.Forms.Session
                 return;
             }
 
+            if (control is ComboBox combo)
+            {
+                ComboBoxReadOnly.Set(combo, readOnly);
+                return;
+            }
+
             throw new InvalidOperationException(
                 "SetControlReadOnly is not supported for '" + control.GetType().Name
-                + "' (control '" + controlId + "'). Supported: TextBox, TextArea, MaskedTextBox, NumericUpDown, DataGridView.");
+                + "' (control '" + controlId + "'). Supported: TextBox, TextArea, MaskedTextBox, ComboBox, NumericUpDown, DataGridView.");
+        }
+
+        private static void ApplyControlColor(Control control, bool isBackColor, object value)
+        {
+            if (control == null)
+            {
+                throw new ArgumentNullException(nameof(control));
+            }
+
+            Color color = ResolveColor(value, isBackColor ? "BackColor" : "ForeColor");
+
+            if (isBackColor)
+            {
+                // Buttons / TabPages ignore BackColor while visual styles are on.
+                if (control is ButtonBase button)
+                {
+                    button.UseVisualStyleBackColor = false;
+                    if (button.FlatStyle == FlatStyle.Standard)
+                    {
+                        button.FlatStyle = FlatStyle.Flat;
+                    }
+                }
+
+                if (control is TabPage page)
+                {
+                    page.UseVisualStyleBackColor = false;
+                }
+
+                control.BackColor = color;
+            }
+            else
+            {
+                control.ForeColor = color;
+            }
+        }
+
+        private static Color ResolveColor(object value, string propertyName)
+        {
+            if (value == null)
+            {
+                throw new ArgumentException(propertyName + " value is required (e.g. \"#FFCC00\" or \"Red\").");
+            }
+
+            if (value is Color color)
+            {
+                return color;
+            }
+
+            string text = Convert.ToString(value);
+            Color? parsed = FontStyleUtil.ParseColor(text);
+            if (!parsed.HasValue || parsed.Value.IsEmpty)
+            {
+                throw new ArgumentException(
+                    propertyName + " must be an HTML color (e.g. \"#FFCC00\") or named color (e.g. \"Red\"). Value: '"
+                    + text + "'.");
+            }
+
+            if (parsed.Value.A == 0
+                && !string.Equals(text.Trim(), "Transparent", StringComparison.OrdinalIgnoreCase)
+                && !text.Trim().StartsWith("#", StringComparison.Ordinal))
+            {
+                Color named = Color.FromName(text.Trim());
+                if (!named.IsKnownColor && named.ToArgb() == 0)
+                {
+                    throw new ArgumentException(
+                        propertyName + " must be an HTML color (e.g. \"#FFCC00\") or named color (e.g. \"Red\"). Value: '"
+                        + text + "'.");
+                }
+            }
+
+            return parsed.Value;
         }
 
         private static void FlushControlPaint(Control control)
