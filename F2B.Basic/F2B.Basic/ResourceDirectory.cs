@@ -7,7 +7,7 @@ namespace F2B.Basic
     /// <summary>
     /// Source-project resource directory:
     /// <c>{ProjectsDirectory}/Projects/{sourceProjectName}</c>
-    /// Source project always from <see cref="OpenRpaSourceWorkflow"/> (shared with RuntimeDirectory / Global).
+    /// Source project always from <see cref="OpenRpaSourceWorkflow"/> (shared with RuntimeDirectory).
     /// Expression: <c>F2B.Basic.ResourceDirectory.Path</c>
     /// </summary>
     public static class ResourceDirectory

@@ -22,7 +22,7 @@ namespace F2B.Basic
     /// <summary>
     /// Per-run runtime directory under OpenRPA ProjectsDirectory\Runtime\{projectname}\{timestamp}.
     /// Source project/instance always come from <see cref="OpenRpaSourceWorkflow"/> (shared with
-    /// <see cref="ResourceDirectory"/> and <c>F2B.Global</c>).
+    /// <see cref="ResourceDirectory"/>).
     /// Usage: <c>F2B.Basic.RuntimeDirectory.Path</c> (always Second precision).
     /// </summary>
     public static class RuntimeDirectory
