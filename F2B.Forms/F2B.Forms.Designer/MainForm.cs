@@ -3881,6 +3881,18 @@ namespace F2B.Forms.Designer
         [Description("Normal | StretchImage | Zoom | CenterImage | AutoSize")]
         public string SizeMode { get; set; } = "Zoom";
 
+        [Category("Appearance")]
+        [DisplayName("Word Wrap")]
+        [Description("TextArea only. False = no wrap; use Scroll Bars = Both (or Horizontal) for long lines.")]
+        [DefaultValue(true)]
+        public bool WordWrap { get; set; } = true;
+
+        [Category("Appearance")]
+        [DisplayName("Scroll Bars")]
+        [Description("TextArea only: None | Horizontal | Vertical | Both")]
+        [DefaultValue("Vertical")]
+        public string ScrollBars { get; set; } = "Vertical";
+
         [Browsable(false)]
         public DesignItem Parent { get; set; }
 
@@ -4089,6 +4101,10 @@ namespace F2B.Forms.Designer
                         || type == FormControlType.MaskedTextBox
                         || type == FormControlType.ComboBox;
 
+                case "WordWrap":
+                case "ScrollBars":
+                    return type == FormControlType.TextArea;
+
                 case "Checked":
                     return type == FormControlType.CheckBox
                         || type == FormControlType.RadioButton;
@@ -4242,7 +4258,10 @@ namespace F2B.Forms.Designer
 
             if (Type == FormControlType.TextArea)
             {
-                def.ScrollBars = "Vertical";
+                def.WordWrap = WordWrap;
+                def.ScrollBars = string.IsNullOrWhiteSpace(ScrollBars)
+                    ? (WordWrap ? "Vertical" : "Both")
+                    : ScrollBars.Trim();
             }
 
             if (FormControlType.IsTabPage(Type))
@@ -4327,6 +4346,10 @@ namespace F2B.Forms.Designer
                 DecimalPlaces = c.DecimalPlaces ?? 0,
                 ImagePath = c.ImagePath,
                 SizeMode = string.IsNullOrWhiteSpace(c.SizeMode) ? "Zoom" : c.SizeMode,
+                WordWrap = c.WordWrap ?? true,
+                ScrollBars = string.IsNullOrWhiteSpace(c.ScrollBars)
+                    ? ((c.WordWrap ?? true) ? "Vertical" : "Both")
+                    : c.ScrollBars,
                 RowCount = c.RowCount ?? 3,
                 ColumnCount = c.ColumnCount ?? 3,
                 Row = c.Row ?? 0,

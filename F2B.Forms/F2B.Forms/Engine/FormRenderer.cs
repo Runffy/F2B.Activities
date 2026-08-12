@@ -590,8 +590,17 @@ namespace F2B.Forms.Engine
                 // True TextArea
                 textBox.Multiline = true;
                 textBox.AcceptsReturn = true;
-                textBox.WordWrap = true;
-                textBox.ScrollBars = ParseScrollBars(definition.ScrollBars);
+                bool wordWrap = definition.WordWrap ?? true;
+                textBox.WordWrap = wordWrap;
+
+                string scrollBars = definition.ScrollBars;
+                // Without wrap, Vertical alone never shows a horizontal bar for long lines.
+                if (string.IsNullOrWhiteSpace(scrollBars))
+                {
+                    scrollBars = wordWrap ? "Vertical" : "Both";
+                }
+
+                textBox.ScrollBars = ParseScrollBars(scrollBars);
             }
             else
             {

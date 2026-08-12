@@ -79,6 +79,12 @@ namespace F2B.Forms.Model
         [JsonProperty("scrollBars")]
         public string ScrollBars { get; set; }
 
+        /// <summary>
+        /// TextArea only. true (default) wraps lines; false keeps long lines and needs Horizontal/Both scroll bars.
+        /// </summary>
+        [JsonProperty("wordWrap")]
+        public bool? WordWrap { get; set; }
+
         [JsonProperty("anchor")]
         public string Anchor { get; set; }
 
