@@ -132,6 +132,93 @@ namespace F2B.Basic
             return string.IsNullOrWhiteSpace(projectName) ? null : projectName.Trim();
         }
 
+        /// <summary>
+        /// Outermost source workflow InstanceId for the workflow bound to <paramref name="context"/>.
+        /// </summary>
+        public static string ResolveSourceInstanceId(System.Activities.CodeActivityContext context)
+        {
+            if (context == null)
+            {
+                return ResolveSourceInstanceId();
+            }
+
+            string rootInstanceId;
+            string unusedProject;
+            ResolveRootWorkflow(
+                context.WorkflowInstanceId.ToString(),
+                projectNameHint: null,
+                out rootInstanceId,
+                out unusedProject);
+            return string.IsNullOrWhiteSpace(rootInstanceId) ? null : rootInstanceId.Trim();
+        }
+
+        /// <summary>
+        /// Outermost source workflow InstanceId for the current OpenRPA run.
+        /// </summary>
+        public static string ResolveSourceInstanceId()
+        {
+            string instanceId;
+            string projectName;
+            TryResolveCurrentWorkflow(out instanceId, out projectName);
+            return string.IsNullOrWhiteSpace(instanceId) ? null : instanceId.Trim();
+        }
+
+        /// <summary>
+        /// True when the given source InstanceId is still an active (not completed) OpenRPA run.
+        /// </summary>
+        internal static bool IsSourceInstanceActive(string sourceInstanceId)
+        {
+            if (string.IsNullOrWhiteSpace(sourceInstanceId))
+            {
+                return false;
+            }
+
+            object instance = FindWorkflowInstanceById(sourceInstanceId);
+            if (instance == null)
+            {
+                return false;
+            }
+
+            bool? completed = GetBoolPropertyValue(instance, "isCompleted");
+            return completed != true;
+        }
+
+        /// <summary>
+        /// Enumerate outermost InstanceIds that are still active.
+        /// </summary>
+        internal static System.Collections.Generic.HashSet<string> GetActiveSourceInstanceIds()
+        {
+            var active = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var instances = GetWorkflowInstances();
+            if (instances == null)
+            {
+                return active;
+            }
+
+            foreach (object item in instances)
+            {
+                if (item == null)
+                {
+                    continue;
+                }
+
+                bool? completed = GetBoolPropertyValue(item, "isCompleted");
+                if (completed == true)
+                {
+                    continue;
+                }
+
+                string localId = GetStringPropertyValue(item, "InstanceId");
+                string rootKey = ResolveRootInstanceKey(localId);
+                if (!string.IsNullOrWhiteSpace(rootKey))
+                {
+                    active.Add(rootKey);
+                }
+            }
+
+            return active;
+        }
+
         private static string CreateDirectory(string workflowInstanceId, string projectName, RuntimeDirectoryMode mode)
         {
             string safeProjectName = SanitizePathSegment(

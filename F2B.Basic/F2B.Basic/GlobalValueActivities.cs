@@ -7,7 +7,7 @@ namespace F2B.Basic
 {
     [Designer(typeof(BasicSimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("Get Global Value")]
-    [Description("Read a value from F2B.Global. Expression: F2B.Global.Get(\"keyname\")")]
+    [Description("Read a value from F2B.Global for the current source workflow run. Expression: F2B.Global.Get(\"keyname\")")]
     public sealed class GetGlobalValueActivity : CodeActivity<object>, System.Activities.Presentation.IActivityTemplateFactory
     {
         public GetGlobalValueActivity()
@@ -31,7 +31,7 @@ namespace F2B.Basic
 
         protected override object Execute(CodeActivityContext context)
         {
-            object value = Global.Get(Key.Get(context));
+            object value = Global.Get(context, Key.Get(context));
             Value?.Set(context, value);
             return value;
         }
@@ -39,7 +39,7 @@ namespace F2B.Basic
 
     [Designer(typeof(BasicSimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("Set Global Value")]
-    [Description("Write a value into F2B.Global. Expression: F2B.Global.Set(\"keyname\", value)")]
+    [Description("Write a value into F2B.Global for the current source workflow run. Expression: F2B.Global.Set(\"keyname\", value)")]
     public sealed class SetGlobalValueActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {
         public SetGlobalValueActivity()
@@ -64,7 +64,7 @@ namespace F2B.Basic
 
         protected override void Execute(CodeActivityContext context)
         {
-            Global.Set(Key.Get(context), Value.Get(context));
+            Global.Set(context, Key.Get(context), Value.Get(context));
         }
     }
 }
