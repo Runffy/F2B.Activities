@@ -392,6 +392,39 @@ namespace F2B.Forms.Session
         }
 
         /// <summary>
+        /// Activate a TabPage by its control Id (selects the owning TabControl's selected tab).
+        /// </summary>
+        public void ActivateTab(string tabPageId)
+        {
+            InvokeOnUi(() =>
+            {
+                Control control = GetControl(tabPageId);
+                var page = control as TabPage;
+                if (page == null)
+                {
+                    throw new InvalidOperationException(
+                        "Control '" + tabPageId + "' is not a TabPage.");
+                }
+
+                var tabs = page.Parent as TabControl;
+                if (tabs == null)
+                {
+                    throw new InvalidOperationException(
+                        "TabPage '" + tabPageId + "' is not hosted under a TabControl.");
+                }
+
+                if (!page.Enabled)
+                {
+                    throw new InvalidOperationException(
+                        "TabPage '" + tabPageId + "' is disabled and cannot be selected.");
+                }
+
+                tabs.SelectedTab = page;
+                FlushControlPaint(tabs);
+            });
+        }
+
+        /// <summary>
         /// Force the form to repaint now. Optionally pump the UI message queue
         /// so pending paints (and other UI messages) are processed even while a
         /// BindEvent handler is still running on the UI synchronization context.
