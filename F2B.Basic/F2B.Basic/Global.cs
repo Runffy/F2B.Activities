@@ -1,14 +1,15 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using F2B.Basic;
 
 namespace F2B
 {
     /// <summary>
     /// Per-run key/value bag for OpenRPA expressions and activities.
-    /// Scoped to the outermost source workflow InstanceId (Invoke OpenRPA caller chain),
-    /// so values do not leak across separate OpenRPA runs in the same process.
+    /// Scoped to the outermost source workflow InstanceId (Invoke OpenRPA caller / bookmark chain),
+    /// so nested workflows in the same run share one bag, while separate OpenRPA runs do not.
     /// Expression: <c>F2B.Global.Get("keyname")</c> / <c>F2B.Global.Set("keyname", value)</c>.
     /// </summary>
     public static class Global
@@ -23,7 +24,7 @@ namespace F2B
 
         public static object Get(System.Activities.CodeActivityContext context, string keyname)
         {
-            return GetFromBag(BagFor(RuntimeDirectory.ResolveSourceInstanceId(context)), keyname);
+            return GetFromBag(BagFor(ResolveBagKey(context)), keyname);
         }
 
         /// <summary>
@@ -36,7 +37,7 @@ namespace F2B
 
         public static object Set(System.Activities.CodeActivityContext context, string keyname, object value)
         {
-            return SetInBag(BagFor(RuntimeDirectory.ResolveSourceInstanceId(context)), keyname, value);
+            return SetInBag(BagFor(ResolveBagKey(context)), keyname, value);
         }
 
         public static bool Contains(string keyname)
@@ -71,9 +72,16 @@ namespace F2B
             BagsBySourceInstanceId.Clear();
         }
 
+        private static string ResolveBagKey(System.Activities.CodeActivityContext context)
+        {
+            return context == null
+                ? OpenRpaSourceWorkflow.ResolveSourceInstanceId()
+                : OpenRpaSourceWorkflow.ResolveSourceInstanceId(context);
+        }
+
         private static ConcurrentDictionary<string, object> CurrentBag()
         {
-            return BagFor(RuntimeDirectory.ResolveSourceInstanceId());
+            return BagFor(OpenRpaSourceWorkflow.ResolveSourceInstanceId());
         }
 
         private static ConcurrentDictionary<string, object> BagFor(string sourceInstanceId)
@@ -93,26 +101,27 @@ namespace F2B
         {
             try
             {
-                HashSet<string> active = RuntimeDirectory.GetActiveSourceInstanceIds();
-                foreach (string key in BagsBySourceInstanceId.Keys)
+                HashSet<string> keep = OpenRpaSourceWorkflow.GetActiveSourceInstanceIds();
+
+                foreach (string key in BagsBySourceInstanceId.Keys.ToArray())
                 {
                     if (string.IsNullOrEmpty(key))
                     {
-                        // Fallback bag when InstanceId cannot be resolved — drop when any real run is active.
-                        if (active.Count > 0)
-                        {
-                            ConcurrentDictionary<string, object> unused;
-                            BagsBySourceInstanceId.TryRemove(key, out unused);
-                        }
-
                         continue;
                     }
 
-                    if (!active.Contains(key))
+                    if (keep.Contains(key))
                     {
-                        ConcurrentDictionary<string, object> unused;
-                        BagsBySourceInstanceId.TryRemove(key, out unused);
+                        continue;
                     }
+
+                    if (OpenRpaSourceWorkflow.IsSourceInstanceActive(key))
+                    {
+                        continue;
+                    }
+
+                    ConcurrentDictionary<string, object> unused;
+                    BagsBySourceInstanceId.TryRemove(key, out unused);
                 }
             }
             catch

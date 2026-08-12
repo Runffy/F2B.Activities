@@ -1,5 +1,4 @@
 using OpenRPA.Interfaces;
-using System;
 using System.IO;
 using System.Linq;
 
@@ -8,31 +7,21 @@ namespace F2B.Basic
     /// <summary>
     /// Source-project resource directory:
     /// <c>{ProjectsDirectory}/Projects/{sourceProjectName}</c>
-    /// (compare Runtime: <c>{ProjectsDirectory}/Runtime/{sourceProjectName}/{timestamp}</c>).
-    /// Project name always follows the outermost source workflow (Invoke OpenRPA caller chain).
+    /// Source project always from <see cref="OpenRpaSourceWorkflow"/> (shared with RuntimeDirectory / Global).
     /// Expression: <c>F2B.Basic.ResourceDirectory.Path</c>
     /// </summary>
     public static class ResourceDirectory
     {
-        /// <summary>
-        /// Absolute path of the source project's resource folder under Projects.
-        /// </summary>
         public static string Path
         {
-            get { return GetOrCreate(RuntimeDirectory.ResolveSourceProjectName()); }
+            get { return GetOrCreate(OpenRpaSourceWorkflow.ResolveSourceProjectName()); }
         }
 
-        /// <summary>
-        /// Resolve (and ensure) the resource directory for the workflow bound to <paramref name="context"/>.
-        /// </summary>
         public static string GetOrCreate(System.Activities.CodeActivityContext context)
         {
-            return GetOrCreate(RuntimeDirectory.ResolveSourceProjectName(context));
+            return GetOrCreate(OpenRpaSourceWorkflow.ResolveSourceProjectName(context));
         }
 
-        /// <summary>
-        /// Build <c>{ProjectsDirectory}/Projects/{projectName}</c> and create it if missing.
-        /// </summary>
         public static string GetOrCreate(string projectName)
         {
             string safeProjectName = SanitizePathSegment(

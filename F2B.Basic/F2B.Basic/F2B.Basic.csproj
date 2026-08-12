@@ -70,6 +70,7 @@
     <Compile Include="GetRuntimeDirectoryDesigner.cs" />
     <Compile Include="GetResourcePathActivity.cs" />
     <Compile Include="ResourceDirectory.cs" />
+    <Compile Include="OpenRpaSourceWorkflow.cs" />
     <Compile Include="GetWindowsCredentialActivity.cs" />
     <Compile Include="Global.cs" />
     <Compile Include="GlobalValueActivities.cs" />
