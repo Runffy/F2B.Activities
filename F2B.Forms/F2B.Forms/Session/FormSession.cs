@@ -498,6 +498,78 @@ namespace F2B.Forms.Session
         }
 
         /// <summary>
+        /// Append text to a control. <paramref name="separator"/> is inserted between existing content and the new text
+        /// when the control is non-empty. Common escapes: \n, \r\n, \r, \t. Empty separator = concatenate only.
+        /// </summary>
+        public void AppendControlText(string controlId, string text, string separator, bool scrollToEnd)
+        {
+            InvokeOnUi(() =>
+            {
+                Control control = GetControl(controlId);
+                string append = text ?? string.Empty;
+                string sep = NormalizeAppendSeparator(separator);
+
+                if (control is TextBoxBase textBox)
+                {
+                    if (textBox.TextLength > 0 && sep.Length > 0)
+                    {
+                        textBox.AppendText(sep);
+                    }
+
+                    textBox.AppendText(append);
+
+                    if (scrollToEnd)
+                    {
+                        textBox.SelectionStart = textBox.TextLength;
+                        textBox.SelectionLength = 0;
+                        textBox.ScrollToCaret();
+                    }
+                }
+                else
+                {
+                    string existing = control.Text ?? string.Empty;
+                    if (existing.Length > 0 && sep.Length > 0)
+                    {
+                        control.Text = existing + sep + append;
+                    }
+                    else
+                    {
+                        control.Text = existing + append;
+                    }
+                }
+
+                FlushControlPaint(control);
+            });
+        }
+
+        private static string NormalizeAppendSeparator(string separator)
+        {
+            if (string.IsNullOrEmpty(separator))
+            {
+                return string.Empty;
+            }
+
+            // Allow typing "\n" / "\r\n" in the property pane as escapes.
+            switch (separator)
+            {
+                case "\\n":
+                case "\n":
+                    return "\n";
+                case "\\r\\n":
+                case "\r\n":
+                    return "\r\n";
+                case "\\r":
+                case "\r":
+                    return "\r";
+                case "\\t":
+                case "\t":
+                    return "\t";
+                default:
+                    return separator;
+            }
+        }
+
+        /// <summary>
         /// Activate a TabPage by its control Id (selects the owning TabControl's selected tab).
         /// </summary>
         public void ActivateTab(string tabPageId)
