@@ -307,6 +307,112 @@ namespace F2B.Forms.Session
             return control;
         }
 
+        /// <summary>
+        /// Collects child control Ids under a container, grouped by Forms type name.
+        /// Container may be a Panel / GroupBox / TabPage / ScrollContainer / TableLayout / TabControl, or the form ("form").
+        /// </summary>
+        /// <param name="containerId">Parent control Id (use "form" for the root form).</param>
+        /// <param name="deepDive">True = recurse into nested containers; False = direct children only.</param>
+        /// <param name="typeFilterFlags">Property-pane Flags filter; None/All = include all types.</param>
+        /// <param name="typeFilterNames">Optional runtime string[] filter; empty = no extra filter.</param>
+        public Dictionary<string, string[]> GetChildControlsByType(
+            string containerId,
+            bool deepDive,
+            FormControlTypeFilter typeFilterFlags,
+            string[] typeFilterNames)
+        {
+            var result = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+            InvokeOnUi(() =>
+            {
+                Control container = GetControl(containerId);
+                CollectChildControls(container, deepDive, typeFilterFlags, typeFilterNames, result);
+            });
+
+            var output = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+            foreach (KeyValuePair<string, List<string>> pair in result)
+            {
+                output[pair.Key] = pair.Value.ToArray();
+            }
+
+            return output;
+        }
+
+        private void CollectChildControls(
+            Control parent,
+            bool deepDive,
+            FormControlTypeFilter typeFilterFlags,
+            string[] typeFilterNames,
+            Dictionary<string, List<string>> sink)
+        {
+            if (parent == null || sink == null)
+            {
+                return;
+            }
+
+            foreach (Control child in EnumerateDirectChildren(parent))
+            {
+                if (child == null || child.IsDisposed)
+                {
+                    continue;
+                }
+
+                string id = child.Name;
+                bool registered = !string.IsNullOrWhiteSpace(id)
+                    && _controls != null
+                    && _controls.ContainsKey(id);
+
+                if (registered)
+                {
+                    string typeName = FormControlTypeResolver.Resolve(child);
+                    if (!string.IsNullOrWhiteSpace(typeName)
+                        && !string.Equals(typeName, FormControlType.Form, StringComparison.OrdinalIgnoreCase)
+                        && FormControlTypeFilterUtil.PassesFilter(typeFilterFlags, typeName)
+                        && FormControlTypeFilterUtil.PassesStringFilter(typeFilterNames, typeName))
+                    {
+                        if (!sink.TryGetValue(typeName, out List<string> list))
+                        {
+                            list = new List<string>();
+                            sink[typeName] = list;
+                        }
+
+                        if (!list.Exists(existing => string.Equals(existing, id, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            list.Add(id);
+                        }
+                    }
+                }
+
+                if (deepDive)
+                {
+                    CollectChildControls(child, deepDive: true, typeFilterFlags, typeFilterNames, sink);
+                }
+            }
+        }
+
+        private static IEnumerable<Control> EnumerateDirectChildren(Control parent)
+        {
+            if (parent is TabControl tabControl)
+            {
+                foreach (TabPage page in tabControl.TabPages)
+                {
+                    yield return page;
+                }
+
+                yield break;
+            }
+
+            if (parent == null)
+            {
+                yield break;
+            }
+
+            foreach (Control child in parent.Controls)
+            {
+                yield return child;
+            }
+        }
+
         public object GetControlValue(string controlId)
         {
             object result = null;
