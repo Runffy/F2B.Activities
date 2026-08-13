@@ -3482,6 +3482,19 @@ namespace F2B.Forms.Designer
                 return string.IsNullOrEmpty(item.Text) ? (item.Mask ?? string.Empty) : item.Text;
             }
 
+            if (string.Equals(item.Type, FormControlType.TextBox, StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrEmpty(item.PasswordChar))
+            {
+                string raw = item.Text ?? string.Empty;
+                if (raw.Length == 0)
+                {
+                    return string.Empty;
+                }
+
+                char mask = item.PasswordChar.Trim()[0];
+                return new string(mask, raw.Length);
+            }
+
             return item.Text ?? string.Empty;
         }
 
@@ -3854,7 +3867,13 @@ namespace F2B.Forms.Designer
 
         [Category("Appearance")]
         [DisplayName("Mask")]
+        [Description("MaskedTextBox format mask, e.g. 000-000-0000. Not for password.")]
         public string Mask { get; set; }
+
+        [Category("Appearance")]
+        [DisplayName("Password Char")]
+        [Description("TextBox only. Set to * to mask input as password. Leave empty for normal text.")]
+        public string PasswordChar { get; set; }
 
         [Category("Data")]
         [DisplayName("Minimum")]
@@ -4123,6 +4142,9 @@ namespace F2B.Forms.Designer
                 case "Mask":
                     return type == FormControlType.MaskedTextBox;
 
+                case "PasswordChar":
+                    return type == FormControlType.TextBox;
+
                 case "Minimum":
                 case "Maximum":
                 case "Increment":
@@ -4216,6 +4238,11 @@ namespace F2B.Forms.Designer
             if (Type == FormControlType.MaskedTextBox && !string.IsNullOrEmpty(Mask))
             {
                 def.Mask = Mask;
+            }
+
+            if (Type == FormControlType.TextBox && !string.IsNullOrEmpty(PasswordChar))
+            {
+                def.PasswordChar = PasswordChar.Trim().Substring(0, 1);
             }
 
             if (Type == FormControlType.NumericUpDown)
@@ -4338,6 +4365,7 @@ namespace F2B.Forms.Designer
                 Items = c.Items,
                 SelectedIndex = c.SelectedIndex ?? (FormControlType.IsTabControl(c.Type) ? 0 : -1),
                 Mask = c.Mask,
+                PasswordChar = c.PasswordChar,
                 Minimum = c.Minimum ?? 0m,
                 Maximum = c.Maximum ?? 100m,
                 Increment = c.Increment ?? 1m,

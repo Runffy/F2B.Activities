@@ -574,6 +574,10 @@ namespace F2B.Forms.Engine
 
         private static TextBox CreateTextBox(ControlDefinition definition, bool multiline)
         {
+            char? passwordChar = ParsePasswordChar(definition == null ? null : definition.PasswordChar);
+            // WinForms ignores PasswordChar when Multiline is true — password boxes must be single-line.
+            bool passwordMode = passwordChar.HasValue && !multiline;
+
             var textBox = new TextBox
             {
                 Text = definition.Text ?? string.Empty,
@@ -602,6 +606,15 @@ namespace F2B.Forms.Engine
 
                 textBox.ScrollBars = ParseScrollBars(scrollBars);
             }
+            else if (passwordMode)
+            {
+                textBox.Multiline = false;
+                textBox.AcceptsReturn = false;
+                textBox.WordWrap = false;
+                textBox.ScrollBars = ScrollBars.None;
+                textBox.PasswordChar = passwordChar.Value;
+                textBox.UseSystemPasswordChar = false;
+            }
             else
             {
                 // WinForms single-line TextBox ignores Height (font PreferredHeight).
@@ -613,6 +626,30 @@ namespace F2B.Forms.Engine
             }
 
             return textBox;
+        }
+
+        private static char? ParsePasswordChar(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return null;
+            }
+
+            string trimmed = value.Trim();
+            if (trimmed.Length == 0)
+            {
+                return null;
+            }
+
+            // Allow "\\0" / "none" to mean clear (no mask).
+            if (string.Equals(trimmed, "\\0", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(trimmed, "none", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(trimmed, "false", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return trimmed[0];
         }
 
         private static DateTimePicker CreateDateTimePicker(ControlDefinition definition, bool includeTime)

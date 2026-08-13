@@ -48,9 +48,16 @@ namespace F2B.Forms.Model
         [JsonProperty("maxLength")]
         public int? MaxLength { get; set; }
 
-        /// <summary>MaskedTextBox input mask, e.g. 000-000-0000.</summary>
+        /// <summary>MaskedTextBox input mask, e.g. 000-000-0000. Not for password masking.</summary>
         [JsonProperty("mask")]
         public string Mask { get; set; }
+
+        /// <summary>
+        /// TextBox password mask character, e.g. "*". Empty / null = normal text.
+        /// When set, the TextBox is forced to single-line (WinForms ignores PasswordChar on multiline).
+        /// </summary>
+        [JsonProperty("passwordChar")]
+        public string PasswordChar { get; set; }
 
         /// <summary>NumericUpDown minimum.</summary>
         [JsonProperty("minimum")]
