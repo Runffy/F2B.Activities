@@ -552,6 +552,24 @@ namespace F2B.Forms.Session
             });
         }
 
+        /// <summary>
+        /// Soft bring-to-front: briefly uses TopMost then clears it so the form is not sticky.
+        /// Other windows can cover it again when activated.
+        /// </summary>
+        public void BringFormToFrontSoft()
+        {
+            InvokeOnUi(() =>
+            {
+                EnsureOpen();
+                if (_form == null || _form.IsDisposed)
+                {
+                    throw new InvalidOperationException("Form is not available.");
+                }
+
+                FormNativeWindowActivator.SoftBringToFront(_form);
+            });
+        }
+
         /// <param name="fontFamily">Null/empty = keep.</param>
         /// <param name="fontSize">Null = keep.</param>
         /// <param name="bold">Null = keep; false = clear bold; true = bold.</param>
