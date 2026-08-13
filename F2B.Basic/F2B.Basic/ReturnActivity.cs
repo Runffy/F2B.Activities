@@ -8,19 +8,46 @@ using System.Windows;
 namespace F2B.Basic
 {
     /// <summary>
-    /// Early-exit for <see cref="TraceableTryCatchActivity"/>: throws Message = "Return".
+    /// Marker used by <see cref="ReturnActivity"/> so Traceable TryCatch can early-exit
+    /// without Catch, optionally running Finally.
+    /// </summary>
+    internal sealed class TraceableReturnSignal : Exception
+    {
+        public TraceableReturnSignal(bool executeFinally)
+            : base(TraceableTryCatchActivity.ReturnMessage)
+        {
+            ExecuteFinally = executeFinally;
+        }
+
+        public bool ExecuteFinally { get; }
+    }
+
+    /// <summary>
+    /// Early-exit for <see cref="TraceableTryCatchActivity"/>.
+    /// Always skips Catch. Finally runs only when <see cref="ExecuteFinally"/> is true.
     /// Must be placed inside a Traceable TryCatch (validated on the workflow canvas).
     /// </summary>
     [Designer(typeof(BasicSimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("Return")]
-    [Description("Exit the enclosing Traceable TryCatch without running Catch/Finally. Must be inside Traceable TryCatch.")]
+    [Description("Exit the enclosing Traceable TryCatch without Catch. Optionally run Finally (Execute Finally). Must be inside Traceable TryCatch.")]
     public sealed class ReturnActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {
         public ReturnActivity()
         {
             DisplayName = "Return";
+            ExecuteFinally = true;
             Constraints.Add(MustBeInsideTraceableTryCatch());
         }
+
+        /// <summary>
+        /// Plain bool (not InArgument) so the property pane shows a True/False dropdown.
+        /// Default true: run Finally (closer to try/finally); set false to skip cleanup.
+        /// </summary>
+        [DisplayName("Execute Finally")]
+        [Description("True = run Finally before leaving the Traceable TryCatch (default); False = skip Finally. Catch is always skipped.")]
+        [Category("Input")]
+        [DefaultValue(true)]
+        public bool ExecuteFinally { get; set; }
 
         public Activity Create(DependencyObject target)
         {
@@ -29,7 +56,7 @@ namespace F2B.Basic
 
         protected override void Execute(CodeActivityContext context)
         {
-            throw new Exception(TraceableTryCatchActivity.ReturnMessage);
+            throw new TraceableReturnSignal(ExecuteFinally);
         }
 
         private static Constraint MustBeInsideTraceableTryCatch()

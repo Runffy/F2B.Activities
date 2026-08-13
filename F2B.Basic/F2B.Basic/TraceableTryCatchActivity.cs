@@ -14,11 +14,11 @@ namespace F2B.Basic
     /// </summary>
     [Designer(typeof(TraceableTryCatchDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("Traceable TryCatch")]
-    [Description("Try/Catch/Finally that attributes faults to a relative activity path (XPath-like) and DisplayName breadcrumb. Message \"Return\" skips Catch/Finally. Use Traceable Rethrow in Catch to propagate the original exception (keeps Source) after Finally.")]
+    [Description("Try/Catch/Finally that attributes faults to a relative activity path (XPath-like) and DisplayName breadcrumb. Return skips Catch; set Return.Execute Finally=true to still run Finally. Use Traceable Rethrow in Catch to propagate the original exception (keeps Source) after Finally.")]
     public sealed class TraceableTryCatchActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {
         /// <summary>
-        /// Throw with this message inside Try to exit the TraceableTryCatch without Catch/Finally (early return).
+        /// Legacy / signal message for early return from TraceableTryCatch (skips Catch; Finally depends on TraceableReturnSignal.ExecuteFinally).
         /// </summary>
         public const string ReturnMessage = "Return";
 
@@ -146,10 +146,17 @@ namespace F2B.Basic
 
         private void OnExceptionFromTry(NativeActivityFaultContext faultContext, Exception propagatedException, ActivityInstance propagatedFrom)
         {
-            // Early-return signal: swallow, skip Catch/Finally, continue after this TryCatch.
+            // Early-return signal: swallow, skip Catch; Finally optional (Return.ExecuteFinally).
             if (IsReturnSignal(propagatedException))
             {
-                AcceptReturnSignal(faultContext, propagatedFrom);
+                bool executeFinally = GetReturnExecuteFinally(propagatedException);
+                AcceptReturnSignal(faultContext, propagatedFrom, skipFinally: !executeFinally);
+                if (executeFinally)
+                {
+                    // OnTryComplete skips Faulted Try and will not schedule Finally — do it here.
+                    ScheduleFinally(faultContext);
+                }
+
                 return;
             }
 
@@ -194,11 +201,30 @@ namespace F2B.Basic
 
         private static bool IsReturnSignal(Exception exception)
         {
-            return exception != null
-                && string.Equals(exception.Message, ReturnMessage, StringComparison.Ordinal);
+            if (exception == null)
+            {
+                return false;
+            }
+
+            if (exception is TraceableReturnSignal)
+            {
+                return true;
+            }
+
+            // Legacy: throw new Exception("Return")
+            return string.Equals(exception.Message, ReturnMessage, StringComparison.Ordinal);
         }
 
-        private void AcceptReturnSignal(NativeActivityFaultContext faultContext, ActivityInstance propagatedFrom)
+        private static bool GetReturnExecuteFinally(Exception exception)
+        {
+            var signal = exception as TraceableReturnSignal;
+            return signal != null && signal.ExecuteFinally;
+        }
+
+        private void AcceptReturnSignal(
+            NativeActivityFaultContext faultContext,
+            ActivityInstance propagatedFrom,
+            bool skipFinally)
         {
             faultContext.HandleFault();
             if (propagatedFrom != null)
@@ -209,7 +235,7 @@ namespace F2B.Basic
             faultContext.SetValue(_suppressCancel, true);
             faultContext.SetValue(_exceptionHandled, true);
             faultContext.SetValue(_caughtException, null);
-            faultContext.SetValue(_skipFinally, true);
+            faultContext.SetValue(_skipFinally, skipFinally);
         }
 
         private void OnTryComplete(NativeActivityContext context, ActivityInstance completedInstance)
@@ -232,7 +258,9 @@ namespace F2B.Basic
         {
             if (IsReturnSignal(propagatedException))
             {
-                AcceptReturnSignal(faultContext, propagatedFrom);
+                bool executeFinally = GetReturnExecuteFinally(propagatedException);
+                AcceptReturnSignal(faultContext, propagatedFrom, skipFinally: !executeFinally);
+                // Catch completion callback still runs ScheduleFinally and respects _skipFinally.
                 return;
             }
 
