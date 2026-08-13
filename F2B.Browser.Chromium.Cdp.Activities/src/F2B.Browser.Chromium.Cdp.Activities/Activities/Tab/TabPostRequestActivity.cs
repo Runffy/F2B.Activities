@@ -42,6 +42,11 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [Category("Input.C")]
         public InArgument<Dictionary<string, object>> Dict { get; set; }
 
+        [DisplayName("Content Type")]
+        [Description("HTTP Content-Type header. Default: application/x-www-form-urlencoded.")]
+        [Category("Input.C")]
+        public InArgument<string> ContentType { get; set; }
+
         [DisplayName("Timeout (ms)")]
         [Description("Request timeout in milliseconds.")]
         [Category("Input.D")]
@@ -66,10 +71,18 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             var url = Url.Get(context);
             var data = Data == null ? null : Data.Get(context);
             var dict = Dict == null ? null : Dict.Get(context);
+            var contentType = ContentType == null ? null : ContentType.Get(context);
             var timeoutMs = CdpActivityArgumentHelper.GetOrDefault(Timeout, context, 30000);
             var certifications = Certifications == null ? null : Certifications.Get(context);
 
-            var response = CdpHttpRequestHelper.Post(resolvedTab, url, data, dict, timeoutMs, certifications);
+            var response = CdpHttpRequestHelper.Post(
+                resolvedTab,
+                url,
+                data,
+                dict,
+                contentType,
+                timeoutMs,
+                certifications);
             Response?.Set(context, response);
         }
     }

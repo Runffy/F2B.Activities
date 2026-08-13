@@ -57,12 +57,13 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             string url,
             string data,
             System.Collections.Generic.Dictionary<string, object> dict,
+            string contentType,
             int timeoutMs,
             string[] certificationPaths)
         {
             ApplyCertificationsPlaceholder(certificationPaths);
             return CdpRetryHelper.ExecuteHttpWithRetry(
-                () => tab.Post(url, data, dict),
+                () => tab.Post(url, data, dict, contentType),
                 timeoutMs,
                 "Tab POST request");
         }

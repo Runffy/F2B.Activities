@@ -359,10 +359,14 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             return SendBrowserHttp("GET", url, null);
         }
 
-        public CdpResponse Post(string url, string data = null, Dictionary<string, object> dict = null)
+        public CdpResponse Post(
+            string url,
+            string data = null,
+            Dictionary<string, object> dict = null,
+            string contentType = null)
         {
             var postData = ResolvePostData(data, dict);
-            return SendBrowserHttp("POST", url, postData);
+            return SendBrowserHttp("POST", url, postData, contentType);
         }
 
         public object RunJs(string script, object[] args = null, bool asExpression = false, bool isAsync = false, int timeoutMs = 30000)
@@ -486,7 +490,7 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             return data ?? string.Empty;
         }
 
-        private CdpResponse SendBrowserHttp(string method, string url, string data)
+        private CdpResponse SendBrowserHttp(string method, string url, string data, string contentType = null)
         {
             if (string.IsNullOrWhiteSpace(url))
             {
@@ -496,12 +500,20 @@ namespace F2B.Browser.Chromium.Cdp.Internal
             var serializer = new CdpJsonSerializer();
             var urlLiteral = serializer.Serialize(url);
             var dataLiteral = serializer.Serialize(data ?? string.Empty);
-            var expression = BuildBrowserHttpScript(method, urlLiteral, dataLiteral);
+            var resolvedContentType = string.IsNullOrWhiteSpace(contentType)
+                ? "application/x-www-form-urlencoded"
+                : contentType.Trim();
+            var contentTypeLiteral = serializer.Serialize(resolvedContentType);
+            var expression = BuildBrowserHttpScript(method, urlLiteral, dataLiteral, contentTypeLiteral);
             var json = Convert.ToString(RunJs(expression, asExpression: true));
             return ParseBrowserHttpResponse(json, serializer);
         }
 
-        private static string BuildBrowserHttpScript(string method, string urlLiteral, string bodyLiteral)
+        private static string BuildBrowserHttpScript(
+            string method,
+            string urlLiteral,
+            string bodyLiteral,
+            string contentTypeLiteral)
         {
             if (string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase))
             {
@@ -510,9 +522,10 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                         try {{
                             var url = {0};
                             var body = {1};
+                            var contentType = {2};
                             var response = await fetch(url, {{
                                 method: 'POST',
-                                headers: {{ 'Content-Type': 'application/x-www-form-urlencoded' }},
+                                headers: {{ 'Content-Type': contentType }},
                                 body: body
                             }});
                             var text = await response.text();
@@ -522,7 +535,8 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                         }}
                     }})();",
                     urlLiteral,
-                    bodyLiteral);
+                    bodyLiteral,
+                    contentTypeLiteral);
             }
 
             return string.Format(

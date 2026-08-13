@@ -124,12 +124,19 @@ namespace F2B.Browser.Chromium.Cdp.Browser
         }
 
         /// <summary>
-        /// Sends a POST request in the tab context via synchronous XHR.
+        /// Sends a POST request in the tab context via fetch.
         /// Pass <paramref name="data"/> directly, or pass <paramref name="dict"/> to urlencode the form payload first.
         /// </summary>
-        public CdpResponse Post(string url, string data = null, Dictionary<string, object> dict = null)
+        /// <param name="contentType">
+        /// Optional Content-Type header. Defaults to <c>application/x-www-form-urlencoded</c> when null or empty.
+        /// </param>
+        public CdpResponse Post(
+            string url,
+            string data = null,
+            Dictionary<string, object> dict = null,
+            string contentType = null)
         {
-            return GetSession().Post(url, data, dict);
+            return GetSession().Post(url, data, dict, contentType);
         }
 
         /// <summary>

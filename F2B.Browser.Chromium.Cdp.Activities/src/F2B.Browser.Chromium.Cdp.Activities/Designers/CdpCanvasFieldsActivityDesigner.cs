@@ -75,6 +75,8 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         private readonly FrameworkElement _postDictRow;
         private readonly Border _postDictEditorBorder;
         private readonly ExpressionTextBox _postDictExpressionBox;
+        private readonly FrameworkElement _postContentTypeRow;
+        private readonly ExpressionTextBox _postContentTypeExpressionBox;
 
         private DesignerMode _designerMode = DesignerMode.Empty;
         private bool _isSyncingNavigateType;
@@ -250,6 +252,14 @@ namespace F2B.Browser.Chromium.Cdp.Activities
                 CdpDesignerShared.RowSpacing);
             body.Children.Add(_postDictRow);
 
+            _postContentTypeExpressionBox = CdpDesignerShared.CreateInExpressionTextBox("ContentType", typeof(string));
+            _postContentTypeRow = CdpDesignerShared.CreateRow(
+                "Content Type",
+                _postContentTypeExpressionBox,
+                LabelColumn,
+                CdpDesignerShared.RowSpacing);
+            body.Children.Add(_postContentTypeRow);
+
             _rootPanel.Child = body;
             host.Children.Add(_rootPanel);
             ActivityDesignerCollapseHelper.Attach(this, host);
@@ -288,6 +298,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             CdpDesignerShared.BindArgumentExpression(_requestUrlExpressionBox, ModelItem, "Url", "In", false);
             CdpDesignerShared.BindArgumentExpression(_postDataExpressionBox, ModelItem, "Data", "In", false);
             CdpDesignerShared.BindArgumentExpression(_postDictExpressionBox, ModelItem, "Dict", "In", false);
+            CdpDesignerShared.BindArgumentExpression(_postContentTypeExpressionBox, ModelItem, "ContentType", "In", false);
         }
 
         private void RefreshScreencastThumbnail()
@@ -410,6 +421,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
                 : collapsed;
             _postDataRow.Visibility = _designerMode == DesignerMode.TabPostRequest ? visible : collapsed;
             _postDictRow.Visibility = _designerMode == DesignerMode.TabPostRequest ? visible : collapsed;
+            _postContentTypeRow.Visibility = _designerMode == DesignerMode.TabPostRequest ? visible : collapsed;
         }
 
         private void RefreshNavigateRows(CdpNavigateType navigateType)
