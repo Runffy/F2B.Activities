@@ -463,7 +463,7 @@ namespace F2B.Forms.Engine
             Color? fore = FontStyleUtil.ParseColor(definition.ForeColor);
             if (fore.HasValue && SupportsFont(type))
             {
-                control.ForeColor = fore.Value;
+                ApplyForeColor(control, fore.Value);
             }
 
             Color? back = FontStyleUtil.ParseColor(definition.BackColor);
@@ -471,6 +471,36 @@ namespace F2B.Forms.Engine
             {
                 control.BackColor = back.Value;
             }
+        }
+
+        /// <summary>
+        /// WinForms TextBox/TextArea (especially ReadOnly) often ignore ForeColor until BackColor
+        /// is explicitly set away from the internal "default color" mode.
+        /// </summary>
+        private static void ApplyForeColor(Control control, Color color)
+        {
+            if (control is TextBoxBase textBox)
+            {
+                Color back = textBox.BackColor;
+                int controlArgb = SystemColors.Control.ToArgb();
+                int windowArgb = SystemColors.Window.ToArgb();
+
+                if (textBox.ReadOnly
+                    || back.ToArgb() == controlArgb
+                    || back.ToArgb() == windowArgb)
+                {
+                    textBox.BackColor = SystemColors.Window;
+                }
+                else
+                {
+                    textBox.BackColor = back;
+                }
+
+                textBox.ForeColor = color;
+                return;
+            }
+
+            control.ForeColor = color;
         }
 
         private static bool SupportsFont(string type)

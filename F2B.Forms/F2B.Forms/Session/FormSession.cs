@@ -673,7 +673,7 @@ namespace F2B.Forms.Session
                 Color? fore = FontStyleUtil.ParseColor(foreColor);
                 if (fore.HasValue)
                 {
-                    control.ForeColor = fore.Value;
+                    ApplyForeColor(control, fore.Value);
                 }
 
                 FlushControlPaint(control);
@@ -2525,8 +2525,40 @@ namespace F2B.Forms.Session
             }
             else
             {
-                control.ForeColor = color;
+                ApplyForeColor(control, color);
             }
+        }
+
+        /// <summary>
+        /// WinForms TextBox/TextArea (especially ReadOnly) often ignore ForeColor until BackColor
+        /// is explicitly set away from the internal "default color" mode.
+        /// </summary>
+        private static void ApplyForeColor(Control control, Color color)
+        {
+            if (control is TextBoxBase textBox)
+            {
+                Color back = textBox.BackColor;
+                int controlArgb = SystemColors.Control.ToArgb();
+                int windowArgb = SystemColors.Window.ToArgb();
+
+                if (textBox.ReadOnly
+                    || back.ToArgb() == controlArgb
+                    || back.ToArgb() == windowArgb)
+                {
+                    // Keep a normal editable look, but force an explicit BackColor so ForeColor paints.
+                    textBox.BackColor = SystemColors.Window;
+                }
+                else
+                {
+                    // Re-assign to clear WinForms default-color tracking without changing the color.
+                    textBox.BackColor = back;
+                }
+
+                textBox.ForeColor = color;
+                return;
+            }
+
+            control.ForeColor = color;
         }
 
         private static Color ResolveColor(object value, string propertyName)

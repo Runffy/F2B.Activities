@@ -52,21 +52,35 @@ namespace F2B.Forms.Model
                 return null;
             }
 
+            // Strip accidental quotes from expressions / property paste: "Red" / 'Red'
+            string text = value.Trim().Trim('"', '\'');
+            if (text.Length == 0)
+            {
+                return null;
+            }
+
             try
             {
-                return ColorTranslator.FromHtml(value.Trim());
+                Color html = ColorTranslator.FromHtml(text);
+                if (!html.IsEmpty
+                    || string.Equals(text, "Transparent", StringComparison.OrdinalIgnoreCase))
+                {
+                    return html;
+                }
             }
             catch
             {
-                try
-                {
-                    return Color.FromName(value.Trim());
-                }
-                catch
-                {
-                    return null;
-                }
+                // fall through to named colors
             }
+
+            Color named = Color.FromName(text);
+            // FromName never throws; unknown names yield A=0 and IsKnownColor=false.
+            if (named.IsKnownColor)
+            {
+                return named;
+            }
+
+            return null;
         }
 
         public static string ToHtmlColor(Color color)
