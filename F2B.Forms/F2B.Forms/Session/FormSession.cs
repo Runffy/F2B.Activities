@@ -499,7 +499,8 @@ namespace F2B.Forms.Session
 
         /// <summary>
         /// Append text to a control. <paramref name="separator"/> is inserted between existing content and the new text
-        /// when the control is non-empty. Common escapes: \n, \r\n, \r, \t. Empty separator = concatenate only.
+        /// when the control is non-empty. Empty separator = concatenate only; otherwise used as-is.
+        /// Caller resolves unset → newline.
         /// </summary>
         public void AppendControlText(string controlId, string text, string separator, bool scrollToEnd)
         {
@@ -507,7 +508,7 @@ namespace F2B.Forms.Session
             {
                 Control control = GetControl(controlId);
                 string append = text ?? string.Empty;
-                string sep = NormalizeAppendSeparator(separator);
+                string sep = separator ?? string.Empty;
 
                 if (control is TextBoxBase textBox)
                 {
@@ -540,33 +541,6 @@ namespace F2B.Forms.Session
 
                 FlushControlPaint(control);
             });
-        }
-
-        private static string NormalizeAppendSeparator(string separator)
-        {
-            if (string.IsNullOrEmpty(separator))
-            {
-                return string.Empty;
-            }
-
-            // Allow typing "\n" / "\r\n" in the property pane as escapes.
-            switch (separator)
-            {
-                case "\\n":
-                case "\n":
-                    return "\n";
-                case "\\r\\n":
-                case "\r\n":
-                    return "\r\n";
-                case "\\r":
-                case "\r":
-                    return "\r";
-                case "\\t":
-                case "\t":
-                    return "\t";
-                default:
-                    return separator;
-            }
         }
 
         /// <summary>

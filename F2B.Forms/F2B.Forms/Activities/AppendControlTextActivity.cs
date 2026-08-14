@@ -1,3 +1,4 @@
+using System;
 using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
@@ -7,13 +8,12 @@ namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("Append Control Text")]
-    [Description("Append text to a control (TextArea/TextBox recommended). Separator is inserted before the new text when content already exists. Use \\n for a new line; any other string is used as a literal separator. Scrolls to end by default.")]
+    [Description("Append text to a control (TextArea/TextBox recommended). Separator defaults to vbNewLine when unset; pass \"\" to concatenate with no separator; any other value is used as-is. Scrolls to end by default.")]
     public sealed class AppendControlTextActivity : CodeActivity
     {
         public AppendControlTextActivity()
         {
             DisplayName = "Append Control Text";
-            Separator = "\\n";
             ScrollToEnd = true;
         }
 
@@ -28,14 +28,10 @@ namespace F2B.Forms.Activities
         [Category("Input.A")]
         public InArgument<string> Text { get; set; }
 
-        /// <summary>
-        /// Plain string so the property pane can type \n without an expression.
-        /// </summary>
         [DisplayName("Separator")]
-        [Description("Inserted between existing content and new text when the control is not empty. Type \\n for newline, \\r\\n for CRLF, or any literal like \" | \". Leave empty to concatenate with no separator.")]
+        [Description("Inserted between existing content and new text when the control is not empty. Unset/null = vbNewLine (newline). \"\" = direct concatenate. Any other expression value is used as-is (e.g. \" | \").")]
         [Category("Input.B")]
-        [DefaultValue("\\n")]
-        public string Separator { get; set; }
+        public InArgument<string> Separator { get; set; }
 
         [DisplayName("Scroll To End")]
         [Description("After append, move caret to the end and scroll into view (recommended for log TextArea).")]
@@ -46,11 +42,23 @@ namespace F2B.Forms.Activities
         protected override void Execute(CodeActivityContext context)
         {
             FormSession session = FormSessionAccess.GetRequired(context);
+            string separator = ResolveSeparator(context);
             session.AppendControlText(
                 ControlId.Get(context),
                 Text.Get(context),
-                Separator,
+                separator,
                 ScrollToEnd);
+        }
+
+        private string ResolveSeparator(CodeActivityContext context)
+        {
+            if (Separator == null)
+            {
+                return Environment.NewLine;
+            }
+
+            string value = Separator.Get(context);
+            return value ?? Environment.NewLine;
         }
     }
 }
