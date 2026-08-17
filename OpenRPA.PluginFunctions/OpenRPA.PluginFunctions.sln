@@ -1,0 +1,18 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenRPA.PluginFunctions", "OpenRPA.PluginFunctions\OpenRPA.PluginFunctions.csproj", "{A8C3E9F1-4B2D-4E7A-9C10-8F6D2A1B0E55}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A8C3E9F1-4B2D-4E7A-9C10-8F6D2A1B0E55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8C3E9F1-4B2D-4E7A-9C10-8F6D2A1B0E55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8C3E9F1-4B2D-4E7A-9C10-8F6D2A1B0E55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8C3E9F1-4B2D-4E7A-9C10-8F6D2A1B0E55}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
