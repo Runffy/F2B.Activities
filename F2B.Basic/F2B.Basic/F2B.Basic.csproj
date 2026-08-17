@@ -37,16 +37,22 @@
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed">
       <HintPath>..\..\packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <Reference Include="OpenRPA">
+      <HintPath>..\resources\OpenRPA.exe</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="OpenRPA.Interfaces">
       <HintPath>..\resources\OpenRPA.Interfaces.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <Reference Include="System.Xaml" />
     <Reference Include="System.Drawing" />
     <Reference Include="System"/>
     <Reference Include="System.Activities" />
     <Reference Include="System.Activities.Presentation" />
+    <Reference Include="System.Activities.Core.Presentation" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core"/>
     <Reference Include="System.Xml.Linq"/>
@@ -62,6 +68,8 @@
   <ItemGroup>
     <Compile Include="ActivityFaultPathBuilder.cs" />
     <Compile Include="ActivityBodyExpandHelper.cs" />
+    <Compile Include="BasicDesignerShared.cs" />
+    <Compile Include="ExpressionEditDialog.cs" />
     <!-- Temporarily disabled: Multiple Assign / Number Increment
     <Compile Include="AssignEntry.cs" />
     -->
@@ -87,6 +95,8 @@
     <Compile Include="HttpVerbChoiceConverter.cs" />
     <Compile Include="HttpRequestActivity.cs" />
     <Compile Include="HttpRequestDesigner.cs" />
+    <Compile Include="InvokeWorkflowActivity.cs" />
+    <Compile Include="InvokeWorkflowDesigner.cs" />
     <Compile Include="ImagesToPdfActivity.cs" />
     <Compile Include="ImagesToPdfBuilder.cs" />
     <Compile Include="ImagesToPdfDesigner.cs" />
@@ -116,6 +126,10 @@
     <Compile Include="ThrowSystemExceptionActivity.cs" />
     <Compile Include="ThrowSystemExceptionDesigner.cs" />
     <Compile Include="ReturnActivity.cs" />
+    <Compile Include="ReturnIfActivity.cs" />
+    <Compile Include="ReturnIfDesigner.cs" />
+    <Compile Include="ThrowIfActivity.cs" />
+    <Compile Include="ThrowIfDesigner.cs" />
     <Compile Include="TraceableRethrowActivity.cs" />
     <Compile Include="TraceableTryCatchActivity.cs" />
     <Compile Include="TraceableTryCatchDesigner.cs" />

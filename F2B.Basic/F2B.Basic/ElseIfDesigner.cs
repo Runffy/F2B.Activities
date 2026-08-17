@@ -150,7 +150,8 @@ namespace F2B.Basic
                 SharedSizeGroup = LabelColumnGroup,
                 MinWidth = LabelColumnWidth
             });
-            // Fixed-width condition editor â€?do not grow with expression text length.
+            // Fixed-width condition editor ï¿½ do not grow with expression text length.
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var label = new TextBlock
@@ -219,10 +220,53 @@ namespace F2B.Basic
             Grid.SetColumn(editorBorder, 1);
             row.Children.Add(editorBorder);
 
+            var editButton = new Button
+            {
+                Content = "Edit...",
+                Margin = new Thickness(8, 0, 0, 0),
+                Padding = new Thickness(8, 2, 8, 2),
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = "Open a resizable editor for this Condition",
+                Tag = new ConditionEditTarget
+                {
+                    BranchItem = branchItem,
+                    PropertyName = "Condition"
+                }
+            };
+            editButton.Click += OnEditConditionClicked;
+            Grid.SetColumn(editButton, 2);
+            row.Children.Add(editButton);
             expressionTextBox.LostKeyboardFocus += (s, e) => RefreshAllConditionBorders();
             expressionTextBox.LostFocus += (s, e) => RefreshAllConditionBorders();
 
             return row;
+        }
+
+        private void OnEditConditionClicked(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var target = button?.Tag as ConditionEditTarget;
+            if (target == null || ModelItem == null)
+            {
+                return;
+            }
+
+            ModelItem owner = target.BranchItem ?? ModelItem;
+            ExpressionEditDialog.Show(
+                ExpressionEditDialog.FindOwnerWindow(this),
+                this,
+                target.BranchItem == null ? "Edit If Condition" : "Edit Else If Condition",
+                typeof(bool),
+                owner,
+                target.PropertyName);
+
+            RefreshAllConditionBorders();
+        }
+
+        private sealed class ConditionEditTarget
+        {
+            public ModelItem BranchItem { get; set; }
+            public string PropertyName { get; set; }
         }
 
         private FrameworkElement CreateBodyPresenter(string bindingPath)

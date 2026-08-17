@@ -7,7 +7,7 @@ namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("Show Message On Form")]
-    [Description("Show a message box owned by the active form.")]
+    [Description("Show a native Win32 message box owned by the active form. Soft-brings the form to front first.")]
     public sealed class ShowMessageOnFormActivity : CodeActivity
     {
         public ShowMessageOnFormActivity()

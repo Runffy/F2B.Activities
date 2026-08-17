@@ -95,18 +95,36 @@ namespace F2B.Basic
 
         protected override void Execute(CodeActivityContext context)
         {
-            string level = (Level.Get(context) ?? "INFO").Trim().ToUpperInvariant();
+            WriteFormatted(
+                context.WorkflowInstanceId.ToString(),
+                Level.Get(context),
+                Message.Get(context),
+                LogEntryId);
+        }
+
+        /// <summary>
+        /// Writes a log line using the same formatting / file layout as the Log Message activity.
+        /// </summary>
+        internal static void WriteFormatted(
+            string workflowInstanceId,
+            string level,
+            object message,
+            string logEntryId = null)
+        {
+            level = (level ?? "INFO").Trim().ToUpperInvariant();
             if (level != "INFO" && level != "WARN" && level != "ERROR")
             {
                 level = "INFO";
             }
 
-            string message = FormatLogMessage(Message.Get(context));
+            string formatted = FormatLogMessage(message);
 
-            WorkflowMetadata workflowMetadata = ResolveWorkflowMetadata(context);
+            WorkflowMetadata workflowMetadata = ResolveWorkflowMetadata(workflowInstanceId);
             string projectName = workflowMetadata.ProjectName ?? "UnknownProject";
             string workflowName = workflowMetadata.WorkflowName ?? "UnknownWorkflow";
-            string instanceId = context.WorkflowInstanceId.ToString();
+            string instanceId = string.IsNullOrWhiteSpace(workflowInstanceId)
+                ? Guid.NewGuid().ToString("D")
+                : workflowInstanceId.Trim();
             string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "OpenRPA", "Logs");
             Directory.CreateDirectory(folder);
 
@@ -124,24 +142,23 @@ namespace F2B.Basic
                 WorkflowRunTimestamp.SetSecondStamp(instanceId, parsedStamp);
             }
 
-            string entryId = string.IsNullOrWhiteSpace(LogEntryId) ? string.Empty : LogEntryId.Trim();
+            string entryId = string.IsNullOrWhiteSpace(logEntryId) ? string.Empty : logEntryId.Trim();
             DateTime now = DateTime.Now;
 
-            string userLine = BuildLogLine(now, workflowName, entryId, level, message);
+            string userLine = BuildLogLine(now, workflowName, entryId, level, formatted);
             AppendLogLine(logfile, UserLogHeader, userLine);
 
             string executionLogFile = GetExecutionLogPath(now);
-            string executionLine = BuildLogLine(now, workflowName, entryId, level, message, projectName);
+            string executionLine = BuildLogLine(now, workflowName, entryId, level, formatted, projectName);
             AppendLogLine(executionLogFile, ExecutionLogHeader, executionLine);
 
-            string consoleLine = $"[{level}] {message}";
-            Console.WriteLine(consoleLine);
+            Console.WriteLine($"[{level}] {formatted}");
         }
 
         /// <summary>
         /// Formats Message by type: DataTable (pretty) → DataRow (dict/JSON) → string → IEnumerable/DataColumn (JSON) → ToString.
         /// </summary>
-        private static string FormatLogMessage(object raw)
+        internal static string FormatLogMessage(object raw)
         {
             if (raw == null)
             {
@@ -282,11 +299,15 @@ namespace F2B.Basic
                 EscapeCsv(message));
         }
 
-        private static WorkflowMetadata ResolveWorkflowMetadata(CodeActivityContext context)
+        private static WorkflowMetadata ResolveWorkflowMetadata(string workflowInstanceId)
         {
             try
             {
-                string workflowInstanceId = context.WorkflowInstanceId.ToString();
+                if (string.IsNullOrWhiteSpace(workflowInstanceId))
+                {
+                    return WorkflowMetadata.Empty;
+                }
+
                 Type wfType = Type.GetType("OpenRPA.WorkflowInstance, OpenRPA", false);
                 if (wfType == null)
                 {

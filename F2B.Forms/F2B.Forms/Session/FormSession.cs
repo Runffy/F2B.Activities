@@ -1605,6 +1605,11 @@ namespace F2B.Forms.Session
         {
             InvokeOnUi(() =>
             {
+                if (_form != null && !_form.IsDisposed)
+                {
+                    FormNativeWindowActivator.SoftBringToFront(_form);
+                }
+
                 MessageBox.Show(
                     _form,
                     message ?? string.Empty,
@@ -1615,7 +1620,8 @@ namespace F2B.Forms.Session
         }
 
         /// <summary>
-        /// Show a Yes/No confirmation owned by the active form. Returns true when Yes is chosen.
+        /// Show a native Win32 Yes/No confirmation owned by the active form. Returns true when Yes is chosen.
+        /// Button captions follow the OS language (yesText/noText are ignored for native MessageBox).
         /// </summary>
         public bool RequestConfirm(
             string message,
@@ -1626,12 +1632,18 @@ namespace F2B.Forms.Session
             bool confirmed = false;
             InvokeOnUi(() =>
             {
-                confirmed = ShowConfirmDialog(
+                if (_form != null && !_form.IsDisposed)
+                {
+                    FormNativeWindowActivator.SoftBringToFront(_form);
+                }
+
+                DialogResult result = MessageBox.Show(
                     _form,
                     message ?? string.Empty,
                     string.IsNullOrWhiteSpace(title) ? (_form == null ? "Form" : _form.Text) : title,
-                    string.IsNullOrWhiteSpace(yesText) ? "Yes" : yesText,
-                    string.IsNullOrWhiteSpace(noText) ? "No" : noText);
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+                confirmed = result == DialogResult.Yes;
             });
             return confirmed;
         }
@@ -1701,57 +1713,6 @@ namespace F2B.Forms.Session
             }
 
             return control.Text ?? string.Empty;
-        }
-
-        private static bool ShowConfirmDialog(
-            IWin32Window owner,
-            string message,
-            string title,
-            string yesText,
-            string noText)
-        {
-            using (var dialog = new Form())
-            {
-                dialog.Text = title ?? "Confirm";
-                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
-                dialog.StartPosition = FormStartPosition.CenterParent;
-                dialog.MinimizeBox = false;
-                dialog.MaximizeBox = false;
-                dialog.ShowInTaskbar = false;
-                dialog.ClientSize = new Size(420, 160);
-                dialog.Font = SystemFonts.MessageBoxFont;
-
-                var label = new Label
-                {
-                    AutoSize = false,
-                    Text = message ?? string.Empty,
-                    Location = new Point(16, 16),
-                    Size = new Size(388, 72)
-                };
-
-                var yesButton = new Button
-                {
-                    Text = yesText,
-                    DialogResult = DialogResult.Yes,
-                    Size = new Size(100, 28),
-                    Location = new Point(200, 110)
-                };
-                var noButton = new Button
-                {
-                    Text = noText,
-                    DialogResult = DialogResult.No,
-                    Size = new Size(100, 28),
-                    Location = new Point(310, 110)
-                };
-
-                dialog.Controls.Add(label);
-                dialog.Controls.Add(yesButton);
-                dialog.Controls.Add(noButton);
-                dialog.AcceptButton = yesButton;
-                dialog.CancelButton = noButton;
-
-                return dialog.ShowDialog(owner) == DialogResult.Yes;
-            }
         }
 
         public string BuildResultJson()

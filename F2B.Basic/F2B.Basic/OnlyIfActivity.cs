@@ -16,8 +16,9 @@ namespace F2B.Basic
             DisplayName = "Only If";
         }
 
+        [RequiredArgument]
         [DisplayName("Condition")]
-        [Description("When true, the Then activity is executed. When false or unset, Then is skipped.")]
+        [Description("Required. When true, the Then activity is executed. When false, Then is skipped.")]
         [Category("Input.A")]
         public InArgument<bool> Condition { get; set; }
 
@@ -38,6 +39,11 @@ namespace F2B.Basic
             metadata.Bind(Condition, conditionArgument);
             metadata.AddArgument(conditionArgument);
 
+            if (Condition == null || Condition.Expression == null)
+            {
+                metadata.AddValidationError("Only If: Condition is required.");
+            }
+
             if (Then != null)
             {
                 metadata.AddChild(Then);
@@ -46,8 +52,12 @@ namespace F2B.Basic
 
         protected override void Execute(NativeActivityContext context)
         {
-            bool condition = Condition != null && Condition.Get(context);
-            if (condition && Then != null)
+            if (Condition == null || Condition.Expression == null)
+            {
+                throw new InvalidOperationException("Only If: Condition is required.");
+            }
+
+            if (Condition.Get(context) && Then != null)
             {
                 context.ScheduleActivity(Then);
             }

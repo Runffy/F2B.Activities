@@ -1,78 +1,27 @@
 using System;
-using System.Activities.Presentation;
-using F2B.OpenRpa.Design;
 using System.Activities.Presentation.Converters;
 using System.Activities.Presentation.Model;
 using System.Activities.Presentation.View;
-using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
-using System.Windows.Threading;
 
 namespace F2B.Basic
 {
-    public sealed class OnlyIfDesigner : ActivityDesigner
+    /// <summary>
+    /// Shared canvas expression editor helpers for Basic activity designers.
+    /// </summary>
+    internal static class BasicDesignerShared
     {
-        private readonly Border _conditionEditorBorder;
-        private readonly ExpressionTextBox _conditionExpressionBox;
-
-        public OnlyIfDesigner()
-        {
-            var border = new Border
-            {
-                BorderBrush = Brushes.Gray,
-                BorderThickness = new Thickness(1),
-                Padding = new Thickness(6),
-                MinWidth = 320,
-                HorizontalAlignment = HorizontalAlignment.Stretch
-            };
-
-            var panel = new StackPanel
-            {
-                HorizontalAlignment = HorizontalAlignment.Stretch
-            };
-            panel.Children.Add(CreateLabeledExpressionEditor(
-                "Condition",
-                "ModelItem.Condition",
-                typeof(bool),
-                "Boolean expression",
-                out _conditionEditorBorder,
-                out _conditionExpressionBox));
-
-            panel.Children.Add(new TextBlock
-            {
-                Text = "Then",
-                FontWeight = FontWeights.SemiBold,
-                Margin = new Thickness(0, 8, 0, 2)
-            });
-
-            var thenPresenter = new WorkflowItemPresenter
-            {
-                HintText = "Drop activity here",
-                MinWidth = 280,
-                MinHeight = 40,
-                Margin = new Thickness(0, 0, 0, 0)
-            };
-            BindingOperations.SetBinding(thenPresenter, WorkflowItemPresenter.ItemProperty, new Binding("ModelItem.Then")
-            {
-                Mode = BindingMode.TwoWay
-            });
-            panel.Children.Add(ActivityBodyExpandHelper.WrapExpandingBody(this, thenPresenter));
-
-            border.Child = panel;
-            ActivityDesignerCollapseHelper.Attach(this, border);
-            Loaded += OnLoaded;
-        }
-
-        private static FrameworkElement CreateLabeledExpressionEditor(
+        internal static FrameworkElement CreateLabeledExpressionEditor(
             string label,
             string bindingPath,
             Type expressionType,
             string hint,
             out Border editorBorder,
-            out ExpressionTextBox expressionTextBox)
+            out ExpressionTextBox expressionTextBox,
+            double editorWidth = 200)
         {
             var row = new DockPanel { LastChildFill = true, Margin = new Thickness(0, 2, 0, 2) };
             row.Children.Add(new TextBlock
@@ -84,8 +33,8 @@ namespace F2B.Basic
 
             expressionTextBox = new ExpressionTextBox
             {
-                Width = 200,
-                MaxWidth = 200,
+                Width = editorWidth,
+                MaxWidth = editorWidth,
                 HintText = hint,
                 ExpressionType = expressionType,
                 MinLines = 1,
@@ -112,30 +61,7 @@ namespace F2B.Basic
             return row;
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
-        {
-            if (ModelItem == null)
-            {
-                return;
-            }
-
-            ModelItem.PropertyChanged += OnModelItemPropertyChanged;
-            RefreshRequiredBorders();
-        }
-
-        private void OnModelItemPropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            Dispatcher.BeginInvoke(new Action(RefreshRequiredBorders), DispatcherPriority.Background);
-        }
-
-        private void RefreshRequiredBorders()
-        {
-            SetRequiredBorder(
-                _conditionEditorBorder,
-                IsArgumentFilled(ModelItem, "Condition", _conditionExpressionBox));
-        }
-
-        private static bool IsArgumentFilled(ModelItem modelItem, string propertyName, ExpressionTextBox editor)
+        internal static bool IsArgumentFilled(ModelItem modelItem, string propertyName, ExpressionTextBox editor)
         {
             var property = modelItem?.Properties[propertyName];
             if (property == null)
@@ -178,12 +104,12 @@ namespace F2B.Basic
             return HasEditorInput(editor);
         }
 
-        private static bool HasEditorInput(ExpressionTextBox editor)
+        internal static bool HasEditorInput(ExpressionTextBox editor)
         {
             return editor != null && editor.Expression != null;
         }
 
-        private static void SetRequiredBorder(Border border, bool filled)
+        internal static void SetRequiredBorder(Border border, bool filled)
         {
             if (border == null)
             {

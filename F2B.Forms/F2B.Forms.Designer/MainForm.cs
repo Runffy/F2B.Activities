@@ -25,6 +25,7 @@ namespace F2B.Forms.Designer
         private const float ZoomStep = 0.1f;
         private const int MinFormSize = 100;
         private const string ToolboxDragFormat = "F2B.Forms.Designer.ControlType";
+        private const int DefaultReparentXY = 10;
 
         private readonly Panel _viewport;
         private readonly Panel _canvas;
@@ -177,9 +178,18 @@ namespace F2B.Forms.Designer
                 ShowLines = true,
                 ShowPlusMinus = true,
                 FullRowSelect = true,
-                BorderStyle = BorderStyle.None
+                BorderStyle = BorderStyle.None,
+                AllowDrop = !_isViewer
             };
             _controlTree.AfterSelect += OnTreeAfterSelect;
+            if (!_isViewer)
+            {
+                _controlTree.ItemDrag += OnTreeItemDrag;
+                _controlTree.DragEnter += OnTreeDragEnter;
+                _controlTree.DragOver += OnTreeDragOver;
+                _controlTree.DragDrop += OnTreeDragDrop;
+                _controlTree.DragLeave += OnTreeDragLeave;
+            }
 
             // Layout: left Tree View | center Designer/Viewer Area | right Properties (full height).
             // Use TableLayoutPanel instead of SplitContainer to avoid startup SplitterDistance exceptions.
@@ -760,6 +770,17 @@ namespace F2B.Forms.Designer
                 return;
             }
 
+            if (e.Control && !e.Alt && !e.Shift && e.KeyCode == Keys.X)
+            {
+                if (IsCanvasOrTreeFocused() && CutSelection())
+                {
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
+
+                return;
+            }
+
             if (e.Control && !e.Alt && !e.Shift && e.KeyCode == Keys.V)
             {
                 if (IsCanvasOrTreeFocused() && PasteClipboard())
@@ -817,6 +838,98 @@ namespace F2B.Forms.Designer
             DeleteSelected();
             e.Handled = true;
             e.SuppressKeyPress = true;
+        }
+
+        private void OnTreeItemDrag(object sender, ItemDragEventArgs e)
+        {
+            if (_isViewer || e.Button != MouseButtons.Left)
+            {
+                return;
+            }
+
+            var node = e.Item as TreeNode;
+            if (node == null || !(node.Tag is DesignItem))
+            {
+                return;
+            }
+
+            _controlTree.DoDragDrop(node, DragDropEffects.Move);
+        }
+
+        private void OnTreeDragEnter(object sender, DragEventArgs e)
+        {
+            e.Effect = e.Data.GetDataPresent(typeof(TreeNode))
+                ? DragDropEffects.Move
+                : DragDropEffects.None;
+        }
+
+        private void OnTreeDragOver(object sender, DragEventArgs e)
+        {
+            e.Effect = DragDropEffects.None;
+            if (!e.Data.GetDataPresent(typeof(TreeNode)))
+            {
+                return;
+            }
+
+            var sourceNode = e.Data.GetData(typeof(TreeNode)) as TreeNode;
+            var moving = sourceNode == null ? null : sourceNode.Tag as DesignItem;
+            if (moving == null)
+            {
+                return;
+            }
+
+            Point client = _controlTree.PointToClient(new Point(e.X, e.Y));
+            TreeNode targetNode = _controlTree.GetNodeAt(client);
+            if (targetNode == null)
+            {
+                targetNode = _controlTree.Nodes.Count > 0 ? _controlTree.Nodes[0] : null;
+            }
+
+            if (CanReparentInTree(moving, targetNode))
+            {
+                e.Effect = DragDropEffects.Move;
+                if (targetNode != null && _controlTree.SelectedNode != targetNode)
+                {
+                    _syncingTree = true;
+                    try
+                    {
+                        _controlTree.SelectedNode = targetNode;
+                    }
+                    finally
+                    {
+                        _syncingTree = false;
+                    }
+                }
+            }
+        }
+
+        private void OnTreeDragLeave(object sender, EventArgs e)
+        {
+            // Keep selection; no extra cleanup required.
+        }
+
+        private void OnTreeDragDrop(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(typeof(TreeNode)))
+            {
+                return;
+            }
+
+            var sourceNode = e.Data.GetData(typeof(TreeNode)) as TreeNode;
+            var moving = sourceNode == null ? null : sourceNode.Tag as DesignItem;
+            if (moving == null)
+            {
+                return;
+            }
+
+            Point client = _controlTree.PointToClient(new Point(e.X, e.Y));
+            TreeNode targetNode = _controlTree.GetNodeAt(client);
+            if (targetNode == null)
+            {
+                targetNode = _controlTree.Nodes.Count > 0 ? _controlTree.Nodes[0] : null;
+            }
+
+            TryReparentInTree(moving, targetNode);
         }
 
         private bool IsCanvasOrTreeFocused()
@@ -1621,10 +1734,28 @@ namespace F2B.Forms.Designer
 
         private void DeleteSelected()
         {
+            DeleteSelectionCore();
+        }
+
+        /// <summary>
+        /// Ctrl+X: copy selection to clipboard, then delete (same as Ctrl+C then Delete).
+        /// </summary>
+        private bool CutSelection()
+        {
+            if (!CopySelection())
+            {
+                return false;
+            }
+
+            return DeleteSelectionCore();
+        }
+
+        private bool DeleteSelectionCore()
+        {
             List<DesignItem> toDelete = GetTopLevelSelection();
             if (toDelete.Count == 0)
             {
-                return;
+                return false;
             }
 
             foreach (DesignItem item in toDelete)
@@ -1639,7 +1770,7 @@ namespace F2B.Forms.Designer
                         "F2B.Forms Designer",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information);
-                    return;
+                    return false;
                 }
 
                 // Also block deleting every page of a TabControl in one multi-delete.
@@ -1655,7 +1786,7 @@ namespace F2B.Forms.Designer
                             "F2B.Forms Designer",
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Information);
-                        return;
+                        return false;
                     }
                 }
             }
@@ -1694,6 +1825,213 @@ namespace F2B.Forms.Designer
 
             _canvas.Invalidate();
             CaptureStableSnapshot();
+            return true;
+        }
+
+        private bool CanReparentInTree(DesignItem moving, TreeNode targetNode)
+        {
+            if (moving == null || targetNode == null || _isViewer)
+            {
+                return false;
+            }
+
+            DesignItem newParent;
+            int insertIndex;
+            return TryResolveTreeDropTarget(moving, targetNode, out newParent, out insertIndex);
+        }
+
+        private bool TryResolveTreeDropTarget(
+            DesignItem moving,
+            TreeNode targetNode,
+            out DesignItem newParent,
+            out int insertIndex)
+        {
+            newParent = null;
+            insertIndex = -1;
+            if (moving == null || targetNode == null)
+            {
+                return false;
+            }
+
+            // Form root node.
+            if (targetNode.Tag == null)
+            {
+                if (FormControlType.IsTabPage(moving.Type))
+                {
+                    return false;
+                }
+
+                newParent = null;
+                insertIndex = -1;
+                return true;
+            }
+
+            var target = targetNode.Tag as DesignItem;
+            if (target == null || ReferenceEquals(target, moving))
+            {
+                return false;
+            }
+
+            // Cannot drop into own descendant.
+            if (IsDescendantOf(target, moving))
+            {
+                return false;
+            }
+
+            if (FormControlType.IsTabPage(moving.Type))
+            {
+                if (!FormControlType.IsTabControl(target.Type))
+                {
+                    return false;
+                }
+
+                // Keep at least one page when leaving the current TabControl.
+                if (moving.Parent != null
+                    && ReferenceEquals(moving.Parent, target) == false
+                    && moving.Parent.Children.Count <= 1)
+                {
+                    return false;
+                }
+
+                newParent = target;
+                insertIndex = -1;
+                return true;
+            }
+
+            if (FormControlType.IsTabControl(target.Type))
+            {
+                DesignItem page = GetSelectedTabPage(target);
+                if (page == null)
+                {
+                    return false;
+                }
+
+                newParent = page;
+                insertIndex = -1;
+                return true;
+            }
+
+            if (FormControlType.IsContainer(target.Type) || FormControlType.IsTabPage(target.Type))
+            {
+                newParent = target;
+                insertIndex = -1;
+                return true;
+            }
+
+            // Drop on a leaf → become sibling after it.
+            newParent = target.Parent;
+            IList<DesignItem> siblings = newParent == null ? _roots : newParent.Children;
+            insertIndex = siblings.IndexOf(target) + 1;
+            return true;
+        }
+
+        private static bool IsDescendantOf(DesignItem node, DesignItem potentialAncestor)
+        {
+            DesignItem current = node;
+            while (current != null)
+            {
+                if (ReferenceEquals(current, potentialAncestor))
+                {
+                    return true;
+                }
+
+                current = current.Parent;
+            }
+
+            return false;
+        }
+
+        private bool TryReparentInTree(DesignItem moving, TreeNode targetNode)
+        {
+            DesignItem newParent;
+            int insertIndex;
+            if (!TryResolveTreeDropTarget(moving, targetNode, out newParent, out insertIndex))
+            {
+                return false;
+            }
+
+            DesignItem oldParent = moving.Parent;
+            IList<DesignItem> oldList = oldParent == null ? _roots : oldParent.Children;
+            int oldIndex = oldList.IndexOf(moving);
+            if (oldIndex < 0)
+            {
+                return false;
+            }
+
+            IList<DesignItem> newList = newParent == null ? _roots : newParent.Children;
+            int targetIndex = insertIndex < 0 ? newList.Count : insertIndex;
+
+            // Same list reorder: adjust target index after removal.
+            if (ReferenceEquals(oldList, newList))
+            {
+                if (targetIndex > oldIndex)
+                {
+                    targetIndex--;
+                }
+
+                if (targetIndex == oldIndex)
+                {
+                    return false;
+                }
+            }
+            else if (ReferenceEquals(oldParent, newParent) && insertIndex < 0 && oldIndex == oldList.Count - 1)
+            {
+                // Already last child of the same parent.
+                return false;
+            }
+
+            PushHistoryBeforeEdit();
+            oldList.RemoveAt(oldIndex);
+            moving.Parent = newParent;
+
+            if (targetIndex < 0 || targetIndex > newList.Count)
+            {
+                targetIndex = newList.Count;
+            }
+
+            newList.Insert(targetIndex, moving);
+
+            if (oldParent != null && FormControlType.IsTabControl(oldParent.Type))
+            {
+                if (oldParent.SelectedIndex >= oldParent.Children.Count)
+                {
+                    oldParent.SelectedIndex = Math.Max(0, oldParent.Children.Count - 1);
+                }
+            }
+
+            if (newParent != null && FormControlType.IsTabControl(newParent.Type))
+            {
+                newParent.SelectedIndex = newParent.Children.IndexOf(moving);
+            }
+
+            if (oldParent != null && FormControlType.IsTableLayout(oldParent.Type))
+            {
+                DesignItem.RelayoutTableChildren(oldParent);
+            }
+
+            if (newParent != null && FormControlType.IsTableLayout(newParent.Type))
+            {
+                DesignItem.ApplyTableCellBounds(newParent, moving);
+                DesignItem.RelayoutTableChildren(newParent);
+            }
+            else if (FormControlType.IsTabPage(moving.Type))
+            {
+                moving.X = 0;
+                moving.Y = 0;
+            }
+            else if (!ReferenceEquals(oldParent, newParent))
+            {
+                // Entering a different host: reset to a predictable spot for the user to drag.
+                moving.X = DefaultReparentXY;
+                moving.Y = DefaultReparentXY;
+            }
+
+            MarkDirty();
+            RebuildTreePreserveSelection();
+            SelectItem(moving, syncTree: true);
+            _canvas.Invalidate();
+            CaptureStableSnapshot();
+            return true;
         }
 
         private void SelectItem(DesignItem item, bool syncTree)
@@ -1970,10 +2308,44 @@ namespace F2B.Forms.Designer
 
             IList<DesignItem> siblings = parent == null ? _roots : parent.Children;
             DesignItem item = CloneFromDefinition(entry.Definition, parent);
-            item.X = Snap(Math.Max(0, entry.X + offset));
-            item.Y = Snap(Math.Max(0, entry.Y + offset));
+            if (FormControlType.IsTabPage(type))
+            {
+                item.X = 0;
+                item.Y = 0;
+            }
+            else if (IsDifferentPasteHost(entry.ParentId, parent))
+            {
+                // Pasting into another container/root: do not keep old relative XY.
+                item.X = DefaultReparentXY;
+                item.Y = DefaultReparentXY;
+            }
+            else
+            {
+                item.X = Snap(Math.Max(0, entry.X + offset));
+                item.Y = Snap(Math.Max(0, entry.Y + offset));
+            }
+
             siblings.Add(item);
+            if (parent != null && FormControlType.IsTableLayout(parent.Type))
+            {
+                DesignItem.ApplyTableCellBounds(parent, item);
+            }
+
             return item;
+        }
+
+        /// <summary>
+        /// True when paste target parent differs from the clipboard item's original parent.
+        /// </summary>
+        private static bool IsDifferentPasteHost(string originalParentId, DesignItem pasteParent)
+        {
+            string targetParentId = pasteParent == null ? null : pasteParent.Id;
+            if (string.IsNullOrEmpty(originalParentId) && string.IsNullOrEmpty(targetParentId))
+            {
+                return false;
+            }
+
+            return !string.Equals(originalParentId, targetParentId, StringComparison.OrdinalIgnoreCase);
         }
 
         private DesignItem ResolveClipboardParent(DesignClipboardItem entry, string type)
