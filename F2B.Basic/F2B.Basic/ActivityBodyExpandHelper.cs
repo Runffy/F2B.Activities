@@ -11,9 +11,8 @@ using System.Windows.Threading;
 namespace F2B.Basic
 {
     /// <summary>
-    /// Lets nested activity designers grow the host scope width just enough to show
-    /// children, while keeping a stable base MinWidth when content is narrower.
-    /// Nested content is centered inside the container.
+    /// Lets nested activity designers grow the host scope width instead of being clipped
+    /// to a fixed presenter width.
     /// </summary>
     internal static class ActivityBodyExpandHelper
     {
@@ -29,20 +28,16 @@ namespace F2B.Basic
                 throw new ArgumentNullException(nameof(presenter));
             }
 
-            double basePresenterMin = presenter.MinWidth > 0 ? presenter.MinWidth : 240;
-
             var host = new Grid
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                MinWidth = basePresenterMin,
                 MinHeight = Math.Max(40, presenter.MinHeight)
             };
 
             presenter.HorizontalAlignment = HorizontalAlignment.Center;
             presenter.HorizontalContentAlignment = HorizontalAlignment.Center;
-            presenter.MinWidth = basePresenterMin;
 
-            var state = new ExpandState(owner, host, presenter, basePresenterMin);
+            var state = new ExpandState(owner, host, presenter);
             Action apply = state.Apply;
 
             host.SizeChanged += (s, e) => apply();
@@ -74,27 +69,13 @@ namespace F2B.Basic
             private readonly ActivityDesigner _owner;
             private readonly FrameworkElement _host;
             private readonly WorkflowItemPresenter _presenter;
-            private readonly double _baseHostMin;
-            private readonly double _basePresenterMin;
-            private readonly double _baseBorderMin;
-            private readonly double _baseOwnerMin;
             private bool _expanding;
 
-            public ExpandState(
-                ActivityDesigner owner,
-                FrameworkElement host,
-                WorkflowItemPresenter presenter,
-                double basePresenterMin)
+            public ExpandState(ActivityDesigner owner, FrameworkElement host, WorkflowItemPresenter presenter)
             {
                 _owner = owner;
                 _host = host;
                 _presenter = presenter;
-                _basePresenterMin = basePresenterMin;
-                _baseHostMin = Math.Max(host.MinWidth, basePresenterMin);
-
-                var border = owner.Content as Border;
-                _baseBorderMin = border != null && border.MinWidth > 0 ? border.MinWidth : 320;
-                _baseOwnerMin = owner.MinWidth > 0 ? owner.MinWidth : _baseBorderMin;
             }
 
             public void Apply()
@@ -108,7 +89,7 @@ namespace F2B.Basic
                 try
                 {
                     ActivityDesigner nestedDesigner = FindDescendantActivityDesigner(_presenter);
-                    double contentWidth = 0;
+                    double needed = 0;
 
                     if (nestedDesigner != null)
                     {
@@ -116,46 +97,48 @@ namespace F2B.Basic
                         nestedDesigner.ClearValue(FrameworkElement.WidthProperty);
                         nestedDesigner.ClearValue(FrameworkElement.MaxWidthProperty);
 
-                        // Keep nested item presenters from Stretch-inflating DesiredSize against an
-                        // already-grown parent (feedback loop / huge side padding).
                         foreach (WorkflowItemsPresenter itemsPresenter in FindDescendantsOfType<WorkflowItemsPresenter>(nestedDesigner))
                         {
-                            itemsPresenter.HorizontalAlignment = HorizontalAlignment.Center;
+                            itemsPresenter.HorizontalAlignment = HorizontalAlignment.Stretch;
                             itemsPresenter.ClearValue(FrameworkElement.WidthProperty);
                             itemsPresenter.ClearValue(FrameworkElement.MaxWidthProperty);
                         }
 
                         nestedDesigner.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                        contentWidth = Math.Max(contentWidth, nestedDesigner.DesiredSize.Width);
+                        needed = Math.Max(needed, nestedDesigner.DesiredSize.Width);
                     }
 
-                    _presenter.HorizontalAlignment = HorizontalAlignment.Center;
-                    _presenter.HorizontalContentAlignment = HorizontalAlignment.Center;
                     _presenter.ClearValue(FrameworkElement.WidthProperty);
                     _presenter.ClearValue(FrameworkElement.MaxWidthProperty);
                     _presenter.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                    contentWidth = Math.Max(contentWidth, _presenter.DesiredSize.Width);
+                    needed = Math.Max(needed, _presenter.DesiredSize.Width);
 
-                    if (contentWidth <= 1 || double.IsNaN(contentWidth) || double.IsInfinity(contentWidth))
+                    if (needed <= 1)
                     {
-                        contentWidth = _basePresenterMin;
+                        return;
                     }
 
-                    double needed = Math.Max(_basePresenterMin, contentWidth);
-                    _host.MinWidth = Math.Max(_baseHostMin, needed);
-                    _presenter.MinWidth = Math.Max(_basePresenterMin, Math.Min(needed, contentWidth > 1 ? contentWidth : _basePresenterMin));
+                    if (_host.MinWidth + 0.5 < needed)
+                    {
+                        _host.MinWidth = needed;
+                    }
 
                     var border = _owner.Content as Border;
                     if (border != null)
                     {
-                        double borderNeeded = Math.Max(
-                            _baseBorderMin,
-                            needed + border.Padding.Left + border.Padding.Right);
-                        border.MinWidth = borderNeeded;
+                        double borderNeeded = needed + border.Padding.Left + border.Padding.Right;
+                        if (border.MinWidth + 0.5 < borderNeeded)
+                        {
+                            border.MinWidth = borderNeeded;
+                        }
                     }
 
                     _owner.ClearValue(FrameworkElement.MaxWidthProperty);
-                    _owner.MinWidth = Math.Max(_baseOwnerMin, needed + 24);
+                    double designerNeeded = needed + 24;
+                    if (_owner.MinWidth + 0.5 < designerNeeded)
+                    {
+                        _owner.MinWidth = designerNeeded;
+                    }
                 }
                 finally
                 {
