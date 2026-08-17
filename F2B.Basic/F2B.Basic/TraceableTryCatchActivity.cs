@@ -9,7 +9,7 @@ namespace F2B.Basic
     /// <summary>
     /// Try / Catch / Finally with fault attribution: Activity Id, DisplayName, relative XPath, and DisplayName path.
     /// Catch is an ActivityAction&lt;Exception&gt; so the handler argument <c>exception</c> is in scope (like WF TryCatch).
-        /// Exception.Source uses a multi-line DisplayName trace across nested Invoke OpenRPA.
+        /// Exception.Source uses a multi-line DisplayName trace across nested Invoke OpenRPA / Invoke Workflow.
         /// FaultXPath keeps the type-based path.
     /// </summary>
     [Designer(typeof(TraceableTryCatchDesigner), typeof(System.ComponentModel.Design.IDesigner))]
@@ -64,7 +64,7 @@ namespace F2B.Basic
         public OutArgument<string> FaultXPath { get; set; }
 
         [DisplayName("Fault Display Path")]
-        [Description("Multi-line DisplayName trace from the host workflow root Sequence across nested Invoke OpenRPA.")]
+        [Description("Multi-line DisplayName trace from the host workflow root Sequence across nested Invoke OpenRPA / Invoke Workflow.")]
         [Category("Output")]
         public OutArgument<string> FaultDisplayPath { get; set; }
 

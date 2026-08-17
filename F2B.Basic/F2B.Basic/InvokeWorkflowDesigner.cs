@@ -22,8 +22,7 @@ namespace F2B.Basic
 
         private readonly ComboBox _projectCombo;
         private readonly ComboBox _workflowCombo;
-        private readonly Border _workflowEditorBorder;
-        private readonly TextBlock _workflowSummary;
+        private readonly Border _workflowComboBorder;
         private bool _suppressSelectionHandlers;
         private string _selectedProjectName;
 
@@ -65,56 +64,48 @@ namespace F2B.Basic
             {
                 Width = DesignerContentWidth - 14,
                 MaxWidth = DesignerContentWidth - 14,
-                Margin = new Thickness(0, 0, 0, 6),
+                Margin = new Thickness(0, 0, 0, 0),
                 DisplayMemberPath = "name",
                 ItemsSource = Workflows
             };
             _workflowCombo.SelectionChanged += OnWorkflowSelectionChanged;
-            panel.Children.Add(_workflowCombo);
-
-            _workflowSummary = new TextBlock
-            {
-                FontSize = 10,
-                Foreground = Brushes.DimGray,
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 0, 0, 6),
-                Text = "Workflow: (not selected)"
-            };
-            _workflowEditorBorder = new Border
+            _workflowComboBorder = new Border
             {
                 BorderBrush = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
-                Child = _workflowSummary
+                Margin = new Thickness(0, 0, 0, 6),
+                Child = _workflowCombo
             };
-            panel.Children.Add(_workflowEditorBorder);
+            panel.Children.Add(_workflowComboBorder);
 
-            panel.Children.Add(BasicDesignerShared.CreateLabeledExpressionEditor(
-                "Log Input",
-                "ModelItem.LogInputArguments",
-                typeof(bool),
-                "false",
-                out _,
-                out _,
-                editorWidth: 180));
-
-            panel.Children.Add(BasicDesignerShared.CreateLabeledExpressionEditor(
-                "Log Output",
-                "ModelItem.LogOutputArguments",
-                typeof(bool),
-                "false",
-                out _,
-                out _,
-                editorWidth: 180));
+            var buttonRow = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0, 8, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
 
             var mapButton = new Button
             {
                 Content = "Map Arguments",
-                Margin = new Thickness(0, 8, 0, 0),
                 Padding = new Thickness(10, 3, 10, 3),
-                HorizontalAlignment = HorizontalAlignment.Left
+                Margin = new Thickness(0, 0, 8, 0),
+                MinWidth = 110
             };
             mapButton.Click += OnMapArgumentsClicked;
-            panel.Children.Add(mapButton);
+            buttonRow.Children.Add(mapButton);
+
+            var openButton = new Button
+            {
+                Content = "Open Workflow",
+                Padding = new Thickness(10, 3, 10, 3),
+                MinWidth = 110,
+                ToolTip = "Open the selected workflow in the OpenRPA designer"
+            };
+            openButton.Click += OnOpenWorkflowClicked;
+            buttonRow.Children.Add(openButton);
+
+            panel.Children.Add(buttonRow);
 
             border.Child = panel;
             ActivityDesignerCollapseHelper.Attach(this, border);
@@ -499,29 +490,79 @@ namespace F2B.Basic
             return true;
         }
 
+        private void OnOpenWorkflowClicked(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string workflowId = GetSelectedWorkflowKey();
+                if (string.IsNullOrWhiteSpace(workflowId))
+                {
+                    MessageBox.Show(
+                        "Select a Project and Workflow first.",
+                        "Invoke Workflow",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+
+                if (RobotInstance.instance == null)
+                {
+                    MessageBox.Show(
+                        "OpenRPA RobotInstance is not available.",
+                        "Invoke Workflow",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                IWorkflow workflow = RobotInstance.instance.GetWorkflowByIDOrRelativeFilename(workflowId);
+                if (workflow == null)
+                {
+                    MessageBox.Show(
+                        "Workflow was not found: " + workflowId,
+                        "Invoke Workflow",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                IMainWindow window = RobotInstance.instance.Window;
+                if (window == null)
+                {
+                    MessageBox.Show(
+                        "OpenRPA main window is not available.",
+                        "Invoke Workflow",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                GenericTools.RunUI(() => window.OnOpenWorkflow(workflow), 15000);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+                MessageBox.Show(ex.Message, "Invoke Workflow", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void RefreshRequiredBorder()
         {
-            string key = GetSelectedWorkflowKey();
-            bool filled = !string.IsNullOrWhiteSpace(key);
-            if (_workflowSummary != null)
-            {
-                _workflowSummary.Text = filled ? ("Workflow: " + key) : "Workflow: (not selected)";
-            }
-
-            if (_workflowEditorBorder == null)
+            bool filled = !string.IsNullOrWhiteSpace(GetSelectedWorkflowKey());
+            if (_workflowComboBorder == null)
             {
                 return;
             }
 
             if (filled)
             {
-                _workflowEditorBorder.BorderBrush = Brushes.Transparent;
-                _workflowEditorBorder.BorderThickness = new Thickness(0);
+                _workflowComboBorder.BorderBrush = Brushes.Transparent;
+                _workflowComboBorder.BorderThickness = new Thickness(0);
             }
             else
             {
-                _workflowEditorBorder.BorderBrush = Brushes.Red;
-                _workflowEditorBorder.BorderThickness = new Thickness(1);
+                _workflowComboBorder.BorderBrush = Brushes.Red;
+                _workflowComboBorder.BorderThickness = new Thickness(1);
             }
         }
 

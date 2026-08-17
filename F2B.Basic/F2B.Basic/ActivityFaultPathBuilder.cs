@@ -149,8 +149,8 @@ namespace F2B.Basic
         /// Multi-line trace: one line per workflow, starting at the root Sequence of the
         /// workflow that hosts Traceable TryCatch.
         /// Example:
-        /// [New project/1.xaml] Sequence/Traceable TryCatch/Try/.../InvokeOpenRPA&lt;New project2/2.xaml&gt;
-        /// [New project2/2.xaml] Sequence/.../InvokeOpenRPA&lt;New project/3.xaml&gt;
+        /// [New project/1.xaml] Sequence/Traceable TryCatch/Try/.../Invoke Workflow&lt;New project2/2.xaml&gt;
+        /// [New project2/2.xaml] Sequence/.../Invoke OpenRPA&lt;New project/3.xaml&gt;
         /// [New project/3.xaml] Sequence/.../Target
         /// </summary>
         private static string ComposeMultiLineFaultSource(
@@ -179,7 +179,7 @@ namespace F2B.Basic
             string homePath = BuildPathFromWorkflowRootToLeaf(homeRoot, tryCatchActivity, leaf, fault);
 
             var lines = new List<string>();
-            bool looksLikeInvoke = leaf != null && IsInvokeOpenRpaActivity(leaf);
+            bool looksLikeInvoke = leaf != null && IsNestedWorkflowInvokeActivity(leaf);
             bool hasChildPath = !string.IsNullOrWhiteSpace(childSource)
                 && !string.Equals(childSource, fault.SourcePath, StringComparison.Ordinal)
                 && !string.Equals(childSource, fault.DisplayName, StringComparison.Ordinal)
@@ -310,7 +310,7 @@ namespace F2B.Basic
                 label = FormatWorkflowDisplayLabel(null, workflowKey) ?? "workflow.xaml";
             }
 
-            if (!IsInvokeOpenRpaActivity(leaf))
+            if (!IsNestedWorkflowInvokeActivity(leaf))
             {
                 lines.Add(FormatTraceLine(label, path, nextWorkflowLabel: null));
                 return;
@@ -505,8 +505,8 @@ namespace F2B.Basic
 
         /// <summary>
         /// OpenRPA sets Exception.Source / errorsource to Activity.Id (e.g. "1.2").
-        /// Map that Id to a DisplayName breadcrumb, recursively following nested Invoke OpenRPA
-        /// so only the outermost TraceableTryCatch is required.
+        /// Map that Id to a DisplayName breadcrumb, recursively following nested Invoke OpenRPA /
+        /// Invoke Workflow so only the outermost TraceableTryCatch is required.
         /// </summary>
         private static string ResolveInvokedWorkflowSourcePath(
             Exception exception,
@@ -525,7 +525,7 @@ namespace F2B.Basic
         private const int MaxInvokeNestingDepth = 32;
 
         /// <summary>
-        /// Resolve one workflow layer; if the fault leaf is Invoke OpenRPA, append
+        /// Resolve one workflow layer; if the fault leaf is Invoke OpenRPA / Invoke Workflow, append
         /// " &gt; child.xaml: ..." using the child WorkflowInstance (caller chain) and/or InnerException.
         /// </summary>
         private static string ResolveNestedWorkflowSourcePath(
@@ -607,7 +607,7 @@ namespace F2B.Basic
                     path = source;
                 }
 
-                if (!IsInvokeOpenRpaActivity(leaf))
+                if (!IsNestedWorkflowInvokeActivity(leaf))
                 {
                     return path;
                 }
@@ -1369,16 +1369,22 @@ namespace F2B.Basic
         }
 
 
-        private static bool IsInvokeOpenRpaActivity(Activity activity)
+        private static bool IsNestedWorkflowInvokeActivity(Activity activity)
         {
             if (activity == null)
             {
                 return false;
             }
 
+            if (activity is InvokeWorkflowActivity)
+            {
+                return true;
+            }
+
             string typeName = activity.GetType().Name ?? string.Empty;
             return typeName.IndexOf("InvokeOpenRPA", StringComparison.OrdinalIgnoreCase) >= 0
-                   || typeName.IndexOf("InvokeOpenRpa", StringComparison.OrdinalIgnoreCase) >= 0;
+                   || typeName.IndexOf("InvokeOpenRpa", StringComparison.OrdinalIgnoreCase) >= 0
+                   || typeName.IndexOf("InvokeWorkflow", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static string ExtractInvokedWorkflowFileName(Exception exception)
@@ -1777,7 +1783,7 @@ namespace F2B.Basic
             int index = 0;
             foreach (Activity sibling in GetChildren(parent))
             {
-                if (!IsInvokeOpenRpaActivity(sibling))
+                if (!IsNestedWorkflowInvokeActivity(sibling))
                 {
                     continue;
                 }
