@@ -12,15 +12,17 @@ using OpenRPA.Interfaces;
 namespace OpenRPA.PluginFunctions
 {
     /// <summary>
-    /// Ctrl+P palette: filter toolbox activities and insert via AddActivity.
+    /// Ctrl+F: search activities in the current workflow and focus the selected one.
+    /// UI mirrors Ctrl+P palette.
     /// </summary>
-    internal static class ActivityPalettePopup
+    internal static class WorkflowFindPopup
     {
         private static Popup _popup;
         private static TextBox _searchBox;
         private static ListBox _listBox;
         private static bool _suppressOutsideClose;
         private static Window _hookedWindow;
+        private static IDesigner _designer;
 
         internal static Popup CurrentPopup => _popup;
 
@@ -32,8 +34,9 @@ namespace OpenRPA.PluginFunctions
                 return;
             }
 
-            WorkflowFindPopup.Hide();
+            ActivityPalettePopup.Hide();
             GlobalWorkflowFindPopup.Hide();
+            _designer = designer;
 
             EnsureUi();
             Window main = PluginContext.MainWindow;
@@ -58,6 +61,8 @@ namespace OpenRPA.PluginFunctions
             {
                 _popup.IsOpen = false;
             }
+
+            _designer = null;
         }
 
         private static void EnsureUi()
@@ -76,6 +81,7 @@ namespace OpenRPA.PluginFunctions
                 Padding = new Thickness(6, 4, 6, 4),
                 Margin = new Thickness(0, 0, 0, 4)
             };
+            // Filter on each change (covers keyup typing and paste), same feel as Ctrl+P.
             _searchBox.TextChanged += (s, e) => RefreshList(_searchBox.Text);
             _searchBox.PreviewKeyDown += OnSearchPreviewKeyDown;
 
@@ -93,7 +99,7 @@ namespace OpenRPA.PluginFunctions
             var panel = new StackPanel();
             panel.Children.Add(new TextBlock
             {
-                Text = "Add activity (↑↓ Enter, Esc closes)",
+                Text = "Find in workflow (↑↓ Enter, Esc closes)",
                 FontSize = 11,
                 Foreground = Brushes.DimGray,
                 Margin = new Thickness(0, 0, 0, 4)
@@ -153,14 +159,14 @@ namespace OpenRPA.PluginFunctions
             name.SetBinding(TextBlock.TextProperty, new Binding("DisplayName"));
             name.SetValue(TextBlock.FontSizeProperty, 13.0);
 
-            var library = new FrameworkElementFactory(typeof(TextBlock));
-            library.SetBinding(TextBlock.TextProperty, new Binding("LibraryName"));
-            library.SetValue(TextBlock.FontSizeProperty, 11.0);
-            library.SetValue(TextBlock.ForegroundProperty, Brushes.Gray);
-            library.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 1, 0, 0));
+            var hint = new FrameworkElementFactory(typeof(TextBlock));
+            hint.SetBinding(TextBlock.TextProperty, new Binding("MatchHint"));
+            hint.SetValue(TextBlock.FontSizeProperty, 11.0);
+            hint.SetValue(TextBlock.ForegroundProperty, Brushes.Gray);
+            hint.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 1, 0, 0));
 
             texts.AppendChild(name);
-            texts.AppendChild(library);
+            texts.AppendChild(hint);
             row.AppendChild(icon);
             row.AppendChild(texts);
 
@@ -230,7 +236,8 @@ namespace OpenRPA.PluginFunctions
                 return;
             }
 
-            List<ActivityCatalogItem> items = ActivityCatalog.Search(pattern).ToList();
+            IDesigner designer = _designer ?? PluginContext.ResolveDesigner();
+            List<WorkflowFindItem> items = WorkflowActivitySearch.Search(designer, pattern).ToList();
             _listBox.ItemsSource = items;
             if (items.Count > 0)
             {
@@ -301,13 +308,14 @@ namespace OpenRPA.PluginFunctions
 
         private static void ConfirmSelection()
         {
-            var selected = _listBox != null ? _listBox.SelectedItem as ActivityCatalogItem : null;
-            if (selected == null || selected.Type == null)
+            var selected = _listBox != null ? _listBox.SelectedItem as WorkflowFindItem : null;
+            if (selected == null || selected.ModelItem == null)
             {
                 return;
             }
 
-            bool ok = ActivityInsertService.TryAddActivity(selected.Type);
+            IDesigner designer = _designer ?? PluginContext.ResolveDesigner();
+            bool ok = ActivityInsertService.TryFocusModelItem(designer, selected.ModelItem);
             if (ok)
             {
                 Hide();

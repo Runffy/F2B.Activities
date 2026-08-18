@@ -1,39 +1,37 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using OpenRPA.Interfaces;
+using System.Windows.Threading;
 
 namespace OpenRPA.PluginFunctions
 {
     /// <summary>
-    /// Ctrl+P palette: filter toolbox activities and insert via AddActivity.
+    /// Ctrl+Shift+F: search activities across all projects / workflows.
+    /// Works from Open Project view as well as while editing a workflow.
     /// </summary>
-    internal static class ActivityPalettePopup
+    internal static class GlobalWorkflowFindPopup
     {
         private static Popup _popup;
         private static TextBox _searchBox;
         private static ListBox _listBox;
+        private static TextBlock _status;
         private static bool _suppressOutsideClose;
         private static Window _hookedWindow;
+        private static int _indexVersion;
 
         internal static Popup CurrentPopup => _popup;
 
         public static void Show()
         {
-            IDesigner designer = PluginContext.ResolveDesigner();
-            if (designer == null)
-            {
-                return;
-            }
-
+            ActivityPalettePopup.Hide();
             WorkflowFindPopup.Hide();
-            GlobalWorkflowFindPopup.Hide();
 
             EnsureUi();
             Window main = PluginContext.MainWindow;
@@ -43,13 +41,34 @@ namespace OpenRPA.PluginFunctions
                 HookWindow(main);
             }
 
-            RefreshList(string.Empty);
+            _searchBox.Text = string.Empty;
+            _listBox.ItemsSource = null;
+            _status.Text = "Indexing projects…";
             _suppressOutsideClose = true;
             _popup.IsOpen = true;
-            _searchBox.Text = string.Empty;
             _searchBox.Focus();
             Keyboard.Focus(_searchBox);
             PluginContext.RunOnUi(() => _suppressOutsideClose = false);
+
+            int version = ++_indexVersion;
+            Task.Run(() =>
+            {
+                GlobalWorkflowActivitySearch.Invalidate();
+                GlobalWorkflowActivitySearch.EnsureIndex();
+                return version;
+            }).ContinueWith(t =>
+            {
+                PluginContext.RunOnUi(() =>
+                {
+                    if (t.Result != _indexVersion || _popup == null || !_popup.IsOpen)
+                    {
+                        return;
+                    }
+
+                    _status.Text = "Find in all projects (↑↓ Enter, Esc closes)";
+                    RefreshList(_searchBox != null ? _searchBox.Text : string.Empty);
+                });
+            }, TaskScheduler.Default);
         }
 
         public static void Hide()
@@ -69,8 +88,8 @@ namespace OpenRPA.PluginFunctions
 
             _searchBox = new TextBox
             {
-                MinWidth = 360,
-                MaxWidth = 520,
+                MinWidth = 420,
+                MaxWidth = 640,
                 Height = 28,
                 FontSize = 14,
                 Padding = new Thickness(6, 4, 6, 4),
@@ -81,23 +100,25 @@ namespace OpenRPA.PluginFunctions
 
             _listBox = new ListBox
             {
-                MinWidth = 360,
-                MaxWidth = 520,
-                MaxHeight = 280,
+                MinWidth = 420,
+                MaxWidth = 640,
+                MaxHeight = 320,
                 FontSize = 13
             };
             _listBox.ItemTemplate = CreateItemTemplate();
             _listBox.MouseDoubleClick += (s, e) => ConfirmSelection();
             _listBox.PreviewKeyDown += OnListPreviewKeyDown;
 
-            var panel = new StackPanel();
-            panel.Children.Add(new TextBlock
+            _status = new TextBlock
             {
-                Text = "Add activity (↑↓ Enter, Esc closes)",
+                Text = "Find in all projects (↑↓ Enter, Esc closes)",
                 FontSize = 11,
                 Foreground = Brushes.DimGray,
                 Margin = new Thickness(0, 0, 0, 4)
-            });
+            };
+
+            var panel = new StackPanel();
+            panel.Children.Add(_status);
             panel.Children.Add(_searchBox);
             panel.Children.Add(_listBox);
 
@@ -153,14 +174,14 @@ namespace OpenRPA.PluginFunctions
             name.SetBinding(TextBlock.TextProperty, new Binding("DisplayName"));
             name.SetValue(TextBlock.FontSizeProperty, 13.0);
 
-            var library = new FrameworkElementFactory(typeof(TextBlock));
-            library.SetBinding(TextBlock.TextProperty, new Binding("LibraryName"));
-            library.SetValue(TextBlock.FontSizeProperty, 11.0);
-            library.SetValue(TextBlock.ForegroundProperty, Brushes.Gray);
-            library.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 1, 0, 0));
+            var hint = new FrameworkElementFactory(typeof(TextBlock));
+            hint.SetBinding(TextBlock.TextProperty, new Binding("MatchHint"));
+            hint.SetValue(TextBlock.FontSizeProperty, 11.0);
+            hint.SetValue(TextBlock.ForegroundProperty, Brushes.Gray);
+            hint.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 1, 0, 0));
 
             texts.AppendChild(name);
-            texts.AppendChild(library);
+            texts.AppendChild(hint);
             row.AppendChild(icon);
             row.AppendChild(texts);
 
@@ -230,11 +251,30 @@ namespace OpenRPA.PluginFunctions
                 return;
             }
 
-            List<ActivityCatalogItem> items = ActivityCatalog.Search(pattern).ToList();
+            string needle = (pattern ?? string.Empty).Trim();
+            if (needle.Length == 0)
+            {
+                _listBox.ItemsSource = null;
+                if (_status != null && _popup != null && _popup.IsOpen)
+                {
+                    _status.Text = "Type to search all projects (↑↓ Enter, Esc closes)";
+                }
+
+                return;
+            }
+
+            List<GlobalFindItem> items = GlobalWorkflowActivitySearch.Search(needle).ToList();
             _listBox.ItemsSource = items;
             if (items.Count > 0)
             {
                 _listBox.SelectedIndex = 0;
+            }
+
+            if (_status != null)
+            {
+                _status.Text = items.Count == 0
+                    ? "No matches"
+                    : ("Find in all projects — " + items.Count + " result(s)");
             }
         }
 
@@ -301,17 +341,14 @@ namespace OpenRPA.PluginFunctions
 
         private static void ConfirmSelection()
         {
-            var selected = _listBox != null ? _listBox.SelectedItem as ActivityCatalogItem : null;
-            if (selected == null || selected.Type == null)
+            var selected = _listBox != null ? _listBox.SelectedItem as GlobalFindItem : null;
+            if (selected == null || selected.Entry == null)
             {
                 return;
             }
 
-            bool ok = ActivityInsertService.TryAddActivity(selected.Type);
-            if (ok)
-            {
-                Hide();
-            }
+            Hide();
+            GlobalWorkflowFindNavigator.Navigate(selected.Entry);
         }
     }
 }

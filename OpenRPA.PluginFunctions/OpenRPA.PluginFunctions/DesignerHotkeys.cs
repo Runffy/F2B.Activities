@@ -7,7 +7,8 @@ namespace OpenRPA.PluginFunctions
 {
     /// <summary>
     /// Global designer hotkeys on the OpenRPA main window:
-    /// Ctrl+S save, Ctrl+T fault-path go-to, Ctrl+P activity palette.
+    /// Ctrl+S save, Ctrl+T fault-path go-to, Ctrl+P activity palette,
+    /// Ctrl+F find in current workflow, Ctrl+Shift+F find in all projects.
     /// </summary>
     internal static class DesignerHotkeys
     {
@@ -94,15 +95,38 @@ namespace OpenRPA.PluginFunctions
                 }
 
                 Key key = e.Key == Key.System ? e.SystemKey : e.Key;
+                bool shift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
 
-                if (key == Key.S)
+                if (key == Key.S && !shift)
                 {
                     e.Handled = true;
                     var saveTask = PluginContext.SaveCurrentWorkflowAsync();
                     return;
                 }
 
-                if (key == Key.T)
+                if (key == Key.F)
+                {
+                    if (shift)
+                    {
+                        // Global find: works even on Open Project (no designer required).
+                        e.Handled = true;
+                        PluginContext.RunOnUi(GlobalWorkflowFindPopup.Show);
+                        return;
+                    }
+
+                    if (PluginContext.ResolveDesigner() == null)
+                    {
+                        return;
+                    }
+
+                    // Override OpenRPA MainWindow Ctrl+F (SearchBox focus).
+                    e.Handled = true;
+                    GlobalWorkflowFindPopup.Hide();
+                    PluginContext.RunOnUi(WorkflowFindPopup.Show);
+                    return;
+                }
+
+                if (key == Key.T && !shift)
                 {
                     e.Handled = true;
                     PluginContext.RunOnUi(() =>
@@ -113,7 +137,7 @@ namespace OpenRPA.PluginFunctions
                     return;
                 }
 
-                if (key == Key.P)
+                if (key == Key.P && !shift)
                 {
                     if (PluginContext.ResolveDesigner() == null)
                     {
@@ -121,6 +145,8 @@ namespace OpenRPA.PluginFunctions
                     }
 
                     e.Handled = true;
+                    WorkflowFindPopup.Hide();
+                    GlobalWorkflowFindPopup.Hide();
                     PluginContext.RunOnUi(ActivityPalettePopup.Show);
                 }
             }

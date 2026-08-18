@@ -56,6 +56,16 @@
     <Compile Include="ActivityCatalog.cs" />
     <Compile Include="ActivityIconResolver.cs" />
     <Compile Include="ActivityPalettePopup.cs" />
+    <Compile Include="DesignerPopupPlacement.cs" />
+    <Compile Include="DesignerPopupLifetime.cs" />
+    <Compile Include="ActivitySearchFilter.cs" />
+    <Compile Include="ActivityDisplayPathBuilder.cs" />
+    <Compile Include="WorkflowActivitySearch.cs" />
+    <Compile Include="WorkflowFindPopup.cs" />
+    <Compile Include="OpenRpaCatalogAccess.cs" />
+    <Compile Include="GlobalWorkflowActivitySearch.cs" />
+    <Compile Include="GlobalWorkflowFindNavigator.cs" />
+    <Compile Include="GlobalWorkflowFindPopup.cs" />
     <Compile Include="DesignerHotkeys.cs" />
     <Compile Include="FaultPathNavigator.cs" />
     <Compile Include="FaultPathSearchWindow.cs" />
