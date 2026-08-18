@@ -66,15 +66,60 @@ namespace OpenRPA.PluginFunctions
                 if (_window != null)
                 {
                     _window.PreviewKeyDown -= OnPreviewKeyDown;
+                    _window.PreviewMouseDown -= OnPreviewMouseDown;
                 }
 
                 _window = main;
                 _window.PreviewKeyDown += OnPreviewKeyDown;
+                _window.PreviewMouseDown += OnPreviewMouseDown;
                 _attached = true;
                 if (_retryTimer != null)
                 {
                     _retryTimer.Stop();
                 }
+            }
+        }
+
+        private static void OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            try
+            {
+                if (e.ChangedButton != MouseButton.Left || e.ClickCount != 1)
+                {
+                    return;
+                }
+
+                if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
+                {
+                    return;
+                }
+
+                if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
+                {
+                    return;
+                }
+
+                if ((Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+                {
+                    return;
+                }
+
+                if (PluginContext.ResolveDesigner() == null)
+                {
+                    return;
+                }
+
+                var source = e.OriginalSource as DependencyObject;
+                if (!ActivityInsertService.IsSequenceSpacer(source))
+                {
+                    return;
+                }
+
+                e.Handled = true;
+                ActivityPalettePopup.ShowAtSpacer(source);
+            }
+            catch
+            {
             }
         }
 

@@ -33,6 +33,43 @@ namespace OpenRPA.PluginFunctions
         {
             _paletteAnchor = null;
         }
+
+        public static void CapturePaletteInsertAnchorFrom(DependencyObject source)
+        {
+            InsertAnchor fromSource = TryReadInsertAnchorFrom(source);
+            if (fromSource != null && fromSource.Index >= 0)
+            {
+                _paletteAnchor = fromSource;
+                return;
+            }
+
+            _paletteAnchor = TryReadInsertAnchor();
+        }
+
+        public static bool IsSequenceSpacer(DependencyObject source)
+        {
+            try
+            {
+                if (source == null)
+                {
+                    return false;
+                }
+
+                WorkflowItemsPresenter presenter = FindAncestor<WorkflowItemsPresenter>(source);
+                if (presenter == null)
+                {
+                    return false;
+                }
+
+                ItemsControl panel = GetPresenterPanel(presenter);
+                int viewIndex = IndexInItemsControl(panel, source);
+                return IsSpacerViewIndex(viewIndex);
+            }
+            catch
+            {
+                return false;
+            }
+        }
         public static Activity CreateActivity(Type type)
         {
             if (type == null || type.IsAbstract)

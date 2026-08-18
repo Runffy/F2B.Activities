@@ -26,13 +26,41 @@ namespace OpenRPA.PluginFunctions
 
         public static void Show()
         {
+            ShowCore(true);
+        }
+
+        public static void ShowAtSpacer(DependencyObject spacerSource)
+        {
             IDesigner designer = PluginContext.ResolveDesigner();
             if (designer == null)
             {
                 return;
             }
 
-            if (_popup == null || !_popup.IsOpen)
+            ActivityInsertService.CapturePaletteInsertAnchorFrom(spacerSource);
+            if (_popup != null && _popup.IsOpen)
+            {
+                if (_searchBox != null)
+                {
+                    _searchBox.Focus();
+                    Keyboard.Focus(_searchBox);
+                }
+
+                return;
+            }
+
+            ShowCore(false);
+        }
+
+        private static void ShowCore(bool captureAnchor)
+        {
+            IDesigner designer = PluginContext.ResolveDesigner();
+            if (designer == null)
+            {
+                return;
+            }
+
+            if (captureAnchor && (_popup == null || !_popup.IsOpen))
             {
                 ActivityInsertService.CapturePaletteInsertAnchor();
             }
@@ -205,6 +233,11 @@ namespace OpenRPA.PluginFunctions
 
             DependencyObject source = e.OriginalSource as DependencyObject;
             if (IsInsidePopup(source))
+            {
+                return;
+            }
+
+            if (ActivityInsertService.IsSequenceSpacer(source))
             {
                 return;
             }
