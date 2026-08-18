@@ -96,6 +96,11 @@
     <Compile Include="HttpVerbChoiceConverter.cs" />
     <Compile Include="HttpRequestActivity.cs" />
     <Compile Include="HttpRequestDesigner.cs" />
+    <Compile Include="InvokeCSharpCodeActivity.cs" />
+    <Compile Include="InvokeCSharpCodeDesigner.cs" />
+    <Compile Include="InvokeCSharpCodeEditor.cs" />
+    <Compile Include="InvokeCSharpCodeHost.cs" />
+    <Compile Include="InvokeCSharpCodePropertyEditor.cs" />
     <Compile Include="InvokeWorkflowActivity.cs" />
     <Compile Include="InvokeWorkflowDesigner.cs" />
     <Compile Include="ImagesToPdfActivity.cs" />
