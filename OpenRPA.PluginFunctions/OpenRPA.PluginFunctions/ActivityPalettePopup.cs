@@ -32,6 +32,11 @@ namespace OpenRPA.PluginFunctions
                 return;
             }
 
+            if (_popup == null || !_popup.IsOpen)
+            {
+                ActivityInsertService.CapturePaletteInsertAnchor();
+            }
+
             WorkflowFindPopup.Hide();
             GlobalWorkflowFindPopup.Hide();
 
@@ -54,6 +59,7 @@ namespace OpenRPA.PluginFunctions
 
         public static void Hide()
         {
+            ActivityInsertService.ClearPaletteInsertAnchor();
             if (_popup != null)
             {
                 _popup.IsOpen = false;
