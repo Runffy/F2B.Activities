@@ -22,6 +22,16 @@ namespace F2B.Browser.Chromium.Cdp
         /// </param>
         public static CdpTabFindResult FindTab(string selectorXml)
         {
+            return FindTab(selectorXml, true);
+        }
+
+        /// <summary>
+        /// Finds a visible tab matching the selector XML.
+        /// When <paramref name="throwException"/> is false, returns null instead of throwing if no tab matches.
+        /// Missing &lt;wnd&gt; is always treated as an invalid selector and still throws.
+        /// </summary>
+        public static CdpTabFindResult FindTab(string selectorXml, bool throwException)
+        {
             var scope = SelectorXmlSerializer.SplitScope(selectorXml);
             if (scope.TabLevel == null)
             {
@@ -69,11 +79,21 @@ namespace F2B.Browser.Chromium.Cdp
 
             if (matches.Count == 0)
             {
+                if (!throwException)
+                {
+                    return null;
+                }
+
                 throw new BrowserException(string.Format("No visible tab matched selector: {0}", selectorXml));
             }
 
             if (selector.Idx >= matches.Count)
             {
+                if (!throwException)
+                {
+                    return null;
+                }
+
                 throw new BrowserException(
                     string.Format(
                         "Selector idx {0} is out of range. {1} visible tab(s) matched: {2}",

@@ -705,17 +705,24 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                 return new List<CdpElement>();
             }
 
-            if (frameLevels.Count == 0)
+            try
             {
-                using (var context = frame.CreateDomContext())
+                if (frameLevels.Count == 0)
+                {
+                    using (var context = frame.CreateDomContext())
+                    {
+                        return QueryElementsInContext(context, scope.ElementLevels, findAll);
+                    }
+                }
+
+                using (var context = frame.Tab.GetSession().CreateDomContext(frameLevels))
                 {
                     return QueryElementsInContext(context, scope.ElementLevels, findAll);
                 }
             }
-
-            using (var context = frame.Tab.GetSession().CreateDomContext(frameLevels))
+            catch (BrowserException)
             {
-                return QueryElementsInContext(context, scope.ElementLevels, findAll);
+                return new List<CdpElement>();
             }
         }
 
@@ -723,19 +730,26 @@ namespace F2B.Browser.Chromium.Cdp.Internal
         {
             var scope = SelectorXmlSerializer.SplitScopeForOperation(selectorXml);
 
-            if (root != null)
+            try
             {
-                return QueryElementsFromRoot(tab.GetSession(), root, scope, findAll);
-            }
+                if (root != null)
+                {
+                    return QueryElementsFromRoot(tab.GetSession(), root, scope, findAll);
+                }
 
-            if (scope.ElementLevels.Count == 0)
+                if (scope.ElementLevels == null || scope.ElementLevels.Count == 0)
+                {
+                    return new List<CdpElement>();
+                }
+
+                using (var context = tab.GetSession().CreateDomContext(scope.FrameLevels))
+                {
+                    return QueryElementsInContext(context, scope.ElementLevels, findAll);
+                }
+            }
+            catch (BrowserException)
             {
                 return new List<CdpElement>();
-            }
-
-            using (var context = tab.GetSession().CreateDomContext(scope.FrameLevels))
-            {
-                return QueryElementsInContext(context, scope.ElementLevels, findAll);
             }
         }
 
@@ -751,13 +765,12 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                 return new List<CdpElement>();
             }
 
-            root.Context.RefreshIds();
-            var levelsJson = SerializeLevels(levels);
-            var findAllLiteral = findAll ? "true" : "false";
-            var functionDeclaration = BuildElementFinderFunction(levelsJson, findAllLiteral, markPrefix: string.Empty);
-
             try
             {
+                root.Context.RefreshIds();
+                var levelsJson = SerializeLevels(levels);
+                var findAllLiteral = findAll ? "true" : "false";
+                var functionDeclaration = BuildElementFinderFunction(levelsJson, findAllLiteral, markPrefix: string.Empty);
                 var objectId = RunElementFinderObjectId(session, root.ObjectId, functionDeclaration);
                 if (!findAll)
                 {

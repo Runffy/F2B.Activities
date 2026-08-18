@@ -53,7 +53,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             var root = CdpTargetResolver.GetRoot(ParentObject, context, "ParentObject");
             var selector = Selector == null ? null : Selector.Get(context);
             var timeoutMs = CdpActivityArgumentHelper.GetOrDefault(Timeout, context, 15000);
-            var throwException = CdpActivityArgumentHelper.GetOrDefault(ThrowException, context, true);
+            var throwException = CdpActivityArgumentHelper.GetThrowException(ThrowException, context, true);
             var found = CdpTargetResolver.FindElement(root, selector, timeoutMs, throwException);
             CdpActivityArgumentHelper.SetCdpElement(ElementResult, context, found);
         }

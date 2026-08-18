@@ -1,6 +1,7 @@
 using System;
 using System.Activities;
 using F2B.Browser.Chromium.Cdp.Browser;
+using F2B.Browser.Chromium.Cdp.Exceptions;
 using F2B.Browser.Chromium.Cdp.Selectors;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
@@ -99,25 +100,59 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             CdpDelay.Apply(delayBefore);
             selector = NormalizeSelector(root, selector);
 
-            if (root == null)
+            try
             {
-                return CdpElementLocator.FindBySelector(selector, null, 0, timeoutMs, 0, throwException);
-            }
+                if (root == null)
+                {
+                    return CdpElementLocator.FindBySelector(selector, null, 0, timeoutMs, 0, throwException);
+                }
 
-            return root.FindElement(selector, timeoutMs, throwException);
+                return root.FindElement(selector, timeoutMs, throwException);
+            }
+            catch (BrowserException)
+            {
+                if (throwException)
+                {
+                    throw;
+                }
+
+                return null;
+            }
         }
 
-        public static CdpElement[] FindElements(CdpBase root, string selector)
+        public static CdpElement[] FindElements(CdpBase root, string selector, bool throwException)
         {
             EnsureFindInputs(root, selector, "ParentObject");
             selector = NormalizeSelector(root, selector);
 
-            if (root == null)
+            CdpElement[] found;
+            try
             {
-                return CdpElementLocator.FindAllBySelector(selector, null, null);
+                found = root == null
+                    ? CdpElementLocator.FindAllBySelector(selector, null, null)
+                    : root.FindElements(selector);
+            }
+            catch (BrowserException)
+            {
+                if (throwException)
+                {
+                    throw;
+                }
+
+                return new CdpElement[0];
             }
 
-            return root.FindElements(selector);
+            if (found == null)
+            {
+                found = new CdpElement[0];
+            }
+
+            if (throwException && found.Length == 0)
+            {
+                throw new InvalidOperationException("No elements matched the selector.");
+            }
+
+            return found;
         }
 
         public static bool ElementExists(CdpBase root, string selector)
@@ -125,12 +160,19 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             EnsureFindInputs(root, selector, "ParentObject");
             selector = NormalizeSelector(root, selector);
 
-            if (root == null)
+            try
             {
-                return CdpElementLocator.Exists(selector, null);
-            }
+                if (root == null)
+                {
+                    return CdpElementLocator.Exists(selector, null);
+                }
 
-            return root.ElementExists(selector);
+                return root.ElementExists(selector);
+            }
+            catch (BrowserException)
+            {
+                return false;
+            }
         }
 
         public static CdpFrame FindFrame(
@@ -144,16 +186,33 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             CdpDelay.Apply(delayBefore);
             selector = NormalizeSelector(root, selector);
 
-            if (root == null)
+            try
             {
-                var tab = CdpTabFinder.FindTab(selector).Tab;
-                var operationXml = SelectorXmlSerializer.HasWndLevel(selector)
-                    ? SelectorXmlSerializer.ToOperationXml(SelectorXmlSerializer.SplitScope(selector))
-                    : selector;
-                return tab.FindFrame(operationXml, timeoutMs, throwException);
-            }
+                if (root == null)
+                {
+                    var tabResult = CdpTabFinder.FindTab(selector, throwException);
+                    if (tabResult == null)
+                    {
+                        return null;
+                    }
 
-            return root.FindFrame(selector, timeoutMs, throwException);
+                    var operationXml = SelectorXmlSerializer.HasWndLevel(selector)
+                        ? SelectorXmlSerializer.ToOperationXml(SelectorXmlSerializer.SplitScope(selector))
+                        : selector;
+                    return tabResult.Tab.FindFrame(operationXml, timeoutMs, throwException);
+                }
+
+                return root.FindFrame(selector, timeoutMs, throwException);
+            }
+            catch (BrowserException)
+            {
+                if (throwException)
+                {
+                    throw;
+                }
+
+                return null;
+            }
         }
 
         /// <summary>Mode B: resolve Tab/Frame document or Element for RunJs/Scroll/Screenshot.</summary>

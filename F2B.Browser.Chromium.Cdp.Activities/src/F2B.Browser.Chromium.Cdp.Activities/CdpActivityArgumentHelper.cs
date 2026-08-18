@@ -19,6 +19,27 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             return argument.Get(context);
         }
 
+        /// <summary>
+        /// Reads a bool InArgument. An empty expression is treated as false (OpenRPA's property grid
+        /// often stores an unchecked checkbox as InArgument with no expression), not as the activity default.
+        /// </summary>
+        public static bool GetThrowException(InArgument<bool> argument, CodeActivityContext context, bool fallback)
+        {
+            if (argument == null)
+            {
+                return fallback;
+            }
+
+            try
+            {
+                return argument.Get(context);
+            }
+            catch
+            {
+                return fallback;
+            }
+        }
+
         public static bool HasExpression(Argument argument)
         {
             return argument != null && argument.Expression != null;

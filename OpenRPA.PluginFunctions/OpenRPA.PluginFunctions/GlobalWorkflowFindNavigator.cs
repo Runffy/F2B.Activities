@@ -55,6 +55,14 @@ namespace OpenRPA.PluginFunctions
                     IDesigner designer = FindDesignerForWorkflow(workflow);
                     if (designer != null)
                     {
+                        try
+                        {
+                            designer.IsSelected = true;
+                        }
+                        catch
+                        {
+                        }
+
                         focused = TryFocusEntry(designer, entry);
                     }
 

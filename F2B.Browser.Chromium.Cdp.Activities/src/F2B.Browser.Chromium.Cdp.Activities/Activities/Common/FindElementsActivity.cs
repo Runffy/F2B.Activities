@@ -1,4 +1,3 @@
-using System;
 using System.Activities;
 using System.Activities.Presentation;
 using System.ComponentModel;
@@ -41,13 +40,8 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         {
             var root = CdpTargetResolver.GetRoot(ParentObject, context, "ParentObject");
             var selector = Selector == null ? null : Selector.Get(context);
-            var throwException = CdpActivityArgumentHelper.GetOrDefault(ThrowException, context, false);
-            var found = CdpTargetResolver.FindElements(root, selector);
-            if (throwException && (found == null || found.Length == 0))
-            {
-                throw new InvalidOperationException("No elements matched the selector.");
-            }
-
+            var throwException = CdpActivityArgumentHelper.GetThrowException(ThrowException, context, false);
+            var found = CdpTargetResolver.FindElements(root, selector, throwException);
             Elements?.Set(context, found ?? new CdpElement[0]);
         }
     }

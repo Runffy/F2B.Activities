@@ -84,6 +84,16 @@ namespace OpenRPA.PluginFunctions
                     IDesigner designer = FindDesignerForWorkflow(workflow);
                     if (designer != null)
                     {
+                        // Closing the Ctrl+T window can leave Open Project selected;
+                        // re-activate the designer tab before focusing the activity.
+                        try
+                        {
+                            designer.IsSelected = true;
+                        }
+                        catch
+                        {
+                        }
+
                         focused = TryFocusPath(designer, activityPath);
                     }
 
@@ -204,39 +214,236 @@ namespace OpenRPA.PluginFunctions
 
         private static IWorkflow ResolveWorkflow(string label)
         {
-            if (PluginContext.Client == null || string.IsNullOrWhiteSpace(label))
+            if (string.IsNullOrWhiteSpace(label))
             {
                 return null;
             }
 
-            string key = label.Trim();
-            // Strip optional [n] on workflow label from invoke indexing.
+            string key = label.Trim().Replace('\\', '/');
             Match indexed = Regex.Match(key, @"^(?<base>.+?)(?:\[(?<idx>\d+)\])?$");
             if (indexed.Success)
             {
                 key = indexed.Groups["base"].Value.Trim();
             }
 
-            IWorkflow direct = PluginContext.Client.GetWorkflowByIDOrRelativeFilename(key);
-            if (direct != null)
+            IWorkflow current = null;
+            try
             {
-                return direct;
+                IDesigner designer = PluginContext.ResolveDesigner();
+                current = designer != null ? designer.Workflow : null;
+            }
+            catch
+            {
             }
 
-            // Try RelativeFilename only (file part).
-            string project;
-            string file;
-            SplitProjectFile(key, out project, out file);
-            if (!string.IsNullOrWhiteSpace(file))
+            if (current != null && WorkflowMatchesFaultLabel(current, key))
             {
-                IWorkflow byFile = PluginContext.Client.GetWorkflowByIDOrRelativeFilename(file);
-                if (byFile != null)
+                return current;
+            }
+
+            foreach (string lookup in EnumerateLookupKeys(key))
+            {
+                IWorkflow found = TryGetWorkflowByIdOrRelative(lookup);
+                if (found != null)
                 {
-                    return byFile;
+                    return found;
+                }
+            }
+
+            IReadOnlyList<IWorkflow> all = OpenRpaCatalogAccess.GetAllWorkflows();
+            if (all != null)
+            {
+                for (int i = 0; i < all.Count; i++)
+                {
+                    if (WorkflowMatchesFaultLabel(all[i], key))
+                    {
+                        return all[i];
+                    }
                 }
             }
 
             return null;
+        }
+
+        private static IEnumerable<string> EnumerateLookupKeys(string key)
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string candidate in new[]
+            {
+                key,
+                StripXamlExtension(key)
+            })
+            {
+                if (!string.IsNullOrWhiteSpace(candidate) && seen.Add(candidate))
+                {
+                    yield return candidate;
+                }
+            }
+
+            string project;
+            string file;
+            SplitProjectFile(key, out project, out file);
+            if (string.IsNullOrWhiteSpace(file))
+            {
+                yield break;
+            }
+
+            foreach (string candidate in new[]
+            {
+                file,
+                StripXamlExtension(file),
+                string.IsNullOrWhiteSpace(project) ? null : project + "/" + StripXamlExtension(file)
+            })
+            {
+                if (!string.IsNullOrWhiteSpace(candidate) && seen.Add(candidate))
+                {
+                    yield return candidate;
+                }
+            }
+        }
+
+        private static IWorkflow TryGetWorkflowByIdOrRelative(string key)
+        {
+            if (PluginContext.Client == null || string.IsNullOrWhiteSpace(key))
+            {
+                return null;
+            }
+
+            try
+            {
+                return PluginContext.Client.GetWorkflowByIDOrRelativeFilename(key);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// TraceableTryCatch writes [project/DisplayName.xaml]. OpenRPA lookup keys are
+        /// ProjectAndName (no .xaml) or RelativeFilename (often spaces stripped).
+        /// </summary>
+        private static bool WorkflowMatchesFaultLabel(IWorkflow workflow, string label)
+        {
+            if (workflow == null || string.IsNullOrWhiteSpace(label))
+            {
+                return false;
+            }
+
+            string project;
+            string file;
+            SplitProjectFile(label, out project, out file);
+            if (string.IsNullOrWhiteSpace(file))
+            {
+                file = label;
+            }
+
+            string workflowProject = OpenRpaCatalogAccess.GetProjectName(workflow);
+            if (!string.IsNullOrWhiteSpace(project) && !string.IsNullOrWhiteSpace(workflowProject)
+                && !string.Equals(NormalizeKey(project), NormalizeKey(workflowProject), StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            string[] candidates =
+            {
+                workflow.ProjectAndName,
+                workflow.RelativeFilename,
+                workflow.Filename,
+                workflow.name,
+                workflow._id
+            };
+
+            string labelNorm = NormalizeKey(label);
+            string fileNorm = NormalizeKey(file);
+            string fileCompact = CompactKey(file);
+
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                string candidate = candidates[i];
+                if (string.IsNullOrWhiteSpace(candidate))
+                {
+                    continue;
+                }
+
+                string candNorm = NormalizeKey(candidate);
+                if (string.Equals(candNorm, labelNorm, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(candNorm, fileNorm, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                string candFile;
+                string unusedProject;
+                SplitProjectFile(candidate, out unusedProject, out candFile);
+                if (string.IsNullOrWhiteSpace(candFile))
+                {
+                    candFile = candidate;
+                }
+
+                string candFileNorm = NormalizeKey(candFile);
+                if (string.Equals(candFileNorm, fileNorm, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(CompactKey(candFile), fileCompact, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string StripXamlExtension(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+
+            value = value.Trim();
+            if (value.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase))
+            {
+                return value.Substring(0, value.Length - 5);
+            }
+
+            return value;
+        }
+
+        private static string NormalizeKey(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            return StripXamlExtension(value.Trim().Replace('\\', '/'));
+        }
+
+        private static string CompactKey(string value)
+        {
+            string normalized = NormalizeKey(value);
+            if (normalized.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            int slash = normalized.LastIndexOf('/');
+            if (slash >= 0 && slash < normalized.Length - 1)
+            {
+                normalized = normalized.Substring(slash + 1);
+            }
+
+            var chars = new char[normalized.Length];
+            int n = 0;
+            for (int i = 0; i < normalized.Length; i++)
+            {
+                char c = normalized[i];
+                if (char.IsLetterOrDigit(c))
+                {
+                    chars[n++] = char.ToLowerInvariant(c);
+                }
+            }
+
+            return n == 0 ? string.Empty : new string(chars, 0, n);
         }
 
         private static void SplitProjectFile(string label, out string project, out string file)

@@ -16,7 +16,12 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         {
             if (SelectorXmlSerializer.HasWndLevel(selectorXml))
             {
-                var tab = inputTab ?? CdpTabFinder.FindTab(selectorXml).Tab;
+                var tab = ResolveTab(selectorXml, inputTab, throwException);
+                if (tab == null)
+                {
+                    return null;
+                }
+
                 CdpDelay.Apply(delayBefore);
                 var operationXml = SelectorXmlSerializer.ToOperationXml(SelectorXmlSerializer.SplitScope(selectorXml));
                 return tab.FindElement(operationXml, timeoutMs, throwException);
@@ -31,7 +36,12 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         {
             if (SelectorXmlSerializer.HasWndLevel(selectorXml))
             {
-                var tab = inputTab ?? CdpTabFinder.FindTab(selectorXml).Tab;
+                var tab = ResolveTab(selectorXml, inputTab, false);
+                if (tab == null)
+                {
+                    return false;
+                }
+
                 var operationXml = SelectorXmlSerializer.ToOperationXml(SelectorXmlSerializer.SplitScope(selectorXml));
                 return tab.ElementExists(operationXml);
             }
@@ -44,18 +54,34 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         {
             if (parentElement != null)
             {
-                return parentElement.FindElements(selectorXml);
+                return parentElement.FindElements(selectorXml) ?? new CdpElement[0];
             }
 
             if (SelectorXmlSerializer.HasWndLevel(selectorXml))
             {
-                var tab = inputTab ?? CdpTabFinder.FindTab(selectorXml).Tab;
+                var tab = ResolveTab(selectorXml, inputTab, false);
+                if (tab == null)
+                {
+                    return new CdpElement[0];
+                }
+
                 var operationXml = SelectorXmlSerializer.ToOperationXml(SelectorXmlSerializer.SplitScope(selectorXml));
-                return tab.FindElements(operationXml);
+                return tab.FindElements(operationXml) ?? new CdpElement[0];
             }
 
             CdpSelectorRules.EnsureTabOrWnd(selectorXml, inputTab);
-            return inputTab.FindElements(selectorXml);
+            return inputTab.FindElements(selectorXml) ?? new CdpElement[0];
+        }
+
+        private static CdpTab ResolveTab(string selectorXml, CdpTab inputTab, bool throwException)
+        {
+            if (inputTab != null)
+            {
+                return inputTab;
+            }
+
+            var found = CdpTabFinder.FindTab(selectorXml, throwException);
+            return found == null ? null : found.Tab;
         }
     }
 }
