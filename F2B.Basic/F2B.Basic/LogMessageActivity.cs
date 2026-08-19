@@ -290,14 +290,16 @@ namespace F2B.Basic
             return Path.Combine(folder, $"ExecutionLog_{timestamp:yyyyMMdd}.csv");
         }
 
+        private static readonly Encoding CsvEncoding = Encoding.GetEncoding(936);
+
         private static void AppendLogLine(string logFilePath, string header, string line)
         {
             if (!File.Exists(logFilePath))
             {
-                File.AppendAllText(logFilePath, header + Environment.NewLine);
+                File.AppendAllText(logFilePath, header + Environment.NewLine, CsvEncoding);
             }
 
-            File.AppendAllText(logFilePath, line + Environment.NewLine);
+            File.AppendAllText(logFilePath, line + Environment.NewLine, CsvEncoding);
         }
 
         private static string BuildLogLine(DateTime timestamp, string workflowName, string entryId, string level, string message, string projectName = null)
