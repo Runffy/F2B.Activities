@@ -106,7 +106,7 @@ namespace OpenRPA.PluginFunctions
                 FontSize = 13
             };
             _listBox.ItemTemplate = CreateItemTemplate();
-            _listBox.MouseDoubleClick += (s, e) => ConfirmSelection();
+            _listBox.PreviewMouseLeftButtonUp += OnListPreviewMouseLeftButtonUp;
             _listBox.PreviewKeyDown += OnListPreviewKeyDown;
 
             _status = new TextBlock
@@ -337,6 +337,42 @@ namespace OpenRPA.PluginFunctions
                 _searchBox.Focus();
                 Keyboard.Focus(_searchBox);
             }
+        }
+
+        private static void OnListPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton != MouseButton.Left || e.ClickCount != 1)
+            {
+                return;
+            }
+
+            ListBoxItem item = FindListBoxItem(e.OriginalSource as DependencyObject);
+            if (item == null)
+            {
+                return;
+            }
+
+            item.IsSelected = true;
+            e.Handled = true;
+            ConfirmSelection();
+        }
+
+        private static ListBoxItem FindListBoxItem(DependencyObject source)
+        {
+            DependencyObject current = source;
+            while (current != null)
+            {
+                var item = current as ListBoxItem;
+                if (item != null)
+                {
+                    return item;
+                }
+
+                current = VisualTreeHelper.GetParent(current)
+                    ?? LogicalTreeHelper.GetParent(current);
+            }
+
+            return null;
         }
 
         private static void ConfirmSelection()
