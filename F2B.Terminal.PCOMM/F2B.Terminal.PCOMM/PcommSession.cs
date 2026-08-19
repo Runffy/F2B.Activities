@@ -49,7 +49,8 @@ namespace F2B.Terminal.PCOMM
             }
 
             var length = endIndex - startIndex + 1;
-            return presentationSpace.GetText(row, startIndex, length);
+            string text = presentationSpace.GetText(row, startIndex, length);
+            return SanitizeUnpairedSurrogates(text);
         }
 
         public string ReadAllRows()
@@ -318,6 +319,45 @@ namespace F2B.Terminal.PCOMM
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Replaces unpaired UTF-16 surrogates that PCOMM GetText can return after a bad
+        /// host/DBCS conversion. Lone surrogates cannot be encoded to ANSI/1252/GBK.
+        /// </summary>
+        private static string SanitizeUnpairedSurrogates(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text ?? string.Empty;
+            }
+
+            char[] buffer = null;
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                if (char.IsHighSurrogate(c))
+                {
+                    if (i + 1 < text.Length && char.IsLowSurrogate(text[i + 1]))
+                    {
+                        i++;
+                        continue;
+                    }
+                }
+                else if (!char.IsLowSurrogate(c))
+                {
+                    continue;
+                }
+
+                if (buffer == null)
+                {
+                    buffer = text.ToCharArray();
+                }
+
+                buffer[i] = '?';
+            }
+
+            return buffer == null ? text : new string(buffer);
         }
 
         private static int GetNumCols(dynamic presentationSpace)
