@@ -1,10 +1,13 @@
 using System;
 using System.Activities;
 using System.Activities.Presentation;
+using System.Activities.Presentation.Toolbox;
+using System.Activities.Statements;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Windows.Media;
 using OpenRPA.Interfaces;
 
@@ -63,68 +66,127 @@ namespace OpenRPA.PluginFunctions
             "ExcelActivity", "ExcelActivityOf`1"
         };
 
-        private static bool IsActivityType(Type type)
+        /// <summary>
+        /// Mirrors OpenRPA WFToolbox.InitializeActivitiesToolbox filters so Ctrl+P matches the toolbox.
+        /// </summary>
+        private static bool IsActivityType(Type activityType)
         {
-            if (type == null || !type.IsVisible || !type.IsPublic || type.IsNested || type.IsAbstract)
+            if (activityType == null || !activityType.IsVisible || !activityType.IsPublic || activityType.IsNested || activityType.IsAbstract)
             {
                 return false;
             }
 
-            // Open generics (e.g. Assign`1 → shown as Assign<>) cannot be dropped without type args.
-            if (type.IsGenericTypeDefinition || type.ContainsGenericParameters)
-            {
-                return false;
-            }
-
-            if (type.GetConstructor(Type.EmptyTypes) == null)
-            {
-                return false;
-            }
-
-            if (ExcludedNames.Contains(type.Name))
-            {
-                return false;
-            }
-
-            // Any leftover open-generic naming (Assign`1, InvokeFunc`2, ...).
-            if (type.Name.IndexOf('`') >= 0)
-            {
-                return false;
-            }
-
-            if (type.Name.StartsWith("InvokeAction", StringComparison.Ordinal)
-                || type.Name.StartsWith("InvokeFunc", StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            if (type.FullName != null
-                && (type.FullName.EndsWith("Statements.DoWhile", StringComparison.Ordinal)
-                    || type.FullName.EndsWith("Statements.While", StringComparison.Ordinal)))
-            {
-                return false;
-            }
-
-            return typeof(Activity).IsAssignableFrom(type)
-                   || typeof(IActivityTemplateFactory).IsAssignableFrom(type);
-        }
-
-        private static string ResolveDisplayName(Type type)
-        {
             try
             {
-                var attr = type.GetCustomAttributes(typeof(DisplayNameAttribute), true)
-                    .FirstOrDefault() as DisplayNameAttribute;
-                if (attr != null && !string.IsNullOrWhiteSpace(attr.DisplayName))
+                if (activityType.Assembly != null
+                    && activityType.Assembly.IsDynamic)
                 {
-                    return attr.DisplayName;
+                    return false;
+                }
+
+                string codeBase = activityType.Assembly?.CodeBase;
+                if (!string.IsNullOrEmpty(codeBase)
+                    && codeBase.IndexOf("Snippets.dll", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return false;
                 }
             }
             catch
             {
             }
 
-            return type.Name;
+            if (activityType.GetConstructor(Type.EmptyTypes) == null)
+            {
+                return false;
+            }
+
+            if (ExcludedNames.Contains(activityType.Name))
+            {
+                return false;
+            }
+
+            if (!IsToolboxActivityKind(activityType))
+            {
+                return false;
+            }
+
+            string name = activityType.Name ?? string.Empty;
+            if (name.StartsWith("InvokeAction`", StringComparison.Ordinal)
+                || name.StartsWith("InvokeFunc`", StringComparison.Ordinal)
+                || name.StartsWith("Subtract`", StringComparison.Ordinal)
+                || name.StartsWith("GreaterThan`", StringComparison.Ordinal)
+                || name.StartsWith("GreaterThanOrEqual`", StringComparison.Ordinal)
+                || name.StartsWith("LessThan`", StringComparison.Ordinal)
+                || name.StartsWith("LessThanOrEqual`", StringComparison.Ordinal)
+                || name.StartsWith("Literal`", StringComparison.Ordinal)
+                || name.StartsWith("MultidimensionalArrayItemReference`", StringComparison.Ordinal)
+                || name.StartsWith("Multiply`", StringComparison.Ordinal)
+                || name.StartsWith("New`", StringComparison.Ordinal)
+                || name.StartsWith("NewArray`", StringComparison.Ordinal)
+                || name.StartsWith("Or`", StringComparison.Ordinal)
+                || name.StartsWith("OrElse", StringComparison.Ordinal)
+                || name.EndsWith("`2", StringComparison.Ordinal)
+                || name.EndsWith("`3", StringComparison.Ordinal)
+                || name == "ExcelActivity"
+                || name == "ExcelActivityOf`1")
+            {
+                return false;
+            }
+
+            if (activityType.FullName != null
+                && (activityType.FullName.EndsWith("Statements.DoWhile", StringComparison.Ordinal)
+                    || activityType.FullName.EndsWith("Statements.While", StringComparison.Ordinal)))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsToolboxActivityKind(Type activityType)
+        {
+            return activityType.IsSubclassOf(typeof(Activity))
+                || activityType.IsSubclassOf(typeof(NativeActivity))
+                || activityType.IsSubclassOf(typeof(DynamicActivity))
+                || activityType.IsSubclassOf(typeof(ActivityWithResult))
+                || activityType.IsSubclassOf(typeof(AsyncCodeActivity))
+                || activityType.IsSubclassOf(typeof(CodeActivity))
+                || activityType.IsSubclassOf(typeof(FlowNode))
+                || activityType == typeof(State)
+                || string.Equals(activityType.Name, "FinalState", StringComparison.Ordinal)
+                || typeof(IActivityTemplateFactory).IsAssignableFrom(activityType);
+        }
+
+        /// <summary>Same naming rules as OpenRPA WFToolbox.getDisplayName.</summary>
+        private static string ResolveDisplayName(Type type)
+        {
+            if (type == null)
+            {
+                return string.Empty;
+            }
+
+            string displayName = type.Name;
+            string[] splitName = displayName.Split('`');
+            displayName = splitName[0];
+            try
+            {
+                var attr = type.GetCustomAttributes(typeof(DisplayNameAttribute), true)
+                    .FirstOrDefault() as DisplayNameAttribute;
+                if (attr != null && !string.IsNullOrWhiteSpace(attr.DisplayName))
+                {
+                    displayName = attr.DisplayName;
+                }
+            }
+            catch
+            {
+            }
+
+            if (splitName.Length > 1)
+            {
+                displayName = string.Format("{0}<>", displayName);
+            }
+
+            return displayName;
         }
 
         public static IReadOnlyList<ActivityCatalogItem> GetAll()
@@ -177,12 +239,19 @@ namespace OpenRPA.PluginFunctions
             string name = item.DisplayName ?? string.Empty;
             string full = item.FullName ?? string.Empty;
             string library = item.LibraryName ?? string.Empty;
-            if (string.Equals(name, needle, StringComparison.OrdinalIgnoreCase))
+            string nameCompact = CompactSearchText(name);
+            string needleCompact = CompactSearchText(needle);
+
+            if (string.Equals(name, needle, StringComparison.OrdinalIgnoreCase)
+                || (!string.IsNullOrEmpty(nameCompact)
+                    && string.Equals(nameCompact, needleCompact, StringComparison.OrdinalIgnoreCase)))
             {
                 return 1000;
             }
 
-            if (name.StartsWith(needle, StringComparison.OrdinalIgnoreCase))
+            if (name.StartsWith(needle, StringComparison.OrdinalIgnoreCase)
+                || (!string.IsNullOrEmpty(needleCompact)
+                    && nameCompact.StartsWith(needleCompact, StringComparison.OrdinalIgnoreCase)))
             {
                 return 800 - Math.Min(200, name.Length);
             }
@@ -193,23 +262,81 @@ namespace OpenRPA.PluginFunctions
                 return 500 - idx;
             }
 
+            if (!string.IsNullOrEmpty(needleCompact))
+            {
+                idx = nameCompact.IndexOf(needleCompact, StringComparison.OrdinalIgnoreCase);
+                if (idx >= 0)
+                {
+                    return 480 - idx;
+                }
+            }
+
             if (library.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return 200;
             }
 
-            if (full.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0)
+            // Full type name only as a weak exact substring (avoid fuzzy noise on long namespaces).
+            if (full.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0
+                || (!string.IsNullOrEmpty(needleCompact)
+                    && CompactSearchText(full).IndexOf(needleCompact, StringComparison.OrdinalIgnoreCase) >= 0))
             {
                 return 100;
             }
 
-            // Token / camel-friendly: all chars appear in order
-            if (FuzzyContains(name, needle))
+            // Token / camel-friendly on display name only
+            if (FuzzyContains(name, needle)
+                || (!string.IsNullOrEmpty(needleCompact) && FuzzyContains(nameCompact, needleCompact)))
             {
                 return 50;
             }
 
             return 0;
+        }
+
+        private static bool LooksLikeTypeFullName(string text, Type type)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return false;
+            }
+
+            if (type != null)
+            {
+                if (string.Equals(text, type.FullName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(text, type.Name, StringComparison.OrdinalIgnoreCase)
+                    || (!string.IsNullOrEmpty(type.FullName)
+                        && text.StartsWith(type.Namespace + ".", StringComparison.OrdinalIgnoreCase)
+                        && text.IndexOf('.') >= 0))
+                {
+                    // type.Name alone is OK as fallback display; only treat dotted names as "too complete".
+                    return text.IndexOf('.') >= 0;
+                }
+            }
+
+            return text.IndexOf('.') >= 0 && text.EndsWith("Activity", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string CompactSearchText(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return string.Empty;
+            }
+
+            var sb = new StringBuilder(text.Length);
+            for (int i = 0; i < text.Length; i++)
+            {
+                char ch = text[i];
+                if (char.IsWhiteSpace(ch) || ch == '<' || ch == '>' || ch == '`')
+                {
+                    continue;
+                }
+
+                sb.Append(ch);
+            }
+
+            return sb.ToString();
         }
 
         private static bool FuzzyContains(string text, string needle)
@@ -288,10 +415,88 @@ namespace OpenRPA.PluginFunctions
                 }
             }
 
+            MergeFromLiveToolbox(result, seen);
+
             return result
                 .OrderBy(x => x.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(x => x.LibraryName, StringComparer.OrdinalIgnoreCase)
                 .ToList();
+        }
+
+        /// <summary>
+        /// Picks up dynamic toolbox entries (e.g. OpenRPA.Script) that are not in exported types scan.
+        /// </summary>
+        private static void MergeFromLiveToolbox(List<ActivityCatalogItem> result, HashSet<string> seen)
+        {
+            ToolboxControl toolbox;
+            try
+            {
+                toolbox = ToolboxAccess.FindToolboxControl();
+            }
+            catch
+            {
+                return;
+            }
+
+            if (toolbox?.Categories == null)
+            {
+                return;
+            }
+
+            foreach (ToolboxCategory category in toolbox.Categories)
+            {
+                if (category?.Tools == null)
+                {
+                    continue;
+                }
+
+                string libraryName = category.CategoryName ?? string.Empty;
+                foreach (ToolboxItemWrapper wrapper in category.Tools)
+                {
+                    Type type = wrapper?.Type;
+                    if (type == null || !IsActivityType(type))
+                    {
+                        continue;
+                    }
+
+                    string key = type.FullName ?? type.Name;
+                    // ToolName is the type identity (often FullName); DisplayName is the toolbox label.
+                    string displayName = wrapper.DisplayName;
+                    if (string.IsNullOrWhiteSpace(displayName)
+                        || LooksLikeTypeFullName(displayName, type))
+                    {
+                        displayName = ResolveDisplayName(type);
+                    }
+
+                    ActivityCatalogItem existing = result.FirstOrDefault(
+                        item => string.Equals(item.FullName, key, StringComparison.Ordinal));
+                    if (existing != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(displayName)
+                            && !LooksLikeTypeFullName(displayName, type))
+                        {
+                            existing.DisplayName = displayName;
+                        }
+
+                        continue;
+                    }
+
+                    if (!seen.Add(key))
+                    {
+                        continue;
+                    }
+
+                    result.Add(new ActivityCatalogItem
+                    {
+                        Type = type,
+                        DisplayName = displayName,
+                        FullName = key,
+                        LibraryName = string.IsNullOrWhiteSpace(libraryName)
+                            ? ResolveLibraryName(type)
+                            : libraryName
+                    });
+                }
+            }
         }
 
         private static string ResolveLibraryName(Type type)

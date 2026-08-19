@@ -110,6 +110,9 @@ namespace OpenRPA.PluginFunctions
                 Padding = new Thickness(6, 4, 6, 4),
                 Margin = new Thickness(0, 0, 0, 4)
             };
+            // Activity names are Latin; keep IME off so pinyin doesn't eat the first keystrokes.
+            DisableIme(_searchBox);
+            _searchBox.GotKeyboardFocus += (s, e) => DisableIme(_searchBox);
             _searchBox.TextChanged += (s, e) => RefreshList(_searchBox.Text);
             _searchBox.PreviewKeyDown += OnSearchPreviewKeyDown;
 
@@ -336,6 +339,17 @@ namespace OpenRPA.PluginFunctions
                 _searchBox.Focus();
                 Keyboard.Focus(_searchBox);
             }
+        }
+
+        private static void DisableIme(TextBox textBox)
+        {
+            if (textBox == null)
+            {
+                return;
+            }
+
+            InputMethod.SetIsInputMethodEnabled(textBox, false);
+            InputMethod.SetPreferredImeState(textBox, InputMethodState.Off);
         }
 
         private static void ConfirmSelection()
