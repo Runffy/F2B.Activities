@@ -28,33 +28,38 @@ namespace F2B.Basic
 
         internal static bool TryGetExistingLogFile(string workflowInstanceId, out string logFilePath)
         {
+            logFilePath = null;
             if (string.IsNullOrWhiteSpace(workflowInstanceId))
             {
-                logFilePath = null;
                 return false;
             }
 
-            return WorkflowLogFiles.TryGetValue(workflowInstanceId.Trim(), out logFilePath)
+            string sourceInstanceId = OpenRpaSourceWorkflow.ResolveSourceInstanceIdFromLocal(workflowInstanceId);
+            string key = string.IsNullOrWhiteSpace(sourceInstanceId)
+                ? workflowInstanceId.Trim()
+                : sourceInstanceId.Trim();
+
+            return WorkflowLogFiles.TryGetValue(key, out logFilePath)
                    && !string.IsNullOrWhiteSpace(logFilePath);
         }
 
-        private static string ResolveLogSecondStamp(string instanceId)
+        private static string ResolveLogSecondStamp(string sourceInstanceId)
         {
             string stamp;
-            if (WorkflowRunTimestamp.TryGetSecondStamp(instanceId, out stamp))
+            if (WorkflowRunTimestamp.TryGetSecondStamp(sourceInstanceId, out stamp))
             {
                 return stamp;
             }
 
             string runtimeDir;
-            if (RuntimeDirectory.TryGetExistingPath(instanceId, out runtimeDir)
+            if (RuntimeDirectory.TryGetExistingPath(sourceInstanceId, out runtimeDir)
                 && WorkflowRunTimestamp.TryParseRuntimeFolderStamp(runtimeDir, out stamp))
             {
-                WorkflowRunTimestamp.SetSecondStamp(instanceId, stamp);
+                WorkflowRunTimestamp.SetSecondStamp(sourceInstanceId, stamp);
                 return stamp;
             }
 
-            stamp = WorkflowRunTimestamp.GetOrCreateSecondStamp(instanceId);
+            stamp = WorkflowRunTimestamp.GetOrCreateSecondStamp(sourceInstanceId);
             return stamp;
         }
 
@@ -119,27 +124,49 @@ namespace F2B.Basic
 
             string formatted = FormatLogMessage(message);
 
+            // Row content keeps the current (possibly nested) workflow identity.
             WorkflowMetadata workflowMetadata = ResolveWorkflowMetadata(workflowInstanceId);
-            string projectName = workflowMetadata.ProjectName ?? "UnknownProject";
+            string currentProjectName = workflowMetadata.ProjectName ?? "UnknownProject";
             string workflowName = workflowMetadata.WorkflowName ?? "UnknownWorkflow";
-            string instanceId = string.IsNullOrWhiteSpace(workflowInstanceId)
+
+            // File path always follows the outermost source run (same rule as RuntimeDirectory).
+            string localInstanceId = string.IsNullOrWhiteSpace(workflowInstanceId)
                 ? Guid.NewGuid().ToString("D")
                 : workflowInstanceId.Trim();
+            string sourceInstanceId;
+            string sourceProjectName;
+            OpenRpaSourceWorkflow.TryResolve(
+                localInstanceId,
+                currentProjectName,
+                out sourceInstanceId,
+                out sourceProjectName);
+
+            string fileInstanceId = string.IsNullOrWhiteSpace(sourceInstanceId)
+                ? localInstanceId
+                : sourceInstanceId.Trim();
+            string fileProjectName = string.IsNullOrWhiteSpace(sourceProjectName)
+                ? currentProjectName
+                : sourceProjectName.Trim();
+
             string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "OpenRPA", "Logs");
             Directory.CreateDirectory(folder);
 
-            string logfile = WorkflowLogFiles.GetOrAdd(instanceId, _ =>
+            string logfile = WorkflowLogFiles.GetOrAdd(fileInstanceId, _ =>
             {
-                string stamp = ResolveLogSecondStamp(instanceId);
-                string filename = $"[{stamp}]{SanitizeFileName(projectName)}.csv";
+                string stamp = ResolveLogSecondStamp(fileInstanceId);
+                string filename = $"[{stamp}]{SanitizeFileName(fileProjectName)}.csv";
                 return Path.Combine(folder, filename);
             });
 
-            // Keep shared stamp aligned with the concrete logfile name.
+            // Keep shared stamp aligned with the concrete logfile name (root + local keys).
             string parsedStamp;
             if (WorkflowRunTimestamp.TryParseLogFileStamp(logfile, out parsedStamp))
             {
-                WorkflowRunTimestamp.SetSecondStamp(instanceId, parsedStamp);
+                WorkflowRunTimestamp.SetSecondStamp(fileInstanceId, parsedStamp);
+                if (!string.Equals(fileInstanceId, localInstanceId, StringComparison.OrdinalIgnoreCase))
+                {
+                    WorkflowRunTimestamp.SetSecondStamp(localInstanceId, parsedStamp);
+                }
             }
 
             string entryId = string.IsNullOrWhiteSpace(logEntryId) ? string.Empty : logEntryId.Trim();
@@ -149,7 +176,7 @@ namespace F2B.Basic
             AppendLogLine(logfile, UserLogHeader, userLine);
 
             string executionLogFile = GetExecutionLogPath(now);
-            string executionLine = BuildLogLine(now, workflowName, entryId, level, formatted, projectName);
+            string executionLine = BuildLogLine(now, workflowName, entryId, level, formatted, currentProjectName);
             AppendLogLine(executionLogFile, ExecutionLogHeader, executionLine);
 
             Console.WriteLine($"[{level}] {formatted}");

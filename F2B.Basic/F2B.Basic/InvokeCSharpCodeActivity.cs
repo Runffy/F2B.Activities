@@ -18,15 +18,14 @@ namespace F2B.Basic
     public sealed class InvokeCSharpCodeActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {
         public const string DefaultCode =
-@"using System;
-using OpenRPA.Interfaces;
+@"// Import your namespace here.
+// using ...;
 
 public static class Program
 {
     public static void Main(Args args)
     {
-        Console.WriteLine(""hello from Invoke C# Code"");
-        Log.Output(""hello from Log.Output"");
+        // Write your logic here.
     }
 }
 ";

@@ -5,7 +5,7 @@ using System.Reflection;
 namespace F2B.Basic
 {
     /// <summary>
-    /// Shared OpenRPA "source run" resolution for Global, RuntimeDirectory, and ResourceDirectory.
+    /// Shared OpenRPA "source run" resolution for Global, RuntimeDirectory, ResourceDirectory, and Log Message.
     /// Walks WorkflowInstance.caller (and InvokeOpenRPA parent bookmarks) to the outermost run.
     /// </summary>
     public static class OpenRpaSourceWorkflow

@@ -113,7 +113,7 @@ namespace F2B.Basic
         {
             var lines = new List<string>
             {
-                "Write a full Program.cs. Default entry is Program.Main(Args args) or Main(). Console.WriteLine and Log.Output both go to Output."
+                "Write a full Program.cs. Entry: Program.Main(Args args) or Main(). using is optional. Console.WriteLine goes to Output."
             };
 
             Dictionary<string, Argument> arguments = null;
