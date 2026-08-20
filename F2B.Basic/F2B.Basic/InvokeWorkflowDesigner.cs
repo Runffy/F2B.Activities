@@ -8,6 +8,8 @@ using System.ComponentModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using F2B.OpenRpa.Design;
 using OpenRPA;
@@ -23,7 +25,10 @@ namespace F2B.Basic
         private readonly ComboBox _projectCombo;
         private readonly ComboBox _workflowCombo;
         private readonly Border _workflowComboBorder;
+        private readonly List<string> _allProjects = new List<string>();
+        private readonly List<IWorkflow> _allWorkflows = new List<IWorkflow>();
         private bool _suppressSelectionHandlers;
+        private bool _suppressFilterHandlers;
         private string _selectedProjectName;
 
         public InvokeWorkflowDesigner()
@@ -49,31 +54,27 @@ namespace F2B.Basic
             };
 
             panel.Children.Add(CreateLabel("Project"));
-            _projectCombo = new ComboBox
-            {
-                Width = DesignerContentWidth - 14,
-                MaxWidth = DesignerContentWidth - 14,
-                Margin = new Thickness(0, 0, 0, 6),
-                ItemsSource = Projects
-            };
+            _projectCombo = CreateSearchableComboBox();
+            _projectCombo.Margin = new Thickness(0, 0, 0, 6);
+            _projectCombo.ItemsSource = Projects;
             _projectCombo.SelectionChanged += OnProjectSelectionChanged;
+            AttachSearchHandlers(_projectCombo, isWorkflow: false);
             panel.Children.Add(_projectCombo);
 
             panel.Children.Add(CreateLabel("Workflow"));
-            _workflowCombo = new ComboBox
-            {
-                Width = DesignerContentWidth - 14,
-                MaxWidth = DesignerContentWidth - 14,
-                Margin = new Thickness(0, 0, 0, 0),
-                DisplayMemberPath = "name",
-                ItemsSource = Workflows
-            };
+            _workflowCombo = CreateSearchableComboBox();
+            _workflowCombo.Margin = new Thickness(0);
+            _workflowCombo.DisplayMemberPath = "name";
+            _workflowCombo.ItemsSource = Workflows;
             _workflowCombo.SelectionChanged += OnWorkflowSelectionChanged;
+            AttachSearchHandlers(_workflowCombo, isWorkflow: true);
             _workflowComboBorder = new Border
             {
                 BorderBrush = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
+                Padding = new Thickness(0),
                 Margin = new Thickness(0, 0, 0, 6),
+                HorizontalAlignment = HorizontalAlignment.Left,
                 Child = _workflowCombo
             };
             panel.Children.Add(_workflowComboBorder);
@@ -129,6 +130,357 @@ namespace F2B.Basic
             };
         }
 
+        private static ComboBox CreateSearchableComboBox()
+        {
+            return new ComboBox
+            {
+                Width = DesignerContentWidth - 14,
+                MaxWidth = DesignerContentWidth - 14,
+                Margin = new Thickness(0),
+                Padding = new Thickness(2, 1, 2, 1),
+                IsEditable = true,
+                IsTextSearchEnabled = false,
+                StaysOpenOnEdit = true,
+                IsTextSearchCaseSensitive = false,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+        }
+
+        private void AttachSearchHandlers(ComboBox combo, bool isWorkflow)
+        {
+            combo.AddHandler(
+                TextBoxBase.TextChangedEvent,
+                new TextChangedEventHandler((sender, args) => OnSearchableTextChanged(combo, isWorkflow)),
+                handledEventsToo: true);
+            combo.DropDownOpened += (sender, args) => OnSearchableDropDownOpened(combo, isWorkflow);
+            combo.LostKeyboardFocus += (sender, args) => OnSearchableLostFocus(combo, isWorkflow);
+            combo.PreviewKeyDown += (sender, args) => OnSearchablePreviewKeyDown(combo, isWorkflow, args);
+        }
+
+        private void OnSearchableTextChanged(ComboBox combo, bool isWorkflow)
+        {
+            if (_suppressSelectionHandlers || _suppressFilterHandlers)
+            {
+                return;
+            }
+
+            if (!combo.IsKeyboardFocusWithin)
+            {
+                return;
+            }
+
+            string text = combo.Text ?? string.Empty;
+            _suppressFilterHandlers = true;
+            try
+            {
+                if (isWorkflow)
+                {
+                    ApplyWorkflowFilter(text);
+                }
+                else
+                {
+                    ApplyProjectFilter(text);
+                }
+
+                combo.Text = text;
+                if (!combo.IsDropDownOpen)
+                {
+                    combo.IsDropDownOpen = true;
+                }
+            }
+            finally
+            {
+                _suppressFilterHandlers = false;
+            }
+        }
+
+        private void OnSearchableDropDownOpened(ComboBox combo, bool isWorkflow)
+        {
+            if (_suppressSelectionHandlers || _suppressFilterHandlers)
+            {
+                return;
+            }
+
+            string text = combo.Text ?? string.Empty;
+            string selectedText = GetComboDisplayText(combo, isWorkflow);
+            // Opening with the current selection text → show full list.
+            if (string.IsNullOrWhiteSpace(text)
+                || string.Equals(text, selectedText, StringComparison.OrdinalIgnoreCase))
+            {
+                _suppressFilterHandlers = true;
+                try
+                {
+                    if (isWorkflow)
+                    {
+                        ApplyWorkflowFilter(string.Empty);
+                    }
+                    else
+                    {
+                        ApplyProjectFilter(string.Empty);
+                    }
+
+                    if (!string.IsNullOrEmpty(selectedText))
+                    {
+                        combo.Text = selectedText;
+                    }
+                }
+                finally
+                {
+                    _suppressFilterHandlers = false;
+                }
+            }
+        }
+
+        private void OnSearchableLostFocus(ComboBox combo, bool isWorkflow)
+        {
+            if (_suppressSelectionHandlers)
+            {
+                return;
+            }
+
+            CommitSearchableCombo(combo, isWorkflow);
+        }
+
+        private void OnSearchablePreviewKeyDown(ComboBox combo, bool isWorkflow, KeyEventArgs args)
+        {
+            if (args.Key == Key.Enter)
+            {
+                CommitSearchableCombo(combo, isWorkflow);
+                combo.IsDropDownOpen = false;
+                args.Handled = true;
+            }
+            else if (args.Key == Key.Escape)
+            {
+                _suppressFilterHandlers = true;
+                try
+                {
+                    if (isWorkflow)
+                    {
+                        ApplyWorkflowFilter(string.Empty);
+                        SyncWorkflowComboText();
+                    }
+                    else
+                    {
+                        ApplyProjectFilter(string.Empty);
+                        SyncProjectComboText();
+                    }
+
+                    combo.IsDropDownOpen = false;
+                }
+                finally
+                {
+                    _suppressFilterHandlers = false;
+                }
+
+                args.Handled = true;
+            }
+        }
+
+        private void CommitSearchableCombo(ComboBox combo, bool isWorkflow)
+        {
+            string text = (combo.Text ?? string.Empty).Trim();
+            _suppressFilterHandlers = true;
+            try
+            {
+                if (isWorkflow)
+                {
+                    IWorkflow match = FindWorkflowByFilterText(text);
+                    ApplyWorkflowFilter(string.Empty);
+                    _suppressSelectionHandlers = true;
+                    try
+                    {
+                        _workflowCombo.SelectedItem = match;
+                    }
+                    finally
+                    {
+                        _suppressSelectionHandlers = false;
+                    }
+
+                    SyncWorkflowComboText();
+                    if (match != null)
+                    {
+                        SetWorkflowKey(match.ProjectAndName ?? match.RelativeFilename);
+                    }
+                    else
+                    {
+                        // Restore previous valid selection when typed text does not resolve.
+                        string selectedWorkflowKey = GetSelectedWorkflowKey();
+                        string projectNameFromKey;
+                        string workflowNameFromKey;
+                        TrySplitProjectAndName(selectedWorkflowKey, out projectNameFromKey, out workflowNameFromKey);
+                        IWorkflow previous = null;
+                        if (!string.IsNullOrWhiteSpace(workflowNameFromKey))
+                        {
+                            previous = _allWorkflows.FirstOrDefault(w =>
+                                string.Equals(w.name, workflowNameFromKey, StringComparison.OrdinalIgnoreCase)
+                                || string.Equals(w.ProjectAndName, selectedWorkflowKey, StringComparison.OrdinalIgnoreCase));
+                        }
+
+                        _suppressSelectionHandlers = true;
+                        try
+                        {
+                            _workflowCombo.SelectedItem = previous;
+                            SyncWorkflowComboText();
+                        }
+                        finally
+                        {
+                            _suppressSelectionHandlers = false;
+                        }
+                    }
+
+                    RefreshRequiredBorder();
+                }
+                else
+                {
+                    string match = FindProjectByFilterText(text);
+                    ApplyProjectFilter(string.Empty);
+                    if (!string.Equals(match, _selectedProjectName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _selectedProjectName = match;
+                        _suppressSelectionHandlers = true;
+                        try
+                        {
+                            _projectCombo.SelectedItem = match;
+                            RebuildWorkflowCombo(preserveWorkflowName: null);
+                            SetWorkflowKey(null);
+                        }
+                        finally
+                        {
+                            _suppressSelectionHandlers = false;
+                        }
+
+                        NotifyPropertyChanged(nameof(Workflows));
+                    }
+                    else
+                    {
+                        _projectCombo.SelectedItem = match;
+                    }
+
+                    SyncProjectComboText();
+                    RefreshRequiredBorder();
+                }
+            }
+            finally
+            {
+                _suppressFilterHandlers = false;
+            }
+        }
+
+        private static string GetComboDisplayText(ComboBox combo, bool isWorkflow)
+        {
+            if (isWorkflow)
+            {
+                var workflow = combo.SelectedItem as IWorkflow;
+                return workflow != null ? (workflow.name ?? string.Empty) : string.Empty;
+            }
+
+            return combo.SelectedItem as string ?? string.Empty;
+        }
+
+        private string FindProjectByFilterText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return null;
+            }
+
+            string exact = _allProjects.FirstOrDefault(p =>
+                string.Equals(p, text, StringComparison.OrdinalIgnoreCase));
+            if (exact != null)
+            {
+                return exact;
+            }
+
+            List<string> contains = _allProjects
+                .Where(p => p != null && p.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0)
+                .ToList();
+            return contains.Count == 1 ? contains[0] : null;
+        }
+
+        private IWorkflow FindWorkflowByFilterText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return null;
+            }
+
+            IWorkflow exact = _allWorkflows.FirstOrDefault(w =>
+                w != null && string.Equals(w.name, text, StringComparison.OrdinalIgnoreCase));
+            if (exact != null)
+            {
+                return exact;
+            }
+
+            List<IWorkflow> contains = _allWorkflows
+                .Where(w => w != null && !string.IsNullOrWhiteSpace(w.name)
+                    && w.name.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0)
+                .ToList();
+            return contains.Count == 1 ? contains[0] : null;
+        }
+
+        private void ApplyProjectFilter(string text)
+        {
+            string needle = (text ?? string.Empty).Trim();
+            object selected = _projectCombo.SelectedItem;
+            Projects.Clear();
+            foreach (string projectName in _allProjects)
+            {
+                if (string.IsNullOrEmpty(needle)
+                    || projectName.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    Projects.Add(projectName);
+                }
+            }
+
+            if (selected is string selectedName && Projects.Contains(selectedName))
+            {
+                _projectCombo.SelectedItem = selectedName;
+            }
+        }
+
+        private void ApplyWorkflowFilter(string text)
+        {
+            string needle = (text ?? string.Empty).Trim();
+            object selected = _workflowCombo.SelectedItem;
+            Workflows.Clear();
+            foreach (IWorkflow workflow in _allWorkflows)
+            {
+                if (workflow == null)
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(needle)
+                    || (!string.IsNullOrWhiteSpace(workflow.name)
+                        && workflow.name.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0)
+                    || (!string.IsNullOrWhiteSpace(workflow.ProjectAndName)
+                        && workflow.ProjectAndName.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    Workflows.Add(workflow);
+                }
+            }
+
+            if (selected is IWorkflow selectedWorkflow && Workflows.Contains(selectedWorkflow))
+            {
+                _workflowCombo.SelectedItem = selectedWorkflow;
+            }
+        }
+
+        private void SyncProjectComboText()
+        {
+            string text = _projectCombo.SelectedItem as string
+                ?? _selectedProjectName
+                ?? string.Empty;
+            _projectCombo.Text = text;
+        }
+
+        private void SyncWorkflowComboText()
+        {
+            var workflow = _workflowCombo.SelectedItem as IWorkflow;
+            _workflowCombo.Text = workflow != null ? (workflow.name ?? string.Empty) : string.Empty;
+        }
+
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             try
@@ -150,17 +502,20 @@ namespace F2B.Basic
             }
 
             _suppressSelectionHandlers = true;
+            _suppressFilterHandlers = true;
             try
             {
-                Projects.Clear();
+                _allProjects.Clear();
                 foreach (string projectName in RobotInstance.instance.Projects
                     .Select(p => p.name)
                     .Where(n => !string.IsNullOrWhiteSpace(n))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
                 {
-                    Projects.Add(projectName);
+                    _allProjects.Add(projectName);
                 }
+
+                ApplyProjectFilter(string.Empty);
 
                 string selectedWorkflowKey = GetSelectedWorkflowKey();
                 string projectNameFromKey;
@@ -168,26 +523,29 @@ namespace F2B.Basic
                 TrySplitProjectAndName(selectedWorkflowKey, out projectNameFromKey, out workflowNameFromKey);
 
                 if (!string.IsNullOrWhiteSpace(projectNameFromKey)
-                    && Projects.Contains(projectNameFromKey))
+                    && _allProjects.Any(p => string.Equals(p, projectNameFromKey, StringComparison.OrdinalIgnoreCase)))
                 {
-                    _selectedProjectName = projectNameFromKey;
-                    _projectCombo.SelectedItem = projectNameFromKey;
+                    _selectedProjectName = _allProjects.First(p =>
+                        string.Equals(p, projectNameFromKey, StringComparison.OrdinalIgnoreCase));
+                    _projectCombo.SelectedItem = _selectedProjectName;
                 }
-                else if (Projects.Count > 0 && string.IsNullOrWhiteSpace(selectedWorkflowKey))
+                else if (_allProjects.Count > 0 && string.IsNullOrWhiteSpace(selectedWorkflowKey))
                 {
                     _selectedProjectName = null;
                     _projectCombo.SelectedItem = null;
                 }
 
+                SyncProjectComboText();
                 RebuildWorkflowCombo(preserveWorkflowName: workflowNameFromKey);
 
                 if (!string.IsNullOrWhiteSpace(workflowNameFromKey))
                 {
-                    IWorkflow match = Workflows.FirstOrDefault(w =>
+                    IWorkflow match = _allWorkflows.FirstOrDefault(w =>
                         string.Equals(w.name, workflowNameFromKey, StringComparison.OrdinalIgnoreCase)
                         || string.Equals(w.ProjectAndName, selectedWorkflowKey, StringComparison.OrdinalIgnoreCase)
                         || string.Equals(w.RelativeFilename, selectedWorkflowKey, StringComparison.OrdinalIgnoreCase));
                     _workflowCombo.SelectedItem = match;
+                    SyncWorkflowComboText();
                     if (match != null
                         && !string.IsNullOrWhiteSpace(match.ProjectAndName)
                         && !string.Equals(match.ProjectAndName, selectedWorkflowKey, StringComparison.Ordinal))
@@ -199,14 +557,16 @@ namespace F2B.Basic
             finally
             {
                 _suppressSelectionHandlers = false;
+                _suppressFilterHandlers = false;
             }
         }
 
         private void RebuildWorkflowCombo(string preserveWorkflowName)
         {
-            Workflows.Clear();
+            _allWorkflows.Clear();
             if (RobotInstance.instance == null)
             {
+                ApplyWorkflowFilter(string.Empty);
                 return;
             }
 
@@ -219,12 +579,14 @@ namespace F2B.Basic
                 .Where(w => designer == null || designer.Workflow == null || designer.Workflow._id != w._id || w._id == null)
                 .OrderBy(w => w.name, StringComparer.OrdinalIgnoreCase))
             {
-                Workflows.Add(workflow);
+                _allWorkflows.Add(workflow);
             }
+
+            ApplyWorkflowFilter(string.Empty);
 
             if (!string.IsNullOrWhiteSpace(preserveWorkflowName))
             {
-                IWorkflow keep = Workflows.FirstOrDefault(w =>
+                IWorkflow keep = _allWorkflows.FirstOrDefault(w =>
                     string.Equals(w.name, preserveWorkflowName, StringComparison.OrdinalIgnoreCase));
                 _workflowCombo.SelectedItem = keep;
             }
@@ -232,6 +594,8 @@ namespace F2B.Basic
             {
                 _workflowCombo.SelectedItem = null;
             }
+
+            SyncWorkflowComboText();
         }
 
         private bool MatchesSelectedProject(IWorkflow workflow)
@@ -271,7 +635,7 @@ namespace F2B.Basic
 
         private void OnProjectSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_suppressSelectionHandlers)
+            if (_suppressSelectionHandlers || _suppressFilterHandlers)
             {
                 return;
             }
@@ -286,14 +650,17 @@ namespace F2B.Basic
 
             // Same as single-dropdown UX when the selected identity becomes invalid: clear workflow key until a new workflow is chosen.
             _suppressSelectionHandlers = true;
+            _suppressFilterHandlers = true;
             try
             {
                 RebuildWorkflowCombo(preserveWorkflowName: null);
                 SetWorkflowKey(null);
+                SyncProjectComboText();
             }
             finally
             {
                 _suppressSelectionHandlers = false;
+                _suppressFilterHandlers = false;
             }
 
             RefreshRequiredBorder();
@@ -302,7 +669,7 @@ namespace F2B.Basic
 
         private void OnWorkflowSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_suppressSelectionHandlers)
+            if (_suppressSelectionHandlers || _suppressFilterHandlers)
             {
                 return;
             }
@@ -317,6 +684,7 @@ namespace F2B.Basic
                 SetWorkflowKey(workflow.ProjectAndName ?? workflow.RelativeFilename);
             }
 
+            SyncWorkflowComboText();
             RefreshRequiredBorder();
         }
 

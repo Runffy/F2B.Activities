@@ -35,6 +35,14 @@ namespace F2B.Basic
             {
                 Width = editorWidth,
                 MaxWidth = editorWidth,
+                MinWidth = editorWidth,
+                Height = 22,
+                MinHeight = 22,
+                MaxHeight = 22,
+                Margin = new Thickness(0),
+                Padding = new Thickness(0),
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Left,
                 HintText = hint,
                 ExpressionType = expressionType,
                 MinLines = 1,
@@ -52,8 +60,12 @@ namespace F2B.Basic
             editorBorder = new Border
             {
                 Margin = new Thickness(4, 0, 0, 0),
+                Padding = new Thickness(0),
                 BorderBrush = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                SnapsToDevicePixels = true,
                 Child = expressionTextBox
             };
 

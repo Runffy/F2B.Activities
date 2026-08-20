@@ -1,15 +1,12 @@
 using System;
 using System.Activities.Presentation;
-using F2B.OpenRpa.Design;
-using System.Activities.Presentation.Converters;
-using System.Activities.Presentation.Model;
 using System.Activities.Presentation.View;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
+using F2B.OpenRpa.Design;
 
 namespace F2B.Basic
 {
@@ -33,7 +30,7 @@ namespace F2B.Basic
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
-            panel.Children.Add(CreateLabeledExpressionEditor(
+            panel.Children.Add(BasicDesignerShared.CreateLabeledExpressionEditor(
                 "Condition",
                 "ModelItem.Condition",
                 typeof(bool),
@@ -55,61 +52,18 @@ namespace F2B.Basic
                 MinHeight = 40,
                 Margin = new Thickness(0, 0, 0, 0)
             };
-            BindingOperations.SetBinding(thenPresenter, WorkflowItemPresenter.ItemProperty, new Binding("ModelItem.Then")
-            {
-                Mode = BindingMode.TwoWay
-            });
+            System.Windows.Data.BindingOperations.SetBinding(
+                thenPresenter,
+                WorkflowItemPresenter.ItemProperty,
+                new System.Windows.Data.Binding("ModelItem.Then")
+                {
+                    Mode = System.Windows.Data.BindingMode.TwoWay
+                });
             panel.Children.Add(ActivityBodyExpandHelper.WrapExpandingBody(this, thenPresenter));
 
             border.Child = panel;
             ActivityDesignerCollapseHelper.Attach(this, border);
             Loaded += OnLoaded;
-        }
-
-        private static FrameworkElement CreateLabeledExpressionEditor(
-            string label,
-            string bindingPath,
-            Type expressionType,
-            string hint,
-            out Border editorBorder,
-            out ExpressionTextBox expressionTextBox)
-        {
-            var row = new DockPanel { LastChildFill = true, Margin = new Thickness(0, 2, 0, 2) };
-            row.Children.Add(new TextBlock
-            {
-                Text = label,
-                Width = 80,
-                VerticalAlignment = VerticalAlignment.Center
-            });
-
-            expressionTextBox = new ExpressionTextBox
-            {
-                Width = 200,
-                MaxWidth = 200,
-                HintText = hint,
-                ExpressionType = expressionType,
-                MinLines = 1,
-                MaxLines = 1
-            };
-
-            BindingOperations.SetBinding(expressionTextBox, ExpressionTextBox.OwnerActivityProperty, new Binding("ModelItem"));
-            BindingOperations.SetBinding(expressionTextBox, ExpressionTextBox.ExpressionProperty, new Binding(bindingPath)
-            {
-                Mode = BindingMode.TwoWay,
-                Converter = new ArgumentToExpressionConverter(),
-                ConverterParameter = "In"
-            });
-
-            editorBorder = new Border
-            {
-                Margin = new Thickness(4, 0, 0, 0),
-                BorderBrush = Brushes.Transparent,
-                BorderThickness = new Thickness(0),
-                Child = expressionTextBox
-            };
-
-            row.Children.Add(editorBorder);
-            return row;
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -130,75 +84,9 @@ namespace F2B.Basic
 
         private void RefreshRequiredBorders()
         {
-            SetRequiredBorder(
+            BasicDesignerShared.SetRequiredBorder(
                 _conditionEditorBorder,
-                IsArgumentFilled(ModelItem, "Condition", _conditionExpressionBox));
-        }
-
-        private static bool IsArgumentFilled(ModelItem modelItem, string propertyName, ExpressionTextBox editor)
-        {
-            var property = modelItem?.Properties[propertyName];
-            if (property == null)
-            {
-                return HasEditorInput(editor);
-            }
-
-            if (property.IsSet)
-            {
-                return true;
-            }
-
-            if (property.Value == null)
-            {
-                return HasEditorInput(editor);
-            }
-
-            var expressionProperty = property.Value.Properties["Expression"];
-            if (expressionProperty == null)
-            {
-                return HasEditorInput(editor);
-            }
-
-            if (expressionProperty.Value == null && expressionProperty.ComputedValue == null)
-            {
-                return HasEditorInput(editor);
-            }
-
-            if (expressionProperty.ComputedValue is string text)
-            {
-                return !string.IsNullOrWhiteSpace(text);
-            }
-
-            if (expressionProperty.Value != null)
-            {
-                string expressionText = expressionProperty.Value.ToString();
-                return !string.IsNullOrWhiteSpace(expressionText);
-            }
-
-            return HasEditorInput(editor);
-        }
-
-        private static bool HasEditorInput(ExpressionTextBox editor)
-        {
-            return editor != null && editor.Expression != null;
-        }
-
-        private static void SetRequiredBorder(Border border, bool filled)
-        {
-            if (border == null)
-            {
-                return;
-            }
-
-            if (filled)
-            {
-                border.BorderBrush = Brushes.Transparent;
-                border.BorderThickness = new Thickness(0);
-                return;
-            }
-
-            border.BorderBrush = Brushes.Red;
-            border.BorderThickness = new Thickness(1);
+                BasicDesignerShared.IsArgumentFilled(ModelItem, "Condition", _conditionExpressionBox));
         }
     }
 }
