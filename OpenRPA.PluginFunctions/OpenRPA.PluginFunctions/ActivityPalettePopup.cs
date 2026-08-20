@@ -20,6 +20,11 @@ namespace OpenRPA.PluginFunctions
         private static TextBox _searchBox;
         private static ListBox _listBox;
         private static bool _suppressOutsideClose;
+        /// <summary>
+        /// True only after a left-button Down on a result item. Prevents the Ctrl+Click
+        /// MouseUp that opened the popup from confirming a hit-tested result.
+        /// </summary>
+        private static bool _listClickArmed;
         private static Window _hookedWindow;
 
         internal static Popup CurrentPopup => _popup;
@@ -77,6 +82,7 @@ namespace OpenRPA.PluginFunctions
             }
 
             RefreshList(string.Empty);
+            _listClickArmed = false;
             _suppressOutsideClose = true;
             _popup.IsOpen = true;
             _searchBox.Text = string.Empty;
@@ -87,6 +93,7 @@ namespace OpenRPA.PluginFunctions
 
         public static void Hide()
         {
+            _listClickArmed = false;
             ActivityInsertService.ClearPaletteInsertAnchor();
             if (_popup != null)
             {
@@ -124,6 +131,7 @@ namespace OpenRPA.PluginFunctions
                 FontSize = 13
             };
             _listBox.ItemTemplate = CreateItemTemplate();
+            _listBox.PreviewMouseLeftButtonDown += OnListPreviewMouseLeftButtonDown;
             _listBox.PreviewMouseLeftButtonUp += OnListPreviewMouseLeftButtonUp;
             _listBox.PreviewKeyDown += OnListPreviewKeyDown;
 
@@ -352,12 +360,30 @@ namespace OpenRPA.PluginFunctions
             InputMethod.SetPreferredImeState(textBox, InputMethodState.Off);
         }
 
+        private static void OnListPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton != MouseButton.Left)
+            {
+                return;
+            }
+
+            // Arm only when the Down itself lands on a result row (not the opening Ctrl+Click).
+            _listClickArmed = FindListBoxItem(e.OriginalSource as DependencyObject) != null;
+        }
+
         private static void OnListPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton != MouseButton.Left || e.ClickCount != 1)
             {
                 return;
             }
+
+            if (!_listClickArmed)
+            {
+                return;
+            }
+
+            _listClickArmed = false;
 
             ListBoxItem item = FindListBoxItem(e.OriginalSource as DependencyObject);
             if (item == null)

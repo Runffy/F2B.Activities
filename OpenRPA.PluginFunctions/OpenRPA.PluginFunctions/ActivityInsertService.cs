@@ -77,6 +77,12 @@ namespace OpenRPA.PluginFunctions
                 return null;
             }
 
+            type = CloseOpenGenericIfNeeded(type);
+            if (type == null || type.IsAbstract || type.ContainsGenericParameters)
+            {
+                return null;
+            }
+
             object instance;
             try
             {
@@ -89,10 +95,72 @@ namespace OpenRPA.PluginFunctions
 
             if (instance is IActivityTemplateFactory factory)
             {
-                return factory.Create(null);
+                try
+                {
+                    return factory.Create(null);
+                }
+                catch
+                {
+                    return null;
+                }
             }
 
             return instance as Activity;
+        }
+
+        /// <summary>
+        /// Toolbox shows open generics (AddToCollection&lt;&gt;, ForEachOf&lt;&gt;). Close them using
+        /// DefaultTypeArgumentAttribute when present, otherwise string for each type parameter.
+        /// </summary>
+        private static Type CloseOpenGenericIfNeeded(Type type)
+        {
+            if (type == null || !type.IsGenericTypeDefinition)
+            {
+                return type;
+            }
+
+            Type[] parameters = type.GetGenericArguments();
+            if (parameters == null || parameters.Length == 0)
+            {
+                return type;
+            }
+
+            var typeArgs = new Type[parameters.Length];
+            Type defaultArg = TryGetDefaultTypeArgument(type);
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                typeArgs[i] = defaultArg ?? typeof(string);
+            }
+
+            try
+            {
+                return type.MakeGenericType(typeArgs);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Type TryGetDefaultTypeArgument(Type type)
+        {
+            try
+            {
+                object[] attrs = type.GetCustomAttributes(typeof(DefaultTypeArgumentAttribute), true);
+                if (attrs != null && attrs.Length > 0)
+                {
+                    var attr = attrs[0] as DefaultTypeArgumentAttribute;
+                    if (attr != null && attr.Type != null)
+                    {
+                        return attr.Type;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
         }
 
         public static bool TryAddActivity(Type type)
