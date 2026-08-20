@@ -80,6 +80,8 @@
     <Compile Include="ResourceDirectory.cs" />
     <Compile Include="OpenRpaSourceWorkflow.cs" />
     <Compile Include="GetWindowsCredentialActivity.cs" />
+    <Compile Include="SetWindowsCredentialActivity.cs" />
+    <Compile Include="SetWindowsCredentialDesigner.cs" />
     <Compile Include="Global.cs" />
     <Compile Include="GlobalValueActivities.cs" />
     <Compile Include="GetAllWindowsCredentialsActivity.cs" />

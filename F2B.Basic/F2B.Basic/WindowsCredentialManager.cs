@@ -17,6 +17,79 @@ namespace F2B.Basic
                 BuildGenericTargetCandidates(credentialName));
         }
 
+        /// <summary>
+        /// Create or update a Generic credential in Windows Credential Manager.
+        /// </summary>
+        internal static void WriteGenericCredential(string credentialName, string userName, string password)
+        {
+            if (string.IsNullOrWhiteSpace(credentialName))
+            {
+                throw new ArgumentException("Credential name is required.", nameof(credentialName));
+            }
+
+            string targetName = credentialName.Trim();
+            string user = userName ?? string.Empty;
+            string secret = password ?? string.Empty;
+
+            byte[] passwordBytes = Encoding.Unicode.GetBytes(secret);
+            IntPtr targetPtr = IntPtr.Zero;
+            IntPtr userPtr = IntPtr.Zero;
+            GCHandle blobHandle = default(GCHandle);
+            bool blobPinned = false;
+
+            try
+            {
+                targetPtr = Marshal.StringToCoTaskMemUni(targetName);
+                userPtr = Marshal.StringToCoTaskMemUni(user);
+                blobHandle = GCHandle.Alloc(passwordBytes, GCHandleType.Pinned);
+                blobPinned = true;
+
+                var credential = new CREDENTIAL
+                {
+                    Flags = 0,
+                    Type = (uint)NativeCredentialType.Generic,
+                    TargetName = targetPtr,
+                    Comment = IntPtr.Zero,
+                    LastWritten = 0,
+                    CredentialBlobSize = (uint)passwordBytes.Length,
+                    CredentialBlob = passwordBytes.Length == 0 ? IntPtr.Zero : blobHandle.AddrOfPinnedObject(),
+                    Persist = (uint)NativeCredentialPersist.LocalMachine,
+                    AttributeCount = 0,
+                    Attributes = IntPtr.Zero,
+                    TargetAlias = IntPtr.Zero,
+                    UserName = userPtr
+                };
+
+                if (!CredWrite(ref credential, 0))
+                {
+                    int error = Marshal.GetLastWin32Error();
+                    throw new Win32Exception(
+                        error,
+                        string.Format(
+                            "Failed to write Generic credential '{0}'. Win32 error: {1}.",
+                            targetName,
+                            error));
+                }
+            }
+            finally
+            {
+                if (blobPinned)
+                {
+                    blobHandle.Free();
+                }
+
+                if (targetPtr != IntPtr.Zero)
+                {
+                    Marshal.FreeCoTaskMem(targetPtr);
+                }
+
+                if (userPtr != IntPtr.Zero)
+                {
+                    Marshal.FreeCoTaskMem(userPtr);
+                }
+            }
+        }
+
         private static WindowsCredential ReadWithCandidates(
             string credentialName,
             NativeCredentialType credentialType,
@@ -109,6 +182,9 @@ namespace F2B.Basic
         [DllImport("Advapi32.dll", EntryPoint = "CredReadW", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern bool CredRead(string target, uint type, int reservedFlag, out IntPtr credentialPtr);
 
+        [DllImport("Advapi32.dll", EntryPoint = "CredWriteW", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern bool CredWrite([In] ref CREDENTIAL userCredential, uint flags);
+
         [DllImport("Advapi32.dll", EntryPoint = "CredEnumerateW", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern bool CredEnumerate(string filter, uint flags, out uint count, out IntPtr credentialsPtr);
 
@@ -197,6 +273,13 @@ namespace F2B.Basic
         private enum NativeCredentialType
         {
             Generic = 1,
+        }
+
+        private enum NativeCredentialPersist
+        {
+            Session = 1,
+            LocalMachine = 2,
+            Enterprise = 3
         }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
