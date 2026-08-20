@@ -217,7 +217,7 @@ namespace OpenRPA.PluginFunctions
             IReadOnlyList<ActivityCatalogItem> all = GetAll();
             if (needle.Length == 0)
             {
-                return all.Take(maxResults);
+                return ActivitySearchHistory.GetRecentItems(all, maxResults);
             }
 
             return all

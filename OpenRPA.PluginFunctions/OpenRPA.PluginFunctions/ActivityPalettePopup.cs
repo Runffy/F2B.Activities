@@ -425,6 +425,7 @@ namespace OpenRPA.PluginFunctions
             bool ok = ActivityInsertService.TryAddActivity(selected.Type);
             if (ok)
             {
+                ActivitySearchHistory.Record(selected.Type);
                 Hide();
             }
         }

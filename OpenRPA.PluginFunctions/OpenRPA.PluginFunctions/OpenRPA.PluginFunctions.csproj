@@ -54,6 +54,7 @@
     <Compile Include="PluginFunctionsRunPlugin.cs" />
     <Compile Include="ActivityInsertService.cs" />
     <Compile Include="ActivityCatalog.cs" />
+    <Compile Include="ActivitySearchHistory.cs" />
     <Compile Include="ActivityIconResolver.cs" />
     <Compile Include="ActivityPalettePopup.cs" />
     <Compile Include="DesignerPopupPlacement.cs" />

@@ -147,10 +147,15 @@ namespace OpenRPA.PluginFunctions
                         continue;
                     }
 
-                    // Skip structural / designer noise.
                     if (IsSkippedProperty(prop.Name))
                     {
                         continue;
+                    }
+
+                    // Prefer walking the ModelItem tree — ComputedValue often hides ExpressionText.
+                    if (prop.Value != null)
+                    {
+                        CollectExpressionTextsFromModelItem(values, prop.Value, 0);
                     }
 
                     object computed = null;
@@ -168,39 +173,31 @@ namespace OpenRPA.PluginFunctions
                         continue;
                     }
 
-                    if (computed is Argument)
+                    if (computed is Argument || IsArgumentType(computed.GetType()))
                     {
                         AddArgumentText(values, computed);
                         continue;
                     }
 
-                    // Dictionary&lt;string, Argument&gt; (e.g. Invoke Workflow Arguments)
                     var dict = computed as IDictionary;
                     if (dict != null)
                     {
                         foreach (DictionaryEntry entry in dict)
                         {
-                            if (entry.Value is Argument)
+                            if (entry.Value is Argument || (entry.Value != null && IsArgumentType(entry.Value.GetType())))
                             {
                                 AddArgumentText(values, entry.Value);
                             }
                             else if (entry.Value != null)
                             {
-                                string text = Convert.ToString(entry.Value);
-                                if (!string.IsNullOrWhiteSpace(text))
-                                {
-                                    values.Add(text.Trim());
-                                }
+                                AddDistinctText(values, Convert.ToString(entry.Value));
+                            }
+
+                            if (entry.Key != null)
+                            {
+                                AddDistinctText(values, Convert.ToString(entry.Key));
                             }
                         }
-
-                        continue;
-                    }
-
-                    Type type = computed.GetType();
-                    if (IsArgumentType(type))
-                    {
-                        AddArgumentText(values, computed);
                     }
                 }
             }
@@ -209,6 +206,127 @@ namespace OpenRPA.PluginFunctions
             }
 
             return values;
+        }
+
+        private static void CollectExpressionTextsFromModelItem(List<string> values, ModelItem modelItem, int depth)
+        {
+            if (values == null || modelItem == null || depth > 5 || modelItem.Properties == null)
+            {
+                return;
+            }
+
+            try
+            {
+                ModelProperty expressionTextProp = modelItem.Properties["ExpressionText"];
+                if (expressionTextProp != null)
+                {
+                    object textValue = null;
+                    try
+                    {
+                        textValue = expressionTextProp.ComputedValue;
+                    }
+                    catch
+                    {
+                    }
+
+                    if (textValue == null && expressionTextProp.Value != null)
+                    {
+                        try
+                        {
+                            textValue = expressionTextProp.Value.GetCurrentValue();
+                        }
+                        catch
+                        {
+                        }
+                    }
+
+                    AddDistinctText(values, textValue as string ?? Convert.ToString(textValue));
+                }
+
+                ModelProperty valueProp = modelItem.Properties["Value"];
+                if (valueProp != null)
+                {
+                    object literal = null;
+                    try
+                    {
+                        literal = valueProp.ComputedValue;
+                    }
+                    catch
+                    {
+                    }
+
+                    if (literal != null && !(literal is Activity) && !(literal is ModelItem))
+                    {
+                        AddDistinctText(values, Convert.ToString(literal));
+                    }
+                }
+
+                ModelProperty expressionProp = modelItem.Properties["Expression"];
+                if (expressionProp?.Value != null)
+                {
+                    CollectExpressionTextsFromModelItem(values, expressionProp.Value, depth + 1);
+                }
+
+                // Dive one level into argument / dictionary wrappers.
+                if (depth < 2)
+                {
+                    foreach (ModelProperty child in modelItem.Properties)
+                    {
+                        if (child == null || child.Value == null || string.IsNullOrEmpty(child.Name))
+                        {
+                            continue;
+                        }
+
+                        if (string.Equals(child.Name, "Expression", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(child.Name, "ExpressionText", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(child.Name, "Value", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        if (IsSkippedProperty(child.Name))
+                        {
+                            continue;
+                        }
+
+                        string typeName = child.Value.ItemType != null ? child.Value.ItemType.Name : string.Empty;
+                        if (typeName.IndexOf("Argument", StringComparison.OrdinalIgnoreCase) >= 0
+                            || typeName.StartsWith("VisualBasic", StringComparison.OrdinalIgnoreCase)
+                            || typeName.StartsWith("CSharp", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(typeName, "Literal", StringComparison.OrdinalIgnoreCase)
+                            || typeName.StartsWith("Literal`", StringComparison.OrdinalIgnoreCase))
+                        {
+                            CollectExpressionTextsFromModelItem(values, child.Value, depth + 1);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private static void AddDistinctText(List<string> values, string text)
+        {
+            if (values == null || string.IsNullOrWhiteSpace(text))
+            {
+                return;
+            }
+
+            string trimmed = Unquote(text.Trim());
+            if (string.IsNullOrWhiteSpace(trimmed)
+                || trimmed.IndexOf("System.Activities", StringComparison.OrdinalIgnoreCase) >= 0
+                || trimmed.IndexOf("clr-namespace", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return;
+            }
+
+            if (values.Any(v => string.Equals(v, trimmed, StringComparison.Ordinal)))
+            {
+                return;
+            }
+
+            values.Add(trimmed);
         }
 
         private static bool IsSkippedProperty(string name)
@@ -270,7 +388,7 @@ namespace OpenRPA.PluginFunctions
                         string text = textProp.GetValue(expression, null) as string;
                         if (!string.IsNullOrWhiteSpace(text))
                         {
-                            values.Add(Unquote(text.Trim()));
+                            AddDistinctText(values, text);
                             return;
                         }
                     }
@@ -283,12 +401,8 @@ namespace OpenRPA.PluginFunctions
                         object value = valueProp.GetValue(expression, null);
                         if (value != null)
                         {
-                            string text = Convert.ToString(value);
-                            if (!string.IsNullOrWhiteSpace(text))
-                            {
-                                values.Add(text.Trim());
-                                return;
-                            }
+                            AddDistinctText(values, Convert.ToString(value));
+                            return;
                         }
                     }
                 }
@@ -297,7 +411,7 @@ namespace OpenRPA.PluginFunctions
                 if (!string.IsNullOrWhiteSpace(fallback)
                     && fallback.IndexOf("System.Activities", StringComparison.OrdinalIgnoreCase) < 0)
                 {
-                    values.Add(fallback.Trim());
+                    AddDistinctText(values, fallback);
                 }
             }
             catch

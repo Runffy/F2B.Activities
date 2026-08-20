@@ -363,6 +363,7 @@ namespace OpenRPA.PluginFunctions
         {
             var elementStack = new Stack<PathFrame>();
             var pathStack = new List<string>();
+            int lastActivitySinkIndex = -1;
 
             using (var reader = XmlReader.Create(new StringReader(xaml), new XmlReaderSettings
             {
@@ -379,6 +380,8 @@ namespace OpenRPA.PluginFunctions
                         bool isEmpty = reader.IsEmptyElement;
                         string displayName = reader.GetAttribute("DisplayName");
                         var argumentValues = new List<string>();
+                        var expressionOnlyValues = new List<string>();
+                        bool isExpressionElement = IsExpressionElementName(StripGeneric(localName));
 
                         if (reader.HasAttributes)
                         {
@@ -396,21 +399,56 @@ namespace OpenRPA.PluginFunctions
                                 }
 
                                 string value = reader.Value;
-                                if (!string.IsNullOrWhiteSpace(value)
-                                    && value.Length <= 500
-                                    && value.IndexOf("clr-namespace", StringComparison.OrdinalIgnoreCase) < 0)
+                                if (string.IsNullOrWhiteSpace(value)
+                                    || value.Length > 500
+                                    || value.IndexOf("clr-namespace", StringComparison.OrdinalIgnoreCase) >= 0)
                                 {
-                                    argumentValues.Add(Unquote(value.Trim()));
+                                    continue;
+                                }
+
+                                string cleaned = Unquote(value.Trim());
+                                if (string.IsNullOrWhiteSpace(cleaned))
+                                {
+                                    continue;
+                                }
+
+                                // ExpressionText / nested expression attrs belong to the parent activity.
+                                if (isExpressionElement
+                                    || string.Equals(attrName, "ExpressionText", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    expressionOnlyValues.Add(cleaned);
+                                }
+                                else
+                                {
+                                    argumentValues.Add(cleaned);
                                 }
                             }
 
                             reader.MoveToElement();
                         }
 
+                        if (expressionOnlyValues.Count > 0 && lastActivitySinkIndex >= 0 && lastActivitySinkIndex < sink.Count)
+                        {
+                            GlobalFindEntry parentEntry = sink[lastActivitySinkIndex];
+                            if (parentEntry.ArgumentValues == null)
+                            {
+                                parentEntry.ArgumentValues = new List<string>();
+                            }
+
+                            foreach (string value in expressionOnlyValues)
+                            {
+                                if (!parentEntry.ArgumentValues.Any(v =>
+                                    string.Equals(v, value, StringComparison.Ordinal)))
+                                {
+                                    parentEntry.ArgumentValues.Add(value);
+                                }
+                            }
+                        }
+
                         // Property elements like TraceableTryCatchActivity.Try / .Catch are not activities.
                         bool skipType = ShouldSkipElement(localName)
                                         || IsPropertyElementName(localName)
-                                        || IsExpressionElementName(StripGeneric(localName));
+                                        || isExpressionElement;
                         string activityName = StripGeneric(localName);
                         if (!skipType && !string.IsNullOrWhiteSpace(displayName))
                         {
@@ -447,6 +485,7 @@ namespace OpenRPA.PluginFunctions
                                 DisplayPath = displayPath,
                                 ArgumentValues = argumentValues
                             });
+                            lastActivitySinkIndex = sink.Count - 1;
 
                             if (isEmpty)
                             {
@@ -463,15 +502,20 @@ namespace OpenRPA.PluginFunctions
                     else if (reader.NodeType == XmlNodeType.Text || reader.NodeType == XmlNodeType.CDATA)
                     {
                         string text = (reader.Value ?? string.Empty).Trim();
-                        if (text.Length > 0 && text.Length <= 500 && sink.Count > 0)
+                        if (text.Length > 0 && text.Length <= 500 && lastActivitySinkIndex >= 0
+                            && lastActivitySinkIndex < sink.Count)
                         {
-                            GlobalFindEntry last = sink[sink.Count - 1];
+                            GlobalFindEntry last = sink[lastActivitySinkIndex];
                             if (last.ArgumentValues == null)
                             {
                                 last.ArgumentValues = new List<string>();
                             }
 
-                            last.ArgumentValues.Add(Unquote(text));
+                            string cleaned = Unquote(text);
+                            if (!last.ArgumentValues.Any(v => string.Equals(v, cleaned, StringComparison.Ordinal)))
+                            {
+                                last.ArgumentValues.Add(cleaned);
+                            }
                         }
                     }
                     else if (reader.NodeType == XmlNodeType.EndElement)
