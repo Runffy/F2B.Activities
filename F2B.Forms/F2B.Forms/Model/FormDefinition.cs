@@ -29,6 +29,13 @@ namespace F2B.Forms.Model
         [JsonProperty("startPosition")]
         public string StartPosition { get; set; } = "CenterScreen";
 
+        /// <summary>
+        /// Optional culture for form UI thread (e.g. en-US, zh-CN).
+        /// Controls DateTimePicker / DatePicker calendar language. Empty = Windows display language.
+        /// </summary>
+        [JsonProperty("culture")]
+        public string Culture { get; set; }
+
         [JsonProperty("controls")]
         public List<ControlDefinition> Controls { get; set; } = new List<ControlDefinition>();
     }

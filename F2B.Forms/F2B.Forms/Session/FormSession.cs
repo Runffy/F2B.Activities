@@ -1776,7 +1776,7 @@ namespace F2B.Forms.Session
             try
             {
                 // Before any control creation (including later CreateControlInstance on this thread).
-                OsCulture.ApplyUserCultureToCurrentThread();
+                OsCulture.ApplyToCurrentThread(definition != null ? definition.Culture : null);
 
                 _definition = definition;
                 FormRenderResult rendered = FormRenderer.Render(definition);

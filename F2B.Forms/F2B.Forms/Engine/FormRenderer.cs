@@ -16,6 +16,9 @@ namespace F2B.Forms.Engine
 
     public static class FormRenderer
     {
+        [ThreadStatic]
+        private static string _activeFormCulture;
+
         public static FormRenderResult Render(FormDefinition definition)
         {
             if (definition == null)
@@ -23,9 +26,8 @@ namespace F2B.Forms.Engine
                 throw new ArgumentNullException(nameof(definition));
             }
 
-            // OpenRPA (and some hosts) force zh-CN on worker threads; DateTimePicker calendar
-            // would then stay Chinese on English machines. Prefer the OS user culture.
-            OsCulture.ApplyUserCultureToCurrentThread();
+            _activeFormCulture = definition.Culture;
+            OsCulture.ApplyToCurrentThread(_activeFormCulture);
 
             var map = new Dictionary<string, Control>(StringComparer.OrdinalIgnoreCase);
             bool allowResize = definition.AllowResize;
@@ -688,9 +690,7 @@ namespace F2B.Forms.Engine
 
         private static DateTimePicker CreateDateTimePicker(ControlDefinition definition, bool includeTime)
         {
-            // Ensure calendar chrome (month names / Today) follows OS even if this control
-            // is created later via CreateControlInstance on a host-forced culture thread.
-            OsCulture.ApplyUserCultureToCurrentThread();
+            OsCulture.ApplyToCurrentThread(_activeFormCulture);
 
             var picker = new DateTimePicker
             {

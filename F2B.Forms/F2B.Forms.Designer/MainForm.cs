@@ -1313,6 +1313,7 @@ namespace F2B.Forms.Designer
                 _formSettings.Width = def.Width > 0 ? def.Width : 600;
                 _formSettings.Height = def.Height > 0 ? def.Height : 800;
                 _formSettings.AllowResize = def.AllowResize;
+                _formSettings.Culture = def.Culture ?? string.Empty;
                 if (def.Controls != null)
                 {
                     foreach (ControlDefinition c in def.Controls)
@@ -1412,6 +1413,7 @@ namespace F2B.Forms.Designer
             _formSettings.Width = 600;
             _formSettings.Height = 800;
             _formSettings.AllowResize = true;
+            _formSettings.Culture = string.Empty;
             RebuildTreePreserveSelection();
             SelectFormRoot(syncTree: true);
             UpdateDesignAreaSize();
@@ -2665,6 +2667,7 @@ namespace F2B.Forms.Designer
             _formSettings.Width = def.Width > 0 ? def.Width : 640;
             _formSettings.Height = def.Height > 0 ? def.Height : 480;
             _formSettings.AllowResize = def.AllowResize;
+            _formSettings.Culture = def.Culture ?? string.Empty;
             if (def.Controls != null)
             {
                 foreach (ControlDefinition c in def.Controls)
@@ -2842,6 +2845,7 @@ namespace F2B.Forms.Designer
                 Width = _formSettings.Width,
                 Height = _formSettings.Height,
                 AllowResize = _formSettings.AllowResize,
+                Culture = string.IsNullOrWhiteSpace(_formSettings.Culture) ? null : _formSettings.Culture.Trim(),
                 Controls = _roots.Select(i => i.ToDefinition()).ToList()
             };
         }
@@ -4120,6 +4124,12 @@ namespace F2B.Forms.Designer
         [DisplayName("Allow Resize")]
         [Description("When false, the runtime form cannot be resized by dragging edges or maximizing.")]
         public bool AllowResize { get; set; } = true;
+
+        [Category("Behavior")]
+        [DisplayName("Culture")]
+        [Description("Calendar / DateTimePicker language. (System) = Windows display language. Use en-US to force English calendar.")]
+        [TypeConverter(typeof(FormCultureTypeConverter))]
+        public string Culture { get; set; } = string.Empty;
     }
 
     public sealed class DesignItem : ICustomTypeDescriptor

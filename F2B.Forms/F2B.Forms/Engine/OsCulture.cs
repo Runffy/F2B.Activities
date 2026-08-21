@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -7,10 +8,8 @@ using System.Windows.Forms;
 namespace F2B.Forms.Engine
 {
     /// <summary>
-    /// Applies Windows <b>display / UI language</b> to the current thread so DateTimePicker /
-    /// MonthCalendar chrome matches Settings → Time &amp; language → Windows display language.
-    /// Does not use regional format LCID (GetUserDefaultLCID), which can stay zh-CN on an English UI.
-    /// Also overrides host-forced cultures (e.g. OpenRPA zh-CN) for this thread only.
+    /// Applies culture to the current thread for DateTimePicker / MonthCalendar.
+    /// Explicit override (form Culture property) wins; otherwise Windows display language.
     /// </summary>
     internal static class OsCulture
     {
@@ -32,27 +31,24 @@ namespace F2B.Forms.Engine
         [DllImport("kernel32.dll")]
         private static extern ushort SetThreadUILanguage(ushort langId);
 
-        /// <summary>
-        /// Sync thread/.NET/Win32 locale to Windows display language.
-        /// Safe to call repeatedly; does not change DefaultThreadCurrent* (avoids affecting the host process).
-        /// </summary>
-        public static void ApplyUserCultureToCurrentThread()
+        /// <param name="overrideCultureName">
+        /// Optional BCP-47 name from form property (e.g. en-US). Empty = Windows display language.
+        /// </param>
+        public static void ApplyToCurrentThread(string overrideCultureName = null)
         {
             try
             {
-                CultureInfo ui = ResolveWindowsDisplayCulture();
-                if (ui == null)
+                CultureInfo culture = Resolve(overrideCultureName);
+                if (culture == null)
                 {
                     return;
                 }
 
-                Thread.CurrentThread.CurrentCulture = ui;
-                Thread.CurrentThread.CurrentUICulture = ui;
+                Thread.CurrentThread.CurrentCulture = culture;
+                Thread.CurrentThread.CurrentUICulture = culture;
+                Application.CurrentCulture = culture;
 
-                // DateTimePicker calendar follows Application.CurrentCulture + Win32 thread locale.
-                Application.CurrentCulture = ui;
-
-                int lcid = ui.LCID;
+                int lcid = culture.LCID;
                 if (lcid > 0)
                 {
                     SetThreadLocale(lcid);
@@ -61,22 +57,30 @@ namespace F2B.Forms.Engine
             }
             catch
             {
-                // Keep host culture if lookup/apply fails.
+                // Keep host culture if apply fails.
             }
         }
 
-        /// <summary>
-        /// Prefer preferred UI language list, then GetUserDefaultUILanguage.
-        /// Never uses GetUserDefaultLCID (regional format).
-        /// </summary>
-        private static CultureInfo ResolveWindowsDisplayCulture()
+        /// <summary>Backward-compatible alias. </summary>
+        public static void ApplyUserCultureToCurrentThread()
         {
+            ApplyToCurrentThread(null);
+        }
+
+        public static CultureInfo Resolve(string overrideCultureName)
+        {
+            CultureInfo explicitCulture = TryGetCulture(overrideCultureName);
+            if (explicitCulture != null)
+            {
+                return explicitCulture;
+            }
+
             foreach (string name in GetPreferredUiLanguageNames())
             {
-                CultureInfo culture = TryGetCulture(name);
-                if (culture != null)
+                CultureInfo preferred = TryGetCulture(name);
+                if (preferred != null)
                 {
-                    return culture;
+                    return preferred;
                 }
             }
 
@@ -99,7 +103,6 @@ namespace F2B.Forms.Engine
 
             try
             {
-                // zh-Hans-CN → zh-CN, etc.
                 return CultureInfo.GetCultureInfo(name.Trim());
             }
             catch
@@ -139,6 +142,79 @@ namespace F2B.Forms.Engine
             {
                 return Array.Empty<string>();
             }
+        }
+    }
+
+    /// <summary>
+    /// Property-grid dropdown for form Culture: (System) / en-US / zh-CN / ...
+    /// </summary>
+    public sealed class FormCultureTypeConverter : TypeConverter
+    {
+        public static readonly string[] StandardCultures =
+        {
+            "",
+            "en-US",
+            "en-GB",
+            "zh-CN",
+            "zh-TW",
+            "ja-JP",
+            "ko-KR",
+            "fr-FR",
+            "de-DE",
+            "es-ES"
+        };
+
+        public override bool GetStandardValuesSupported(ITypeDescriptorContext context)
+        {
+            return true;
+        }
+
+        public override bool GetStandardValuesExclusive(ITypeDescriptorContext context)
+        {
+            return false;
+        }
+
+        public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext context)
+        {
+            return new StandardValuesCollection(StandardCultures);
+        }
+
+        public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
+        {
+            return sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
+        }
+
+        public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
+        {
+            if (value is string s)
+            {
+                s = s.Trim();
+                if (string.IsNullOrEmpty(s)
+                    || string.Equals(s, "(System)", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(s, "System", StringComparison.OrdinalIgnoreCase))
+                {
+                    return string.Empty;
+                }
+
+                return s;
+            }
+
+            return base.ConvertFrom(context, culture, value);
+        }
+
+        public override object ConvertTo(
+            ITypeDescriptorContext context,
+            CultureInfo culture,
+            object value,
+            Type destinationType)
+        {
+            if (destinationType == typeof(string))
+            {
+                string s = value as string;
+                return string.IsNullOrWhiteSpace(s) ? "(System)" : s.Trim();
+            }
+
+            return base.ConvertTo(context, culture, value, destinationType);
         }
     }
 }
