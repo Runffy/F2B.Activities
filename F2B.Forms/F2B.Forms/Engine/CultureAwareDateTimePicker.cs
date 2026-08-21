@@ -7,12 +7,16 @@ using System.Windows.Forms;
 namespace F2B.Forms.Engine
 {
     /// <summary>
-    /// DateTimePicker whose drop-down calendar is drawn with an explicit <see cref="CalendarCulture"/>.
-    /// Native MonthCalendar ignores thread culture and follows the OS regional format (e.g. Chinese
-    /// day names / "yyyy年M月" even when UI language is English) — so we replace the drop-down.
+    /// DateTimePicker that never opens the native MonthCalendar (which follows OS regional
+    /// format, e.g. Chinese day names). Drop-down button / F4 / Alt+Down show a managed
+    /// calendar rendered with <see cref="CalendarCulture"/> instead.
     /// </summary>
     internal sealed class CultureAwareDateTimePicker : DateTimePicker
     {
+        private const int WmLButtonDown = 0x0201;
+        private const int WmLButtonDblClk = 0x0203;
+        private const int WmKeyDown = 0x0100;
+        private const int WmSysKeyDown = 0x0104;
         private const int DtmFirst = 0x1000;
         private const int DtmCloseMonthCal = DtmFirst + 13;
 
@@ -20,24 +24,58 @@ namespace F2B.Forms.Engine
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
         private ToolStripDropDown _dropDown;
-        private bool _showingManaged;
+        private bool _suppressNativeDropDown;
 
         public string CalendarCulture { get; set; }
 
-        protected override void OnDropDown(EventArgs e)
+        protected override void WndProc(ref Message m)
         {
-            // Native calendar is already opening; close it and show a culture-aware popup instead.
-            BeginInvoke(new Action(ShowManagedCalendar));
-            base.OnDropDown(e);
+            // Intercept drop-button mouse clicks so the native calendar never opens.
+            if (m.Msg == WmLButtonDown || m.Msg == WmLButtonDblClk)
+            {
+                int xy = m.LParam.ToInt32();
+                var pt = new Point(xy & 0xFFFF, (xy >> 16) & 0xFFFF);
+                if (IsOnDropDownButton(pt))
+                {
+                    Focus();
+                    ToggleManagedCalendar();
+                    return;
+                }
+            }
+
+            // F4 / Alt+Down also open the native calendar — redirect to managed.
+            if (m.Msg == WmKeyDown || m.Msg == WmSysKeyDown)
+            {
+                Keys key = (Keys)((int)m.WParam & 0xFFFF);
+                bool alt = (ModifierKeys & Keys.Alt) == Keys.Alt;
+                if (key == Keys.F4 || (key == Keys.Down && alt))
+                {
+                    ToggleManagedCalendar();
+                    return;
+                }
+            }
+
+            base.WndProc(ref m);
         }
 
-        protected override void OnCloseUp(EventArgs e)
+        protected override void OnDropDown(EventArgs e)
         {
-            base.OnCloseUp(e);
-            if (!_showingManaged)
+            // Safety net: if anything still opens the native calendar, close it immediately
+            // and show managed (do not leave a Chinese calendar underneath).
+            if (!_suppressNativeDropDown)
             {
-                CloseManagedCalendar();
+                CloseNativeMonthCal();
+                BeginInvoke(new Action(() =>
+                {
+                    CloseNativeMonthCal();
+                    if (_dropDown == null || !_dropDown.Visible)
+                    {
+                        ShowManagedCalendar();
+                    }
+                }));
             }
+
+            base.OnDropDown(e);
         }
 
         protected override void Dispose(bool disposing)
@@ -50,6 +88,28 @@ namespace F2B.Forms.Engine
             base.Dispose(disposing);
         }
 
+        private bool IsOnDropDownButton(Point clientPoint)
+        {
+            if (ShowUpDown)
+            {
+                return false;
+            }
+
+            int buttonWidth = SystemInformation.VerticalScrollBarWidth + 4;
+            return clientPoint.X >= Math.Max(0, ClientSize.Width - buttonWidth);
+        }
+
+        private void ToggleManagedCalendar()
+        {
+            if (_dropDown != null && _dropDown.Visible)
+            {
+                CloseManagedCalendar();
+                return;
+            }
+
+            ShowManagedCalendar();
+        }
+
         private void ShowManagedCalendar()
         {
             if (IsDisposed || !IsHandleCreated)
@@ -57,55 +117,55 @@ namespace F2B.Forms.Engine
                 return;
             }
 
-            try
-            {
-                SendMessage(Handle, DtmCloseMonthCal, IntPtr.Zero, IntPtr.Zero);
-            }
-            catch
-            {
-                // Ignore if native calendar already closed.
-            }
-
+            CloseNativeMonthCal();
             CloseManagedCalendar();
 
-            CultureInfo culture = OsCulture.Resolve(CalendarCulture) ?? CultureInfo.GetCultureInfo("en-US");
-            var panel = new CultureMonthCalendarPanel(culture, Value.Date)
+            _suppressNativeDropDown = true;
+            try
             {
-                MinimumSize = new Size(220, 200)
-            };
-            panel.DateSelected += date =>
-            {
-                DateTime keepTime = Value;
-                Value = date.Date
-                    .AddHours(keepTime.Hour)
-                    .AddMinutes(keepTime.Minute)
-                    .AddSeconds(keepTime.Second);
-                CloseManagedCalendar();
-            };
+                CultureInfo culture = OsCulture.Resolve(CalendarCulture) ?? CultureInfo.GetCultureInfo("en-US");
+                var panel = new CultureMonthCalendarPanel(culture, Value.Date)
+                {
+                    MinimumSize = new Size(220, 200)
+                };
+                panel.DateSelected += date =>
+                {
+                    DateTime keepTime = Value;
+                    Value = date.Date
+                        .AddHours(keepTime.Hour)
+                        .AddMinutes(keepTime.Minute)
+                        .AddSeconds(keepTime.Second);
+                    CloseManagedCalendar();
+                    CloseNativeMonthCal();
+                };
 
-            var host = new ToolStripControlHost(panel)
-            {
-                Margin = Padding.Empty,
-                Padding = Padding.Empty,
-                AutoSize = false,
-                Size = panel.Size
-            };
+                var host = new ToolStripControlHost(panel)
+                {
+                    Margin = Padding.Empty,
+                    Padding = Padding.Empty,
+                    AutoSize = false,
+                    Size = new Size(240, 220)
+                };
 
-            _dropDown = new ToolStripDropDown
-            {
-                Padding = Padding.Empty,
-                Margin = Padding.Empty,
-                AutoClose = true
-            };
-            _dropDown.Items.Add(host);
-            _dropDown.Closed += (s, e) =>
-            {
-                _showingManaged = false;
-            };
+                _dropDown = new ToolStripDropDown
+                {
+                    Padding = Padding.Empty,
+                    Margin = Padding.Empty,
+                    AutoClose = true
+                };
+                _dropDown.Items.Add(host);
+                _dropDown.Closed += (s, e) =>
+                {
+                    CloseNativeMonthCal();
+                };
 
-            _showingManaged = true;
-            Rectangle screen = RectangleToScreen(ClientRectangle);
-            _dropDown.Show(new Point(screen.Left, screen.Bottom));
+                Rectangle screen = RectangleToScreen(ClientRectangle);
+                _dropDown.Show(new Point(screen.Left, screen.Bottom));
+            }
+            finally
+            {
+                _suppressNativeDropDown = false;
+            }
         }
 
         private void CloseManagedCalendar()
@@ -117,7 +177,6 @@ namespace F2B.Forms.Engine
 
             ToolStripDropDown drop = _dropDown;
             _dropDown = null;
-            _showingManaged = false;
             try
             {
                 drop.Close();
@@ -127,6 +186,25 @@ namespace F2B.Forms.Engine
             {
                 // Ignore dispose races.
             }
+
+            CloseNativeMonthCal();
+        }
+
+        private void CloseNativeMonthCal()
+        {
+            if (!IsHandleCreated)
+            {
+                return;
+            }
+
+            try
+            {
+                SendMessage(Handle, DtmCloseMonthCal, IntPtr.Zero, IntPtr.Zero);
+            }
+            catch
+            {
+                // Ignore.
+            }
         }
     }
 
@@ -135,7 +213,7 @@ namespace F2B.Forms.Engine
     {
         private readonly CultureInfo _culture;
         private DateTime _displayMonth;
-        private DateTime _selectedDate;
+        private readonly DateTime _selectedDate;
 
         public event Action<DateTime> DateSelected;
 
@@ -161,8 +239,7 @@ namespace F2B.Forms.Engine
             {
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Dock = DockStyle.Top,
-                Height = 28,
+                Dock = DockStyle.Fill,
                 Text = _displayMonth.ToString("Y", _culture),
                 Font = new Font(Font, FontStyle.Bold)
             };
@@ -173,7 +250,7 @@ namespace F2B.Forms.Engine
                 Width = 28,
                 Height = 24,
                 FlatStyle = FlatStyle.Flat,
-                Location = new Point(4, 2)
+                Dock = DockStyle.Left
             };
             prev.FlatAppearance.BorderSize = 0;
             prev.Click += (s, e) =>
@@ -188,7 +265,7 @@ namespace F2B.Forms.Engine
                 Width = 28,
                 Height = 24,
                 FlatStyle = FlatStyle.Flat,
-                Location = new Point(Width - 36, 2)
+                Dock = DockStyle.Right
             };
             next.FlatAppearance.BorderSize = 0;
             next.Click += (s, e) =>
@@ -201,7 +278,6 @@ namespace F2B.Forms.Engine
             header.Controls.Add(title);
             header.Controls.Add(prev);
             header.Controls.Add(next);
-            title.SendToBack();
 
             var grid = new TableLayoutPanel
             {
@@ -252,7 +328,6 @@ namespace F2B.Forms.Engine
                         FlatStyle = FlatStyle.Flat,
                         Margin = new Padding(1),
                         Tag = date,
-                        Enabled = true,
                         ForeColor = inMonth ? SystemColors.ControlText : SystemColors.GrayText,
                         BackColor = date == _selectedDate
                             ? SystemColors.Highlight
@@ -315,24 +390,6 @@ namespace F2B.Forms.Engine
             }
 
             return "Today: " + DateTime.Today.ToString("yyyy/M/d", culture);
-        }
-
-        protected override void OnResize(EventArgs e)
-        {
-            base.OnResize(e);
-            foreach (Control child in Controls)
-            {
-                if (child is Panel header)
-                {
-                    foreach (Control c in header.Controls)
-                    {
-                        if (c is Button && c.Text == ">")
-                        {
-                            c.Location = new Point(Math.Max(4, Width - 36), 2);
-                        }
-                    }
-                }
-            }
         }
     }
 }
