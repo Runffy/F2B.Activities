@@ -4231,6 +4231,12 @@ namespace F2B.Forms.Designer
         [DisplayName("Visible")]
         public bool Visible { get; set; } = true;
 
+        [Category("Behavior")]
+        [DisplayName("Culture")]
+        [Description("DatePicker / DateTimePicker calendar language. (System) = form Culture, then Windows display language. Use en-US for English calendar.")]
+        [TypeConverter(typeof(FormCultureTypeConverter))]
+        public string Culture { get; set; } = string.Empty;
+
         [Category("Appearance")]
         [DisplayName("Read Only")]
         public bool ReadOnly { get; set; }
@@ -4428,6 +4434,11 @@ namespace F2B.Forms.Designer
                 return true;
             }
 
+            if (propertyName == "Culture")
+            {
+                return FormControlType.IsDatePicker(Type) || FormControlType.IsDateTimePicker(Type);
+            }
+
             if (propertyName == "X" || propertyName == "Y"
                 || propertyName == "Width" || propertyName == "Height")
             {
@@ -4564,7 +4575,8 @@ namespace F2B.Forms.Designer
                 Width = Width,
                 Height = Height,
                 Enabled = Enabled,
-                Visible = Visible
+                Visible = Visible,
+                Culture = string.IsNullOrWhiteSpace(Culture) ? null : Culture.Trim()
             };
 
             if (SupportsTextAlign(Type))
@@ -4742,6 +4754,7 @@ namespace F2B.Forms.Designer
                 Height = c.Height,
                 Enabled = c.Enabled ?? true,
                 Visible = c.Visible ?? true,
+                Culture = c.Culture ?? string.Empty,
                 ReadOnly = c.ReadOnly == true,
                 Checked = c.Checked == true,
                 Items = c.Items,

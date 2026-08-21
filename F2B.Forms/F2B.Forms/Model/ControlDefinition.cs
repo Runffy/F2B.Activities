@@ -33,6 +33,12 @@ namespace F2B.Forms.Model
         [JsonProperty("visible")]
         public bool? Visible { get; set; }
 
+        /// <summary>
+        /// DatePicker / DateTimePicker calendar language (e.g. en-US, zh-CN). Empty = form Culture or Windows.
+        /// </summary>
+        [JsonProperty("culture")]
+        public string Culture { get; set; }
+
         [JsonProperty("readOnly")]
         public bool? ReadOnly { get; set; }
 

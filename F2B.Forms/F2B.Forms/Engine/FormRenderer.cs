@@ -690,15 +690,18 @@ namespace F2B.Forms.Engine
 
         private static DateTimePicker CreateDateTimePicker(ControlDefinition definition, bool includeTime)
         {
-            OsCulture.ApplyToCurrentThread(_activeFormCulture);
+            string cultureName = ResolveDatePickerCulture(definition);
+            OsCulture.ApplyToCurrentThread(cultureName);
 
-            var picker = new DateTimePicker
+            // Native MonthCalendar follows OS regional format (not thread culture). When a culture
+            // is specified (or resolved), use a managed calendar drop-down so en-US etc. actually work.
+            var picker = new CultureAwareDateTimePicker
             {
                 Tag = includeTime ? FormControlType.DateTimePicker : FormControlType.DatePicker,
                 Format = DateTimePickerFormat.Custom,
-                // Keep ISO display for stable RPA read/write; calendar UI still follows culture.
                 CustomFormat = includeTime ? "yyyy-MM-dd HH:mm:ss" : "yyyy-MM-dd",
-                ShowUpDown = false
+                ShowUpDown = false,
+                CalendarCulture = cultureName
             };
 
             if (TryParseDateTime(definition == null ? null : definition.Text, out DateTime initial))
@@ -721,6 +724,16 @@ namespace F2B.Forms.Engine
             }
 
             return picker;
+        }
+
+        private static string ResolveDatePickerCulture(ControlDefinition definition)
+        {
+            if (definition != null && !string.IsNullOrWhiteSpace(definition.Culture))
+            {
+                return definition.Culture.Trim();
+            }
+
+            return _activeFormCulture;
         }
 
         private static ComboBox CreateComboBox(ControlDefinition definition)
