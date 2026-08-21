@@ -6,20 +6,28 @@ using System.Windows;
 
 namespace F2B.Basic
 {
+    public enum RetryScopeMode
+    {
+        ByTimes,
+        ByTimeout
+    }
+
     /// <summary>
     /// Runs Retry Body then Assert Body. Fault in either body triggers another attempt
-    /// after Retry Interval, until success or Retry Times is exhausted.
+    /// after Retry Interval, until success or the Retry Time limit (by count or by timeout) is reached.
     /// </summary>
     [Designer(typeof(RetryScopeDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("Retry Scope")]
-    [Description("Execute Retry Body then Assert Body. Any fault in either body retries after the interval until success or Retry Times is exhausted.")]
+    [Description("Execute Retry Body then Assert Body. Choose By Times or By Timeout; Retry Time is max attempts or duration (ms).")]
     public sealed class RetryScopeActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {
         public const string DefaultRetryCounterName = "retry_counter";
 
         private readonly Variable<int> _attempt = new Variable<int>("Attempt");
-        private readonly Variable<int> _maxAttempts = new Variable<int>("MaxAttempts");
+        private readonly Variable<RetryScopeMode> _mode = new Variable<RetryScopeMode>("Mode");
+        private readonly Variable<int> _retryTime = new Variable<int>("RetryTime");
         private readonly Variable<int> _intervalMs = new Variable<int>("IntervalMs");
+        private readonly Variable<DateTime> _deadlineUtc = new Variable<DateTime>("DeadlineUtc");
         private readonly Variable<string> _failMessage = new Variable<string>("FailMessage");
         private readonly Variable<Exception> _lastException = new Variable<Exception>("LastException");
         private readonly Variable<bool> _suppressCancel = new Variable<bool>("SuppressCancel");
@@ -30,17 +38,24 @@ namespace F2B.Basic
         public RetryScopeActivity()
         {
             DisplayName = "Retry Scope";
-            RetryTimes = new InArgument<int>(3);
+            RetryMode = RetryScopeMode.ByTimes;
+            RetryTime = new InArgument<int>(3);
             RetryInterval = new InArgument<int>(1000);
             EnsureRetryBodyAction(null);
             EnsureAssertBodyAction(null);
         }
 
-        [RequiredArgument]
-        [DisplayName("Retry Times")]
-        [Description("Maximum number of attempts including the first. Must be an integer > 0.")]
+        [DisplayName("Retry Mode")]
+        [Description("By Times: Retry Time is max attempts (including the first). By Timeout: Retry Time is max duration in milliseconds.")]
         [Category("Input.A")]
-        public InArgument<int> RetryTimes { get; set; }
+        [DefaultValue(RetryScopeMode.ByTimes)]
+        public RetryScopeMode RetryMode { get; set; }
+
+        [RequiredArgument]
+        [DisplayName("Retry Time")]
+        [Description("By Times: maximum attempts including the first (> 0). By Timeout: maximum wall-clock duration in ms (> 0).")]
+        [Category("Input.A")]
+        public InArgument<int> RetryTime { get; set; }
 
         [DisplayName("Retry Interval (ms)")]
         [Description("Delay in milliseconds between two attempts. No delay before the first attempt.")]
@@ -93,7 +108,8 @@ namespace F2B.Basic
             return new RetryScopeActivity
             {
                 DisplayName = "Retry Scope",
-                RetryTimes = new InArgument<int>(3),
+                RetryMode = RetryScopeMode.ByTimes,
+                RetryTime = new InArgument<int>(3),
                 RetryInterval = new InArgument<int>(1000),
                 RetryBody = CreateCounterAction(new Sequence { DisplayName = "Retry Body" }, DefaultRetryCounterName),
                 AssertBody = CreateCounterAction(new Sequence { DisplayName = "Assert Body" }, DefaultRetryCounterName)
@@ -106,13 +122,13 @@ namespace F2B.Basic
             EnsureAssertBodyAction(null);
             SyncCounterArgumentNames();
 
-            BindInArgument(metadata, RetryTimes, "RetryTimes", typeof(int));
+            BindInArgument(metadata, RetryTime, "RetryTime", typeof(int));
             BindInArgument(metadata, RetryInterval, "RetryInterval", typeof(int));
             BindInArgument(metadata, ExceptionMessage, "ExceptionMessage", typeof(string));
 
-            if (RetryTimes == null || RetryTimes.Expression == null)
+            if (RetryTime == null || RetryTime.Expression == null)
             {
-                metadata.AddValidationError("Retry Scope: Retry Times is required.");
+                metadata.AddValidationError("Retry Scope: Retry Time is required.");
             }
 
             if (RetryBody != null)
@@ -132,8 +148,10 @@ namespace F2B.Basic
             metadata.AddImplementationChild(_delay);
 
             metadata.AddImplementationVariable(_attempt);
-            metadata.AddImplementationVariable(_maxAttempts);
+            metadata.AddImplementationVariable(_mode);
+            metadata.AddImplementationVariable(_retryTime);
             metadata.AddImplementationVariable(_intervalMs);
+            metadata.AddImplementationVariable(_deadlineUtc);
             metadata.AddImplementationVariable(_failMessage);
             metadata.AddImplementationVariable(_lastException);
             metadata.AddImplementationVariable(_suppressCancel);
@@ -142,10 +160,10 @@ namespace F2B.Basic
 
         protected override void Execute(NativeActivityContext context)
         {
-            int maxAttempts = RetryTimes != null ? RetryTimes.Get(context) : 0;
-            if (maxAttempts <= 0)
+            int retryTime = RetryTime != null ? RetryTime.Get(context) : 0;
+            if (retryTime <= 0)
             {
-                throw new InvalidOperationException("Retry Scope: Retry Times must be an integer > 0.");
+                throw new InvalidOperationException("Retry Scope: Retry Time must be an integer > 0.");
             }
 
             int intervalMs = RetryInterval != null ? RetryInterval.Get(context) : 0;
@@ -155,10 +173,17 @@ namespace F2B.Basic
             }
 
             string failMessage = ExceptionMessage != null ? ExceptionMessage.Get(context) : null;
+            RetryScopeMode mode = RetryMode;
 
             context.SetValue(_attempt, 0);
-            context.SetValue(_maxAttempts, maxAttempts);
+            context.SetValue(_mode, mode);
+            context.SetValue(_retryTime, retryTime);
             context.SetValue(_intervalMs, intervalMs);
+            context.SetValue(
+                _deadlineUtc,
+                mode == RetryScopeMode.ByTimeout
+                    ? DateTime.UtcNow.AddMilliseconds(retryTime)
+                    : DateTime.MaxValue);
             context.SetValue(_failMessage, failMessage);
             context.SetValue(_lastException, null);
             context.SetValue(_suppressCancel, false);
@@ -236,9 +261,7 @@ namespace F2B.Basic
         {
             context.SetValue(_lastException, exception);
 
-            int attempt = context.GetValue(_attempt);
-            int maxAttempts = context.GetValue(_maxAttempts);
-            if (attempt >= maxAttempts)
+            if (!CanRetryAgain(context))
             {
                 ThrowFinal(context);
                 return;
@@ -248,6 +271,12 @@ namespace F2B.Basic
             if (intervalMs <= 0)
             {
                 context.SetValue(_suppressCancel, false);
+                if (!CanRetryAgain(context))
+                {
+                    ThrowFinal(context);
+                    return;
+                }
+
                 ScheduleAttempt(context);
                 return;
             }
@@ -259,7 +288,27 @@ namespace F2B.Basic
         private void OnDelayComplete(NativeActivityContext context, ActivityInstance completedInstance)
         {
             context.SetValue(_suppressCancel, false);
+            if (!CanRetryAgain(context))
+            {
+                ThrowFinal(context);
+                return;
+            }
+
             ScheduleAttempt(context);
+        }
+
+        private bool CanRetryAgain(NativeActivityContext context)
+        {
+            RetryScopeMode mode = context.GetValue(_mode);
+            if (mode == RetryScopeMode.ByTimeout)
+            {
+                DateTime deadline = context.GetValue(_deadlineUtc);
+                return DateTime.UtcNow < deadline;
+            }
+
+            int attempt = context.GetValue(_attempt);
+            int maxAttempts = context.GetValue(_retryTime);
+            return attempt < maxAttempts;
         }
 
         private void ThrowFinal(NativeActivityContext context)
@@ -277,7 +326,11 @@ namespace F2B.Basic
                 throw last;
             }
 
-            throw new Exception("Retry Scope: all attempts failed.");
+            RetryScopeMode mode = context.GetValue(_mode);
+            throw new Exception(
+                mode == RetryScopeMode.ByTimeout
+                    ? "Retry Scope: retry timeout elapsed."
+                    : "Retry Scope: all attempts failed.");
         }
 
         private void AcceptFault(NativeActivityFaultContext faultContext, ActivityInstance propagatedFrom)

@@ -38,7 +38,7 @@ namespace F2B.Basic
 
             var hint = new TextBlock
             {
-                Text = "Fault in Retry Body or Assert Body triggers the next attempt after Retry Interval. Retry Counter (default retry_counter) is 1-based.",
+                Text = "Fault in Retry Body or Assert Body retries after Retry Interval until Retry Time limit (By Times / By Timeout). Retry Counter (default retry_counter) is 1-based.",
                 FontSize = 10,
                 Foreground = Brushes.DimGray,
                 TextWrapping = TextWrapping.Wrap,
