@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
 using F2B.Forms.Engine;
@@ -1487,118 +1490,224 @@ namespace F2B.Forms.Session
             {
                 Control control = GetControl(controlId);
                 string name = propertyName.Trim();
-                if (string.Equals(name, "Text", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "Value", StringComparison.OrdinalIgnoreCase))
+
+                // Semantic aliases / non-CLR properties first, then any public settable property via reflection.
+                if (TryApplySemanticControlProperty(control, controlId, name, value))
                 {
-                    if (control is DateTimePicker dateTimePicker)
-                    {
-                        FormRenderer.ApplyDateTimePickerValue(dateTimePicker, value);
-                        FlushControlPaint(control);
-                        return;
-                    }
-
-                    if (control is PictureBox pictureBox
-                        && (string.Equals(name, "Value", StringComparison.OrdinalIgnoreCase)
-                            || string.Equals(name, "Text", StringComparison.OrdinalIgnoreCase)
-                            || string.Equals(name, "ImagePath", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        FormRenderer.ApplyPicturePath(pictureBox, value == null ? null : Convert.ToString(value));
-                        FlushControlPaint(control);
-                        return;
-                    }
-
-                    if (string.Equals(name, "Value", StringComparison.OrdinalIgnoreCase))
-                    {
-                        FormRenderer.ApplyValue(control, value);
-                        FlushControlPaint(control);
-                        return;
-                    }
-
-                    control.Text = value == null ? string.Empty : Convert.ToString(value);
                     FlushControlPaint(control);
                     return;
                 }
 
-                if (control is PictureBox picture
-                    && string.Equals(name, "ImagePath", StringComparison.OrdinalIgnoreCase))
+                if (TrySetControlPropertyByReflection(control, name, value))
                 {
-                    FormRenderer.ApplyPicturePath(picture, value == null ? null : Convert.ToString(value));
-                    FlushControlPaint(control);
-                    return;
-                }
-
-                if (string.Equals(name, "Enabled", StringComparison.OrdinalIgnoreCase))
-                {
-                    control.Enabled = value is bool b ? b : Convert.ToBoolean(value);
-                    FlushControlPaint(control);
-                    return;
-                }
-
-                if (string.Equals(name, "ReadOnly", StringComparison.OrdinalIgnoreCase))
-                {
-                    bool readOnly = value is bool b ? b : Convert.ToBoolean(value);
-                    ApplyReadOnly(control, controlId, readOnly);
-                    FlushControlPaint(control);
-                    return;
-                }
-
-                if (string.Equals(name, "Visible", StringComparison.OrdinalIgnoreCase))
-                {
-                    control.Visible = value is bool b ? b : Convert.ToBoolean(value);
-                    FlushControlPaint(control);
-                    return;
-                }
-
-                if (string.Equals(name, "BackColor", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "BackgroundColor", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "Background", StringComparison.OrdinalIgnoreCase))
-                {
-                    ApplyControlColor(control, isBackColor: true, value);
-                    FlushControlPaint(control);
-                    return;
-                }
-
-                if (string.Equals(name, "ForeColor", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "ForegroundColor", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "Color", StringComparison.OrdinalIgnoreCase))
-                {
-                    ApplyControlColor(control, isBackColor: false, value);
-                    FlushControlPaint(control);
-                    return;
-                }
-
-                if (control is CheckBox checkBox && string.Equals(name, "Checked", StringComparison.OrdinalIgnoreCase))
-                {
-                    checkBox.Checked = value is bool b ? b : Convert.ToBoolean(value);
-                    FlushControlPaint(control);
-                    return;
-                }
-
-                if (control is RadioButton radioButton && string.Equals(name, "Checked", StringComparison.OrdinalIgnoreCase))
-                {
-                    radioButton.Checked = value is bool b ? b : Convert.ToBoolean(value);
-                    FlushControlPaint(control);
-                    return;
-                }
-
-                if (control is ComboBox combo && string.Equals(name, "Items", StringComparison.OrdinalIgnoreCase))
-                {
-                    FormRenderer.ApplyValue(combo, value);
-                    FlushControlPaint(control);
-                    return;
-                }
-
-                if ((control is ListBox || control is CheckedListBox)
-                    && string.Equals(name, "Items", StringComparison.OrdinalIgnoreCase))
-                {
-                    FormRenderer.ApplyValue(control, value);
                     FlushControlPaint(control);
                     return;
                 }
 
                 throw new InvalidOperationException(
-                    "Unsupported property '" + propertyName + "' for UpdateControl on '" + controlId + "'.");
+                    "Property '" + propertyName + "' was not found or is not writable on '"
+                    + control.GetType().Name + "' (control '" + controlId + "').");
             });
+        }
+
+        /// <summary>
+        /// Form-level semantics that are not 1:1 with a single CLR setter (Value routing, fake ReadOnly, color aliases, Items).
+        /// </summary>
+        private static bool TryApplySemanticControlProperty(
+            Control control,
+            string controlId,
+            string name,
+            object value)
+        {
+            if (string.Equals(name, "Value", StringComparison.OrdinalIgnoreCase))
+            {
+                if (control is DateTimePicker dateTimePicker)
+                {
+                    FormRenderer.ApplyDateTimePickerValue(dateTimePicker, value);
+                    return true;
+                }
+
+                if (control is PictureBox pictureBox)
+                {
+                    FormRenderer.ApplyPicturePath(pictureBox, value == null ? null : Convert.ToString(value));
+                    return true;
+                }
+
+                FormRenderer.ApplyValue(control, value);
+                return true;
+            }
+
+            if (control is PictureBox picture
+                && (string.Equals(name, "ImagePath", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(name, "Text", StringComparison.OrdinalIgnoreCase)))
+            {
+                FormRenderer.ApplyPicturePath(picture, value == null ? null : Convert.ToString(value));
+                return true;
+            }
+
+            if (string.Equals(name, "ReadOnly", StringComparison.OrdinalIgnoreCase))
+            {
+                // ComboBox has no real ReadOnly; TextBoxBase etc. do — ApplyReadOnly covers both.
+                bool readOnly = value is bool b ? b : Convert.ToBoolean(value);
+                ApplyReadOnly(control, controlId, readOnly);
+                return true;
+            }
+
+            if (string.Equals(name, "BackColor", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, "BackgroundColor", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, "Background", StringComparison.OrdinalIgnoreCase))
+            {
+                ApplyControlColor(control, isBackColor: true, value);
+                return true;
+            }
+
+            if (string.Equals(name, "ForeColor", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, "ForegroundColor", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, "Color", StringComparison.OrdinalIgnoreCase))
+            {
+                ApplyControlColor(control, isBackColor: false, value);
+                return true;
+            }
+
+            if (string.Equals(name, "Items", StringComparison.OrdinalIgnoreCase)
+                && (control is ComboBox || control is ListBox || control is CheckedListBox))
+            {
+                // Items is get-only ObjectCollection; replace contents via ApplyValue.
+                FormRenderer.ApplyValue(control, value);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TrySetControlPropertyByReflection(Control control, string propertyName, object value)
+        {
+            PropertyInfo property = FindWritableProperty(control.GetType(), propertyName);
+            if (property == null)
+            {
+                return false;
+            }
+
+            object converted = ConvertToPropertyType(value, property.PropertyType, property.Name);
+            property.SetValue(control, converted, null);
+            return true;
+        }
+
+        private static PropertyInfo FindWritableProperty(Type type, string propertyName)
+        {
+            if (type == null || string.IsNullOrWhiteSpace(propertyName))
+            {
+                return null;
+            }
+
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase;
+            PropertyInfo property = type.GetProperty(propertyName.Trim(), flags);
+            if (property == null || !property.CanWrite || property.GetIndexParameters().Length > 0)
+            {
+                return null;
+            }
+
+            return property;
+        }
+
+        private static object ConvertToPropertyType(object value, Type targetType, string propertyName)
+        {
+            if (targetType == null)
+            {
+                return value;
+            }
+
+            Type underlying = Nullable.GetUnderlyingType(targetType) ?? targetType;
+            if (value == null)
+            {
+                if (!targetType.IsValueType || Nullable.GetUnderlyingType(targetType) != null)
+                {
+                    return null;
+                }
+
+                throw new InvalidOperationException(
+                    "Property '" + propertyName + "' is of non-nullable type '" + targetType.Name
+                    + "' and cannot be set to null.");
+            }
+
+            if (underlying.IsInstanceOfType(value))
+            {
+                return value;
+            }
+
+            if (underlying == typeof(string))
+            {
+                return Convert.ToString(value);
+            }
+
+            if (underlying == typeof(Color))
+            {
+                return ResolveColor(value, propertyName);
+            }
+
+            if (underlying.IsEnum)
+            {
+                if (value is string enumText)
+                {
+                    return Enum.Parse(underlying, enumText.Trim(), ignoreCase: true);
+                }
+
+                return Enum.ToObject(underlying, Convert.ChangeType(value, Enum.GetUnderlyingType(underlying)));
+            }
+
+            if (underlying == typeof(bool))
+            {
+                if (value is string boolText)
+                {
+                    if (bool.TryParse(boolText, out bool parsedBool))
+                    {
+                        return parsedBool;
+                    }
+
+                    if (string.Equals(boolText, "1", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(boolText, "yes", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+
+                    if (string.Equals(boolText, "0", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(boolText, "no", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return false;
+                    }
+                }
+
+                return Convert.ToBoolean(value);
+            }
+
+            if (value is string text)
+            {
+                TypeConverter converter = TypeDescriptor.GetConverter(underlying);
+                if (converter != null && converter.CanConvertFrom(typeof(string)))
+                {
+                    try
+                    {
+                        return converter.ConvertFromInvariantString(text)
+                            ?? converter.ConvertFromString(text);
+                    }
+                    catch
+                    {
+                        // Fall through to ChangeType.
+                    }
+                }
+            }
+
+            try
+            {
+                return Convert.ChangeType(value, underlying, CultureInfo.InvariantCulture);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    "Cannot convert value '" + value + "' to type '" + underlying.Name
+                    + "' for property '" + propertyName + "'.",
+                    ex);
+            }
         }
 
         public void ShowMessage(string message, string title = null)

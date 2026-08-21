@@ -7,7 +7,7 @@ namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [DisplayName("Update Control")]
-    [Description("Update a control property (Text, Enabled, Visible, ReadOnly, BackColor, ForeColor, Checked, Items). Prefer SetControlText / Set Control ReadOnly / UpdateOptionsList when applicable.")]
+    [Description("Update any writable control property by name (e.g. SelectedIndex, Enabled, Text). Value/Items/ReadOnly/color aliases keep form semantics.")]
     public sealed class UpdateControlActivity : CodeActivity
     {
         public UpdateControlActivity()
