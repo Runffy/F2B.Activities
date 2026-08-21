@@ -133,6 +133,8 @@
     <Compile Include="StartFileDesigner.cs" />
     <Compile Include="ThrowSystemExceptionActivity.cs" />
     <Compile Include="ThrowSystemExceptionDesigner.cs" />
+    <Compile Include="RetryScopeActivity.cs" />
+    <Compile Include="RetryScopeDesigner.cs" />
     <Compile Include="ReturnActivity.cs" />
     <Compile Include="ReturnIfActivity.cs" />
     <Compile Include="ReturnIfDesigner.cs" />
