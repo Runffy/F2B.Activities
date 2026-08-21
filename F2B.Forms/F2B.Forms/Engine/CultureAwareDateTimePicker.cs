@@ -124,10 +124,7 @@ namespace F2B.Forms.Engine
             try
             {
                 CultureInfo culture = OsCulture.Resolve(CalendarCulture) ?? CultureInfo.GetCultureInfo("en-US");
-                var panel = new CultureMonthCalendarPanel(culture, Value.Date)
-                {
-                    MinimumSize = new Size(220, 200)
-                };
+                var panel = new CultureMonthCalendarPanel(culture, Value.Date);
                 panel.DateSelected += date =>
                 {
                     DateTime keepTime = Value;
@@ -144,7 +141,14 @@ namespace F2B.Forms.Engine
                     Margin = Padding.Empty,
                     Padding = Padding.Empty,
                     AutoSize = false,
-                    Size = new Size(240, 220)
+                    Size = panel.Size
+                };
+                panel.SizeChanged += (s, e) =>
+                {
+                    if (!host.IsDisposed)
+                    {
+                        host.Size = panel.Size;
+                    }
                 };
 
                 _dropDown = new ToolStripDropDown
@@ -211,9 +215,16 @@ namespace F2B.Forms.Engine
     /// <summary>Lightweight month grid that uses <see cref="CultureInfo"/> for headers and month title.</summary>
     internal sealed class CultureMonthCalendarPanel : Panel
     {
+        private const int GridPadding = 8;
+        private const int MinColumnWidth = 40;
+        private const int HeaderHeight = 28;
+        private const int TodayHeight = 26;
+        private const int MinBodyHeight = 196;
+
         private readonly CultureInfo _culture;
         private DateTime _displayMonth;
         private readonly DateTime _selectedDate;
+        private readonly Font _headerFont;
 
         public event Action<DateTime> DateSelected;
 
@@ -226,8 +237,21 @@ namespace F2B.Forms.Engine
             BackColor = SystemColors.Window;
             BorderStyle = BorderStyle.FixedSingle;
             Font = new Font("Segoe UI", 9f);
-            Size = new Size(240, 220);
+            _headerFont = new Font(Font, FontStyle.Bold);
             Rebuild();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_headerFont != null)
+                {
+                    _headerFont.Dispose();
+                }
+            }
+
+            base.Dispose(disposing);
         }
 
         private void Rebuild()
@@ -235,13 +259,18 @@ namespace F2B.Forms.Engine
             SuspendLayout();
             Controls.Clear();
 
+            string[] dayNames = GetDayHeaders(_culture);
+            Size preferred = MeasurePreferredSize(dayNames);
+            Size = preferred;
+            MinimumSize = preferred;
+
             var title = new Label
             {
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Dock = DockStyle.Fill,
                 Text = _displayMonth.ToString("Y", _culture),
-                Font = new Font(Font, FontStyle.Bold)
+                Font = _headerFont
             };
 
             var prev = new Button
@@ -274,7 +303,7 @@ namespace F2B.Forms.Engine
                 Rebuild();
             };
 
-            var header = new Panel { Dock = DockStyle.Top, Height = 28 };
+            var header = new Panel { Dock = DockStyle.Top, Height = HeaderHeight };
             header.Controls.Add(title);
             header.Controls.Add(prev);
             header.Controls.Add(next);
@@ -284,29 +313,35 @@ namespace F2B.Forms.Engine
                 Dock = DockStyle.Fill,
                 ColumnCount = 7,
                 RowCount = 7,
-                Padding = new Padding(4)
+                Padding = new Padding(4),
+                GrowStyle = TableLayoutPanelGrowStyle.FixedSize
             };
             for (int c = 0; c < 7; c++)
             {
                 grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / 7f));
             }
 
-            for (int r = 0; r < 7; r++)
+            // Fixed-ish header row; remaining rows share space for day cells.
+            grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 22f));
+            for (int r = 1; r < 7; r++)
             {
-                grid.RowStyles.Add(new RowStyle(SizeType.Percent, 100f / 7f));
+                grid.RowStyles.Add(new RowStyle(SizeType.Percent, 100f / 6f));
             }
 
             DayOfWeek first = _culture.DateTimeFormat.FirstDayOfWeek;
-            string[] dayNames = _culture.DateTimeFormat.AbbreviatedDayNames;
             for (int i = 0; i < 7; i++)
             {
-                int idx = ((int)first + i) % 7;
                 grid.Controls.Add(new Label
                 {
-                    Text = dayNames[idx],
+                    Text = dayNames[i],
                     TextAlign = ContentAlignment.MiddleCenter,
                     Dock = DockStyle.Fill,
-                    Font = new Font(Font, FontStyle.Bold)
+                    Font = _headerFont,
+                    AutoEllipsis = false,
+                    // Avoid mid-word wrap ("Mo"/"n") when column is tight.
+                    AutoSize = false,
+                    Margin = Padding.Empty,
+                    Padding = Padding.Empty
                 }, i, 0);
             }
 
@@ -358,7 +393,7 @@ namespace F2B.Forms.Engine
             {
                 Text = GetTodayText(_culture),
                 Dock = DockStyle.Bottom,
-                Height = 24,
+                Height = TodayHeight,
                 TextAlign = ContentAlignment.MiddleCenter
             };
             todayButton.LinkClicked += (s, e) =>
@@ -373,7 +408,52 @@ namespace F2B.Forms.Engine
             Controls.Add(grid);
             Controls.Add(todayButton);
             Controls.Add(header);
-            ResumeLayout();
+            ResumeLayout(true);
+        }
+
+        private Size MeasurePreferredSize(string[] dayNames)
+        {
+            int columnWidth = MinColumnWidth;
+            using (Graphics g = CreateGraphics())
+            {
+                foreach (string name in dayNames)
+                {
+                    Size textSize = TextRenderer.MeasureText(
+                        g,
+                        name ?? string.Empty,
+                        _headerFont,
+                        new Size(int.MaxValue, int.MaxValue),
+                        TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
+                    columnWidth = Math.Max(columnWidth, textSize.Width + 12);
+                }
+
+                Size titleSize = TextRenderer.MeasureText(
+                    g,
+                    _displayMonth.ToString("Y", _culture),
+                    _headerFont,
+                    new Size(int.MaxValue, int.MaxValue),
+                    TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
+                int titleWidth = titleSize.Width + 28 + 28 + 16;
+                int gridWidth = columnWidth * 7 + GridPadding;
+                int width = Math.Max(titleWidth, gridWidth);
+                int height = HeaderHeight + TodayHeight + MinBodyHeight + GridPadding;
+                return new Size(width, height);
+            }
+        }
+
+        private static string[] GetDayHeaders(CultureInfo culture)
+        {
+            DayOfWeek first = culture.DateTimeFormat.FirstDayOfWeek;
+            // Prefer abbreviated names (Sun/Mon/…) when they fit; size is measured to match.
+            string[] source = culture.DateTimeFormat.AbbreviatedDayNames;
+            var headers = new string[7];
+            for (int i = 0; i < 7; i++)
+            {
+                int idx = ((int)first + i) % 7;
+                headers[i] = source[idx];
+            }
+
+            return headers;
         }
 
         private static string GetTodayText(CultureInfo culture)
