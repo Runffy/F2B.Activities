@@ -133,15 +133,28 @@ namespace F2B.Forms.Engine
                     return;
                 }
 
+                // DropDownList cannot show blank via Text; empty/null clears selection (SelectedIndex = -1).
+                if (value == null)
+                {
+                    comboBox.SelectedIndex = -1;
+                    return;
+                }
+
                 string text = Convert.ToString(value);
-                int index = comboBox.FindStringExact(text ?? string.Empty);
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    comboBox.SelectedIndex = -1;
+                    return;
+                }
+
+                int index = comboBox.FindStringExact(text);
                 if (index >= 0)
                 {
                     comboBox.SelectedIndex = index;
                 }
-                else
+                else if (comboBox.DropDownStyle != ComboBoxStyle.DropDownList)
                 {
-                    comboBox.Text = text ?? string.Empty;
+                    comboBox.Text = text;
                 }
 
                 return;
