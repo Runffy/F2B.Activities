@@ -25,7 +25,8 @@ namespace F2B.Basic
 
         private readonly Variable<int> _attempt = new Variable<int>("Attempt");
         private readonly Variable<RetryScopeMode> _mode = new Variable<RetryScopeMode>("Mode");
-        private readonly Variable<int> _retryTime = new Variable<int>("RetryTime");
+        // Name must differ from the public InArgument "RetryTime" (WF location names are unique up the parent chain).
+        private readonly Variable<int> _retryTime = new Variable<int>("RetryTimeStored");
         private readonly Variable<int> _intervalMs = new Variable<int>("IntervalMs");
         private readonly Variable<DateTime> _deadlineUtc = new Variable<DateTime>("DeadlineUtc");
         private readonly Variable<string> _failMessage = new Variable<string>("FailMessage");
