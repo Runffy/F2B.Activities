@@ -4247,6 +4247,7 @@ namespace F2B.Forms.Designer
 
         [Category("Data")]
         [DisplayName("Items")]
+        [Editor(typeof(StringListCollectionEditor), typeof(UITypeEditor))]
         public List<string> Items { get; set; }
 
         [Category("Data")]
