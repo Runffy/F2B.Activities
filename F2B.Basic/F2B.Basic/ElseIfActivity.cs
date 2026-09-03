@@ -14,6 +14,11 @@ namespace F2B.Basic
     {
         private readonly Collection<ElseIfBranch> _elseIfs = new Collection<ElseIfBranch>();
 
+        /// <summary>
+        /// -1 = main If condition; 0..n-1 = ElseIf branch index.
+        /// </summary>
+        private readonly Variable<int> _conditionIndex = new Variable<int>();
+
         public ElseIfActivity()
         {
             DisplayName = "Else If";
@@ -48,11 +53,14 @@ namespace F2B.Basic
 
         protected override void CacheMetadata(NativeActivityMetadata metadata)
         {
-            var conditionArgument = new RuntimeArgument("Condition", typeof(bool), ArgumentDirection.In);
-            metadata.Bind(Condition, conditionArgument);
-            metadata.AddArgument(conditionArgument);
-
-            if (Condition == null || Condition.Expression == null)
+            // Do NOT Bind conditions as RuntimeArguments. WF evaluates all bound InArguments
+            // before Execute, which breaks short-circuit and can throw on later ElseIf expressions
+            // (e.g. a.ToString() when a is null). Schedule each Expression only when needed.
+            if (Condition != null && Condition.Expression != null)
+            {
+                metadata.AddImplementationChild(Condition.Expression);
+            }
+            else
             {
                 metadata.AddValidationError("If Condition is required.");
             }
@@ -70,14 +78,11 @@ namespace F2B.Basic
                     _elseIfs[i] = branch;
                 }
 
-                var elseIfCondition = new RuntimeArgument(
-                    "ElseIf_Condition_" + i,
-                    typeof(bool),
-                    ArgumentDirection.In);
-                metadata.Bind(branch.Condition, elseIfCondition);
-                metadata.AddArgument(elseIfCondition);
-
-                if (branch.Condition == null || branch.Condition.Expression == null)
+                if (branch.Condition != null && branch.Condition.Expression != null)
+                {
+                    metadata.AddImplementationChild(branch.Condition.Expression);
+                }
+                else
                 {
                     metadata.AddValidationError("Else If Condition #" + (i + 1) + " is required.");
                 }
@@ -92,54 +97,101 @@ namespace F2B.Basic
             {
                 metadata.AddChild(Else);
             }
+
+            metadata.AddImplementationVariable(_conditionIndex);
         }
 
         protected override void Execute(NativeActivityContext context)
         {
-            if (Condition == null || Condition.Expression == null)
+            context.SetValue(_conditionIndex, -1);
+            ScheduleConditionAtIndex(context);
+        }
+
+        private void ScheduleConditionAtIndex(NativeActivityContext context)
+        {
+            int index = context.GetValue(_conditionIndex);
+            Activity<bool> expression = GetConditionExpression(index);
+            if (expression == null)
             {
-                throw new InvalidOperationException("Else If: If Condition is not set.");
+                throw new InvalidOperationException(DescribeMissingCondition(index));
             }
 
-            if (Condition.Get(context))
+            context.ScheduleActivity(expression, OnConditionComplete);
+        }
+
+        private void OnConditionComplete(
+            NativeActivityContext context,
+            ActivityInstance completedInstance,
+            bool result)
+        {
+            int index = context.GetValue(_conditionIndex);
+            if (result)
             {
-                if (Then != null)
+                Activity body = GetBody(index);
+                if (body != null)
                 {
-                    context.ScheduleActivity(Then);
+                    context.ScheduleActivity(body);
                 }
 
                 return;
             }
 
-            for (int i = 0; i < _elseIfs.Count; i++)
+            int nextIndex = index + 1;
+            if (nextIndex < _elseIfs.Count)
             {
-                ElseIfBranch branch = _elseIfs[i];
-                if (branch == null)
-                {
-                    continue;
-                }
-
-                if (branch.Condition == null || branch.Condition.Expression == null)
-                {
-                    throw new InvalidOperationException(
-                        "Else If: Else If Condition #" + (i + 1) + " is not set.");
-                }
-
-                if (branch.Condition.Get(context))
-                {
-                    if (branch.Body != null)
-                    {
-                        context.ScheduleActivity(branch.Body);
-                    }
-
-                    return;
-                }
+                context.SetValue(_conditionIndex, nextIndex);
+                ScheduleConditionAtIndex(context);
+                return;
             }
 
             if (Else != null)
             {
                 context.ScheduleActivity(Else);
             }
+        }
+
+        private Activity<bool> GetConditionExpression(int index)
+        {
+            if (index < 0)
+            {
+                return Condition != null ? Condition.Expression : null;
+            }
+
+            if (index >= _elseIfs.Count)
+            {
+                return null;
+            }
+
+            ElseIfBranch branch = _elseIfs[index];
+            return branch != null && branch.Condition != null
+                ? branch.Condition.Expression
+                : null;
+        }
+
+        private Activity GetBody(int index)
+        {
+            if (index < 0)
+            {
+                return Then;
+            }
+
+            if (index >= _elseIfs.Count)
+            {
+                return null;
+            }
+
+            ElseIfBranch branch = _elseIfs[index];
+            return branch != null ? branch.Body : null;
+        }
+
+        private string DescribeMissingCondition(int index)
+        {
+            if (index < 0)
+            {
+                return "Else If: If Condition is not set.";
+            }
+
+            return "Else If: Else If Condition #" + (index + 1) + " is not set.";
         }
     }
 }
