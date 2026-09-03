@@ -30,53 +30,12 @@ namespace F2B.Browser.Chromium.Cdp
         public static IList<CdpDiscoveredBrowser> ListDebuggingBrowsersFromProcesses()
         {
             var results = new List<CdpDiscoveredBrowser>();
-            var seenPorts = new HashSet<int>();
-            foreach (var processName in new[] { "chrome", "msedge" })
+            foreach (var port in CdpPortDiscovery.ListPortsFromBrowserCommandLines())
             {
-                Process[] processes;
-                try
+                CdpDiscoveredBrowser browser;
+                if (TryDescribePort(port, out browser))
                 {
-                    processes = Process.GetProcessesByName(processName);
-                }
-                catch
-                {
-                    continue;
-                }
-
-                foreach (var process in processes)
-                {
-                    try
-                    {
-                        var commandLine = ProcessCommandLine.GetCommandLine(process.Id);
-                        if (string.IsNullOrWhiteSpace(commandLine))
-                        {
-                            continue;
-                        }
-
-                        var portText = ProcessCommandLine.ExtractArgumentValue(
-                            commandLine, "--remote-debugging-port");
-                        int port;
-                        if (string.IsNullOrWhiteSpace(portText) ||
-                            !int.TryParse(portText.Trim(), out port) ||
-                            port <= 0 ||
-                            !seenPorts.Add(port))
-                        {
-                            continue;
-                        }
-
-                        CdpDiscoveredBrowser browser;
-                        if (TryDescribePort(port, out browser))
-                        {
-                            results.Add(browser);
-                        }
-                    }
-                    catch
-                    {
-                    }
-                    finally
-                    {
-                        process.Dispose();
-                    }
+                    results.Add(browser);
                 }
             }
 
@@ -213,13 +172,26 @@ namespace F2B.Browser.Chromium.Cdp
                 var portText = ProcessCommandLine.ExtractArgumentValue(commandLine, "--remote-debugging-port");
                 if (string.IsNullOrWhiteSpace(portText))
                 {
+                    // No clear --remote-debugging-port → ignore.
                     continue;
                 }
 
                 int port;
-                if (!int.TryParse(portText.Trim(), out port) || port <= 0)
+                if (!int.TryParse(portText.Trim(), out port) || port < 0)
                 {
                     continue;
+                }
+
+                if (port == 0)
+                {
+                    // Ephemeral port: require explicit --user-data-dir (no system-profile fallback).
+                    string userDataDir;
+                    if (!CdpPortDiscovery.TryGetExplicitUserDataDir(commandLine, out userDataDir) ||
+                        !CdpPortDiscovery.TryReadDevToolsActivePort(userDataDir, out port) ||
+                        port <= 0)
+                    {
+                        continue;
+                    }
                 }
 
                 if (TryDescribePort(port, out browser))

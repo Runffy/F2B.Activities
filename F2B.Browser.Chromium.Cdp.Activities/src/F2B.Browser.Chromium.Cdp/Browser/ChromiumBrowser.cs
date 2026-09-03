@@ -67,7 +67,7 @@ namespace F2B.Browser.Chromium.Cdp
             }
 
             var process = LaunchBrowserProcess(
-                executablePath, port, userDataDir, useSystemProfile, browserName, options.StartArguments);
+                executablePath, port, userDataDir, browserName, options.StartArguments);
             CdpConnectionChecker.WaitUntilReady(port);
             FirstRunDismisser.TryDismiss(port, browserName);
 
@@ -134,11 +134,10 @@ namespace F2B.Browser.Chromium.Cdp
             string executablePath,
             int port,
             string userDataDir,
-            bool useSystemProfile,
             string browserName,
             string startArguments)
         {
-            var arguments = BuildLaunchArguments(port, userDataDir, useSystemProfile, browserName, startArguments);
+            var arguments = BuildLaunchArguments(port, userDataDir, browserName, startArguments);
 
             var startInfo = new ProcessStartInfo
             {
@@ -164,19 +163,16 @@ namespace F2B.Browser.Chromium.Cdp
         private static string BuildLaunchArguments(
             int port,
             string userDataDir,
-            bool useSystemProfile,
             string browserName,
             string startArguments)
         {
+            // Always pass --user-data-dir, including system profile. Launching without it
+            // has caused defective Chrome sessions in practice.
             var args = new List<string>
             {
-                string.Format("--remote-debugging-port={0}", port)
+                string.Format("--remote-debugging-port={0}", port),
+                string.Format("--user-data-dir=\"{0}\"", userDataDir)
             };
-
-            if (!useSystemProfile)
-            {
-                args.Add(string.Format("--user-data-dir=\"{0}\"", userDataDir));
-            }
 
             var userArgs = CommandLineParser.FilterReservedArguments(
                 CommandLineParser.ParseArguments(startArguments ?? string.Empty));

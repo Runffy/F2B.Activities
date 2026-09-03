@@ -22,7 +22,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         public InArgument<int?> Port { get; set; }
 
         [DisplayName("User Data Dir")]
-        [Description("用户数据目录，或特殊值：system、temp、documents。与已运行浏览器一致且 Port 匹配时将附着。")]
+        [Description("用户数据目录，或特殊值：system、temp、documents。始终会作为 --user-data-dir 传入（含 system）。与已运行浏览器一致且 Port 匹配时将附着。")]
         [Category("Input.B")]
         public InArgument<string> UserDataDir { get; set; }
 
