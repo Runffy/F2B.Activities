@@ -53,12 +53,15 @@ namespace F2B.Basic
 
         protected override void CacheMetadata(NativeActivityMetadata metadata)
         {
-            // Do NOT Bind conditions as RuntimeArguments. WF evaluates all bound InArguments
-            // before Execute, which breaks short-circuit and can throw on later ElseIf expressions
-            // (e.g. a.ToString() when a is null). Schedule each Expression only when needed.
+            // Do NOT Bind conditions as RuntimeArguments — WF evaluates all bound InArguments
+            // before Execute (no short-circuit). Instead schedule each Expression on demand.
+            //
+            // Expressions must be PUBLIC children (AddChild), not AddImplementationChild:
+            // implementation scope cannot see workflow variables / imports (Regex, etc.),
+            // which surfaces as "'X' is not declared" on existing workflows.
             if (Condition != null && Condition.Expression != null)
             {
-                metadata.AddImplementationChild(Condition.Expression);
+                metadata.AddChild(Condition.Expression);
             }
             else
             {
@@ -80,7 +83,7 @@ namespace F2B.Basic
 
                 if (branch.Condition != null && branch.Condition.Expression != null)
                 {
-                    metadata.AddImplementationChild(branch.Condition.Expression);
+                    metadata.AddChild(branch.Condition.Expression);
                 }
                 else
                 {
