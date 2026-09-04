@@ -23,6 +23,8 @@ namespace OpenRPA.PluginFunctions
         public string FullName { get; set; }
         /// <summary>Assembly / toolbox category name, e.g. OpenRPA.SAP.</summary>
         public string LibraryName { get; set; }
+        /// <summary>Type-level [Description] text used by palette search.</summary>
+        public string Description { get; set; }
 
         public ImageSource Icon
         {
@@ -276,6 +278,26 @@ namespace OpenRPA.PluginFunctions
                 return 200;
             }
 
+            string description = item.Description ?? string.Empty;
+            if (!string.IsNullOrEmpty(description))
+            {
+                int descIdx = description.IndexOf(needle, StringComparison.OrdinalIgnoreCase);
+                if (descIdx >= 0)
+                {
+                    return 180 - Math.Min(80, descIdx);
+                }
+
+                if (!string.IsNullOrEmpty(needleCompact))
+                {
+                    int compactIdx = CompactSearchText(description)
+                        .IndexOf(needleCompact, StringComparison.OrdinalIgnoreCase);
+                    if (compactIdx >= 0)
+                    {
+                        return 160 - Math.Min(60, compactIdx);
+                    }
+                }
+            }
+
             // Full type name only as a weak exact substring (avoid fuzzy noise on long namespaces).
             if (full.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0
                 || (!string.IsNullOrEmpty(needleCompact)
@@ -410,7 +432,8 @@ namespace OpenRPA.PluginFunctions
                         Type = type,
                         DisplayName = ResolveDisplayName(type),
                         FullName = key,
-                        LibraryName = ResolveLibraryName(type)
+                        LibraryName = ResolveLibraryName(type),
+                        Description = ResolveDescription(type)
                     });
                 }
             }
@@ -478,6 +501,11 @@ namespace OpenRPA.PluginFunctions
                             existing.DisplayName = displayName;
                         }
 
+                        if (string.IsNullOrWhiteSpace(existing.Description))
+                        {
+                            existing.Description = ResolveDescription(type);
+                        }
+
                         continue;
                     }
 
@@ -493,7 +521,8 @@ namespace OpenRPA.PluginFunctions
                         FullName = key,
                         LibraryName = string.IsNullOrWhiteSpace(libraryName)
                             ? ResolveLibraryName(type)
-                            : libraryName
+                            : libraryName,
+                        Description = ResolveDescription(type)
                     });
                 }
             }
@@ -515,6 +544,29 @@ namespace OpenRPA.PluginFunctions
             {
                 return string.Empty;
             }
+        }
+
+        private static string ResolveDescription(Type type)
+        {
+            if (type == null)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                var attr = type.GetCustomAttributes(typeof(DescriptionAttribute), true)
+                    .FirstOrDefault() as DescriptionAttribute;
+                if (attr != null && !string.IsNullOrWhiteSpace(attr.Description))
+                {
+                    return attr.Description.Trim();
+                }
+            }
+            catch
+            {
+            }
+
+            return string.Empty;
         }
     }
 }
