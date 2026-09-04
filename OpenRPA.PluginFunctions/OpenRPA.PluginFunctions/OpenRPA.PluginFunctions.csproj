@@ -72,6 +72,12 @@
     <Compile Include="FaultPathSearchWindow.cs" />
     <Compile Include="ToolboxAccess.cs" />
     <Compile Include="ToolboxDoubleClickHook.cs" />
+    <Compile Include="LibXamlPaths.cs" />
+    <Compile Include="LibXamlEntry.cs" />
+    <Compile Include="LibXamlScanner.cs" />
+    <Compile Include="LibXamlActivityGenerator.cs" />
+    <Compile Include="LibXamlToolboxRegistrar.cs" />
+    <Compile Include="InvokeLibXamlActivity.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="CopyToOpenRpaExtensions" AfterTargets="Build">

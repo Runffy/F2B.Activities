@@ -83,7 +83,13 @@ namespace OpenRPA.PluginFunctions
                 if (activityType.Assembly != null
                     && activityType.Assembly.IsDynamic)
                 {
-                    return false;
+                    // Emitted Lib XAML activities / factories live in dynamic assemblies.
+                    bool isLibActivity = typeof(InvokeLibXamlActivityBase).IsAssignableFrom(activityType)
+                        || typeof(IActivityTemplateFactory).IsAssignableFrom(activityType);
+                    if (!isLibActivity)
+                    {
+                        return false;
+                    }
                 }
 
                 string codeBase = activityType.Assembly?.CodeBase;

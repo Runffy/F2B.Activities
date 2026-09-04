@@ -28,6 +28,8 @@ namespace OpenRPA.PluginFunctions
             PluginContext.SetClient(client);
             ToolboxDoubleClickHook.Start();
             DesignerHotkeys.Start();
+            LibXamlActivityGenerator.EnsureAssemblyResolveHook();
+            LibXamlToolboxRegistrar.Start();
         }
 
         public bool onWorkflowStarting(ref IWorkflowInstance e, bool resumed)
