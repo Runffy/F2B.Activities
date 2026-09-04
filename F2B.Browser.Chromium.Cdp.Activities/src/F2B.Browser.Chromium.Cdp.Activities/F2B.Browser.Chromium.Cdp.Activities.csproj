@@ -23,6 +23,7 @@
                Exclude="..\F2B.Browser.Chromium.Cdp\Properties\AssemblyInfo.cs;..\F2B.Browser.Chromium.Cdp\obj\**;..\F2B.Browser.Chromium.Cdp\bin\**" />
         <Compile Include="..\..\..\F2B.OpenRpa.Design\ActivityDesignerCollapseHelper.cs" Link="OpenRpa.Design\ActivityDesignerCollapseHelper.cs" />
     <Compile Include="..\..\..\F2B.OpenRpa.Design\SelectorDesignerSupport.cs" Link="OpenRpa.Design\SelectorDesignerSupport.cs" />
+    <Compile Include="..\..\..\F2B.OpenRpa.Design\SelectorExpressionBridge.cs" Link="OpenRpa.Design\SelectorExpressionBridge.cs" />
     <Compile Include="..\..\..\F2B.OpenRpa.Design\VbStringArrayExpression.cs" Link="OpenRpa.Design\VbStringArrayExpression.cs" />
     <Compile Include="..\..\..\F2B.OpenRpa.Design\SelectorXmlEditorDialog.cs" Link="OpenRpa.Design\SelectorXmlEditorDialog.cs" />
     <Compile Include="..\..\..\F2B.OpenRpa.Design\SelectorsEditorDialog.cs" Link="OpenRpa.Design\SelectorsEditorDialog.cs" />

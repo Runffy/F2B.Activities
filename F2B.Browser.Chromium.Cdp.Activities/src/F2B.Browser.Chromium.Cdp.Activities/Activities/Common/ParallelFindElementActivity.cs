@@ -24,7 +24,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         public InArgument<CdpBase> ParentObject { get; set; }
 
         [DisplayName("Selectors")]
-        [Description("Selector XML list. Prefer editing via the activity designer ... button (stored as a literal string array).")]
+        [Description("Selector XML list. Prefer editing via the activity designer ... button (stored as VB New String() { ... }; use {{var}} for variables).")]
         [RequiredArgument]
         [Category("Input.B")]
         public InArgument<string[]> Selectors { get; set; }
