@@ -63,7 +63,7 @@ namespace OpenRPA.PluginFunctions
         {
             try
             {
-                return Extensions.ProjectsDirectory;
+                return OpenRPA.Interfaces.Extensions.ProjectsDirectory;
             }
             catch
             {

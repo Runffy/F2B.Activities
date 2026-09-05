@@ -35,6 +35,10 @@
       <HintPath>..\resources\OpenRPA.Interfaces.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="OpenRPA">
+      <HintPath>..\..\F2B.Basic\resources\OpenRPA.exe</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System" />
@@ -78,6 +82,7 @@
     <Compile Include="LibXamlActivityGenerator.cs" />
     <Compile Include="LibXamlToolboxRegistrar.cs" />
     <Compile Include="InvokeLibXamlActivity.cs" />
+    <Compile Include="LibXamlOpenRpaHost.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="CopyToOpenRpaExtensions" AfterTargets="Build">

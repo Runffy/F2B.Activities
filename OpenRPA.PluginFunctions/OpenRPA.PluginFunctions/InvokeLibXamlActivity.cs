@@ -12,14 +12,15 @@ namespace OpenRPA.PluginFunctions
     /// <summary>
     /// Base for emitted per-file Lib activities. Subclasses declare real In/OutArgument
     /// properties (like a DLL activity) so WF binds each Argument exactly once.
+    /// Runtime uses OpenRPA WorkflowInstance (Idle/bookmarks/F2B/Lib↔Lib via Customized.*).
     /// </summary>
     [DisplayName("Invoke Lib XAML")]
-    [Description("Runs a workflow XAML from Documents\\OpenRPA\\Libs.")]
+    [Description("Runs a workflow XAML from Documents\\OpenRPA\\Libs via OpenRPA workflow host.")]
     public abstract class InvokeLibXamlActivityBase : NativeActivity
     {
         protected override bool CanInduceIdle
         {
-            get { return false; }
+            get { return true; }
         }
 
         /// <summary>Path relative to Libs, e.g. add.xaml or MWS/Foo.xaml.</summary>
@@ -33,7 +34,6 @@ namespace OpenRPA.PluginFunctions
                 metadata.AddValidationError("Lib relative path is empty.");
             }
 
-            // Public In/OutArgument properties on the emitted subclass are bound by base.
             base.CacheMetadata(metadata);
         }
 
@@ -51,14 +51,48 @@ namespace OpenRPA.PluginFunctions
                 throw new FileNotFoundException("Lib XAML not found: " + fullPath, fullPath);
             }
 
-            Activity activity = LoadActivity(fullPath);
-            if (activity == null)
+            Dictionary<string, object> inputs;
+            List<PropertyInfo> outProperties;
+            CollectArguments(context, out inputs, out outProperties);
+
+            LibXamlOpenRpaHost.Start(
+                context,
+                fullPath,
+                DisplayName,
+                inputs,
+                this,
+                outProperties,
+                OnLibWorkflowBookmark);
+        }
+
+        private void OnLibWorkflowBookmark(NativeActivityContext context, Bookmark bookmark, object value)
+        {
+            var instance = value as IWorkflowInstance;
+            if (instance == null)
             {
-                throw new InvalidOperationException("Failed to load Lib XAML: " + fullPath);
+                throw new InvalidOperationException("Invoke Lib XAML: bookmark returned a non WorkflowInstance.");
             }
 
-            var inputs = new Dictionary<string, object>();
-            var outProperties = new List<PropertyInfo>();
+            string key = bookmark != null ? bookmark.Name : instance._id;
+            LibXamlPendingOutputs.TryTake(
+                key,
+                out InvokeLibXamlActivityBase activity,
+                out List<PropertyInfo> outProperties);
+
+            object target = activity ?? this;
+            List<PropertyInfo> outs = outProperties ?? CollectOutPropertiesOnly();
+
+            LibXamlOpenRpaHost.ThrowIfFailed(instance, DisplayName);
+            LibXamlOpenRpaHost.ApplyOutputs(context, instance, outs, target);
+        }
+
+        private void CollectArguments(
+            NativeActivityContext context,
+            out Dictionary<string, object> inputs,
+            out List<PropertyInfo> outProperties)
+        {
+            inputs = new Dictionary<string, object>();
+            outProperties = new List<PropertyInfo>();
 
             foreach (PropertyInfo property in GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
             {
@@ -104,37 +138,26 @@ namespace OpenRPA.PluginFunctions
                     outProperties.Add(property);
                 }
             }
+        }
 
-            IDictionary<string, object> outputs = WorkflowInvoker.Invoke(activity, inputs);
-
-            if (outputs == null || outProperties.Count == 0)
+        private List<PropertyInfo> CollectOutPropertiesOnly()
+        {
+            var outProperties = new List<PropertyInfo>();
+            foreach (PropertyInfo property in GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
             {
-                return;
-            }
-
-            foreach (PropertyInfo property in outProperties)
-            {
-                if (!outputs.ContainsKey(property.Name))
+                if (property == null || !typeof(Argument).IsAssignableFrom(property.PropertyType))
                 {
                     continue;
                 }
 
                 Argument argument = property.GetValue(this, null) as Argument;
-                if (argument == null)
+                if (argument != null && argument.Direction != ArgumentDirection.In)
                 {
-                    continue;
-                }
-
-                try
-                {
-                    argument.Set(context, outputs[property.Name]);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(
-                        "PluginFunctions: failed setting Out argument '" + property.Name + "': " + ex.Message);
+                    outProperties.Add(property);
                 }
             }
+
+            return outProperties;
         }
 
         internal static string ToRelativePath(string absolutePath)
@@ -234,10 +257,66 @@ namespace OpenRPA.PluginFunctions
         }
     }
 
+    /// <summary>
+    /// Holds Out argument property list between Execute and bookmark callback.
+    /// Keyed by child OpenRPA instance _id (bookmark name) so nested/parallel Libs are safe.
+    /// </summary>
+    internal static class LibXamlPendingOutputs
+    {
+        private static readonly object Gate = new object();
+        private static readonly Dictionary<string, PendingEntry> Map =
+            new Dictionary<string, PendingEntry>(StringComparer.OrdinalIgnoreCase);
+
+        private sealed class PendingEntry
+        {
+            public InvokeLibXamlActivityBase Activity;
+            public List<PropertyInfo> OutProperties;
+        }
+
+        public static void Set(string childInstanceId, InvokeLibXamlActivityBase activity, List<PropertyInfo> outProperties)
+        {
+            if (string.IsNullOrWhiteSpace(childInstanceId))
+            {
+                return;
+            }
+
+            lock (Gate)
+            {
+                Map[childInstanceId] = new PendingEntry
+                {
+                    Activity = activity,
+                    OutProperties = outProperties
+                };
+            }
+        }
+
+        public static bool TryTake(
+            string childInstanceId,
+            out InvokeLibXamlActivityBase activity,
+            out List<PropertyInfo> outProperties)
+        {
+            lock (Gate)
+            {
+                PendingEntry entry;
+                if (!string.IsNullOrWhiteSpace(childInstanceId)
+                    && Map.TryGetValue(childInstanceId, out entry))
+                {
+                    Map.Remove(childInstanceId);
+                    activity = entry.Activity;
+                    outProperties = entry.OutProperties;
+                    return true;
+                }
+            }
+
+            activity = null;
+            outProperties = null;
+            return false;
+        }
+    }
+
     internal sealed class LibXamlArgumentSpec
     {
         public string Name { get; set; }
-        /// <summary>Typically typeof(InArgument&lt;T&gt;) / OutArgument&lt;T&gt; / InOutArgument&lt;T&gt;.</summary>
         public Type ArgumentClrType { get; set; }
     }
 }
