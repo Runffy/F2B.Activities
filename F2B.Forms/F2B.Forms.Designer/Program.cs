@@ -11,7 +11,7 @@ namespace F2B.Forms.Designer
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             string initialPath = args != null && args.Length > 0 ? args[0] : null;
-            Application.Run(new MainForm(isViewer: false, initialPath: initialPath));
+            Application.Run(new MainForm(initialPath));
         }
     }
 }

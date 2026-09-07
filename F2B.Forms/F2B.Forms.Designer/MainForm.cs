@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.Design;
-using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Design;
 using System.Drawing.Drawing2D;
@@ -26,6 +25,9 @@ namespace F2B.Forms.Designer
         private const int MinFormSize = 100;
         private const string ToolboxDragFormat = "F2B.Forms.Designer.ControlType";
         private const int DefaultReparentXY = 10;
+        private const int ToolboxStripHeight = 118;
+        private const int ModeButtonMargin = 10;
+        private const string WorkspaceModeSettingsFileName = "workspace-mode.txt";
 
         private readonly Panel _viewport;
         private readonly Panel _canvas;
@@ -62,25 +64,25 @@ namespace F2B.Forms.Designer
         private Point _toolboxDragStart;
         private string _toolboxDragType;
         private bool _toolboxDidDrag;
-        private readonly bool _isViewer;
+        private bool _isViewer;
         private readonly string _initialPath;
-        private bool _switchingPeer;
+        private Control _controlsToolbox;
+        private Button _modeButton;
+        private Label _surfaceHeader;
+        private ToolStripMenuItem _menuNew;
+        private ToolStripMenuItem _menuSave;
+        private ToolStripMenuItem _menuSaveAs;
 
         public MainForm()
-            : this(isViewer: false, initialPath: null)
+            : this(initialPath: null)
         {
         }
 
-        public MainForm(bool isViewer)
-            : this(isViewer, initialPath: null)
+        public MainForm(string initialPath)
         {
-        }
-
-        public MainForm(bool isViewer, string initialPath)
-        {
-            _isViewer = isViewer;
+            _isViewer = LoadSavedViewerMode();
             _initialPath = string.IsNullOrWhiteSpace(initialPath) ? null : initialPath.Trim().Trim('"');
-            Text = _isViewer ? "F2B.Forms.Viewer" : "F2B.Forms.Designer（New Form）";
+            Text = (_isViewer ? "F2B.Forms.Viewer" : "F2B.Forms.Designer") + "（New Form）";
             Width = 1200;
             Height = 780;
             StartPosition = FormStartPosition.CenterScreen;
@@ -90,7 +92,7 @@ namespace F2B.Forms.Designer
             KeyDown += MainForm_KeyDown;
 
             var menu = BuildMenuStrip();
-            Control controlsBar = _isViewer ? null : BuildControlsToolbox();
+            Control controlsBar = BuildControlsToolbox();
 
             _viewport = new Panel
             {
@@ -112,19 +114,16 @@ namespace F2B.Forms.Designer
                 BorderStyle = BorderStyle.None,
                 TabStop = true,
                 Location = Point.Empty,
-                AllowDrop = !_isViewer
+                AllowDrop = true
             };
             _canvas.Paint += CanvasOnPaint;
             _canvas.MouseDown += CanvasOnMouseDown;
             _canvas.MouseMove += CanvasOnMouseMove;
             _canvas.MouseUp += CanvasOnMouseUp;
             _canvas.MouseWheel += ViewportOnMouseWheel;
-            if (!_isViewer)
-            {
-                _canvas.DragEnter += CanvasOnDragEnter;
-                _canvas.DragOver += CanvasOnDragOver;
-                _canvas.DragDrop += CanvasOnDragDrop;
-            }
+            _canvas.DragEnter += CanvasOnDragEnter;
+            _canvas.DragOver += CanvasOnDragOver;
+            _canvas.DragDrop += CanvasOnDragDrop;
 
             _viewport.Controls.Add(_canvas);
 
@@ -164,8 +163,8 @@ namespace F2B.Forms.Designer
             _contextLabel = new Label
             {
                 Dock = DockStyle.Top,
-                Height = _isViewer ? 0 : 22,
-                Visible = !_isViewer,
+                Height = 22,
+                Visible = true,
                 Text = "Add target: Form (root)",
                 ForeColor = Color.DimGray,
                 Padding = new Padding(6, 3, 0, 0)
@@ -179,17 +178,14 @@ namespace F2B.Forms.Designer
                 ShowPlusMinus = true,
                 FullRowSelect = true,
                 BorderStyle = BorderStyle.None,
-                AllowDrop = !_isViewer
+                AllowDrop = true
             };
             _controlTree.AfterSelect += OnTreeAfterSelect;
-            if (!_isViewer)
-            {
-                _controlTree.ItemDrag += OnTreeItemDrag;
-                _controlTree.DragEnter += OnTreeDragEnter;
-                _controlTree.DragOver += OnTreeDragOver;
-                _controlTree.DragDrop += OnTreeDragDrop;
-                _controlTree.DragLeave += OnTreeDragLeave;
-            }
+            _controlTree.ItemDrag += OnTreeItemDrag;
+            _controlTree.DragEnter += OnTreeDragEnter;
+            _controlTree.DragOver += OnTreeDragOver;
+            _controlTree.DragDrop += OnTreeDragDrop;
+            _controlTree.DragLeave += OnTreeDragLeave;
 
             // Layout: left Tree View | center Designer/Viewer Area | right Properties (full height).
             // Use TableLayoutPanel instead of SplitContainer to avoid startup SplitterDistance exceptions.
@@ -199,8 +195,9 @@ namespace F2B.Forms.Designer
             treePanel.Controls.Add(CreateSectionHeader("Tree View"));
 
             var surfacePanel = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle };
+            _surfaceHeader = CreateSectionHeader("Designer Area");
             surfacePanel.Controls.Add(_viewport);
-            surfacePanel.Controls.Add(CreateSectionHeader(_isViewer ? "Viewer Area" : "Designer Area"));
+            surfacePanel.Controls.Add(_surfaceHeader);
 
             var propertiesPanel = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle };
             propertiesPanel.Controls.Add(_propertyGrid);
@@ -224,27 +221,43 @@ namespace F2B.Forms.Designer
 
             // Dock order: Fill first, then Top strips (last Top added sits under the previous Top).
             Controls.Add(rootHost);
-            if (controlsBar != null)
-            {
-                Controls.Add(controlsBar);
-            }
-
+            Controls.Add(controlsBar);
             Controls.Add(menu);
             MainMenuStrip = menu;
 
             Shown += (s, e) =>
             {
                 UpdateDesignAreaSize();
-                if (!string.IsNullOrEmpty(_initialPath) && File.Exists(_initialPath))
-                {
-                    BeginInvoke(new Action(() => LoadFormFromPath(_initialPath)));
-                }
-                else if (_isViewer)
-                {
-                    BeginInvoke(new Action(() => TryOpenForm()));
-                }
+                BeginInvoke(new Action(OnFirstShown));
             };
             NewForm();
+            ApplyWorkspaceMode();
+        }
+
+        private void OnFirstShown()
+        {
+            if (!string.IsNullOrEmpty(_initialPath) && File.Exists(_initialPath))
+            {
+                LoadFormFromPath(_initialPath);
+                return;
+            }
+
+            if (!_isViewer)
+            {
+                return;
+            }
+
+            // Last session was Viewer Mode: require an existing form JSON.
+            if (TryOpenFormDialog())
+            {
+                return;
+            }
+
+            // Cancelled → fall back to Designer Mode with a new blank form.
+            _isViewer = false;
+            SaveWorkspaceMode(false);
+            NewForm();
+            ApplyWorkspaceMode();
         }
 
         protected override void OnMouseWheel(MouseEventArgs e)
@@ -494,20 +507,14 @@ namespace F2B.Forms.Designer
         private MenuStrip BuildMenuStrip()
         {
             var menu = new MenuStrip();
-            if (_isViewer)
-            {
-                menu.Items.Add(new ToolStripMenuItem("Open", null, (s, e) => TryOpenForm()));
-                menu.Items.Add(new ToolStripMenuItem("Preview", null, (s, e) => Preview()));
-                menu.Items.Add(new ToolStripMenuItem("Switch To Designer", null, (s, e) => SwitchToPeer()));
-                return menu;
-            }
-
-            menu.Items.Add(new ToolStripMenuItem("New", null, (s, e) => TryNewForm()));
+            _menuNew = new ToolStripMenuItem("New", null, (s, e) => TryNewForm());
+            _menuSave = new ToolStripMenuItem("Save", null, (s, e) => SaveForm(false));
+            _menuSaveAs = new ToolStripMenuItem("SaveAs", null, (s, e) => SaveForm(true));
+            menu.Items.Add(_menuNew);
             menu.Items.Add(new ToolStripMenuItem("Open", null, (s, e) => TryOpenForm()));
-            menu.Items.Add(new ToolStripMenuItem("Save", null, (s, e) => SaveForm(false)));
-            menu.Items.Add(new ToolStripMenuItem("SaveAs", null, (s, e) => SaveForm(true)));
+            menu.Items.Add(_menuSave);
+            menu.Items.Add(_menuSaveAs);
             menu.Items.Add(new ToolStripMenuItem("Preview", null, (s, e) => Preview()));
-            menu.Items.Add(new ToolStripMenuItem("Switch To Viewer", null, (s, e) => SwitchToPeer()));
             return menu;
         }
 
@@ -516,7 +523,7 @@ namespace F2B.Forms.Designer
             var root = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 118,
+                Height = ToolboxStripHeight,
                 BackColor = Color.FromArgb(250, 250, 250),
                 Padding = Padding.Empty
             };
@@ -586,7 +593,43 @@ namespace F2B.Forms.Designer
             split.Controls.Add(operators, 0, 0);
             split.Controls.Add(divider, 1, 0);
             split.Controls.Add(containers, 2, 0);
-            root.Controls.Add(split);
+
+            _controlsToolbox = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty,
+                BackColor = Color.FromArgb(250, 250, 250)
+            };
+            _controlsToolbox.Controls.Add(split);
+
+            _modeButton = new RoundedButton
+            {
+                Dock = DockStyle.Fill,
+                Text = "Viewer Mode",
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter,
+                TabStop = false,
+                CornerRadius = 10,
+                BackColor = Color.FromArgb(245, 245, 245),
+                ForeColor = Color.FromArgb(50, 50, 50),
+                BorderColor = Color.FromArgb(190, 190, 190)
+            };
+            _modeButton.Click += (s, e) => ToggleWorkspaceMode();
+
+            var modeHost = new Panel
+            {
+                Dock = DockStyle.Right,
+                Width = ToolboxStripHeight,
+                Padding = new Padding(ModeButtonMargin),
+                Margin = Padding.Empty,
+                BackColor = Color.FromArgb(250, 250, 250)
+            };
+            modeHost.Controls.Add(_modeButton);
+
+            // Dock order: edge controls last so they claim space first; Fill uses the remainder.
+            root.Controls.Add(_controlsToolbox);
+            root.Controls.Add(modeHost);
             return root;
         }
 
@@ -858,6 +901,12 @@ namespace F2B.Forms.Designer
 
         private void OnTreeDragEnter(object sender, DragEventArgs e)
         {
+            if (_isViewer)
+            {
+                e.Effect = DragDropEffects.None;
+                return;
+            }
+
             e.Effect = e.Data.GetDataPresent(typeof(TreeNode))
                 ? DragDropEffects.Move
                 : DragDropEffects.None;
@@ -866,7 +915,7 @@ namespace F2B.Forms.Designer
         private void OnTreeDragOver(object sender, DragEventArgs e)
         {
             e.Effect = DragDropEffects.None;
-            if (!e.Data.GetDataPresent(typeof(TreeNode)))
+            if (_isViewer || !e.Data.GetDataPresent(typeof(TreeNode)))
             {
                 return;
             }
@@ -910,7 +959,7 @@ namespace F2B.Forms.Designer
 
         private void OnTreeDragDrop(object sender, DragEventArgs e)
         {
-            if (!e.Data.GetDataPresent(typeof(TreeNode)))
+            if (_isViewer || !e.Data.GetDataPresent(typeof(TreeNode)))
             {
                 return;
             }
@@ -983,6 +1032,11 @@ namespace F2B.Forms.Designer
 
         private void ToolboxButton_Click(object sender, EventArgs e)
         {
+            if (_isViewer)
+            {
+                return;
+            }
+
             if (_toolboxDidDrag)
             {
                 _toolboxDidDrag = false;
@@ -999,7 +1053,7 @@ namespace F2B.Forms.Designer
 
         private void ToolboxButton_MouseDown(object sender, MouseEventArgs e)
         {
-            if (e.Button != MouseButtons.Left)
+            if (_isViewer || e.Button != MouseButtons.Left)
             {
                 return;
             }
@@ -1012,7 +1066,7 @@ namespace F2B.Forms.Designer
 
         private void ToolboxButton_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.Button != MouseButtons.Left || string.IsNullOrEmpty(_toolboxDragType))
+            if (_isViewer || e.Button != MouseButtons.Left || string.IsNullOrEmpty(_toolboxDragType))
             {
                 return;
             }
@@ -1059,6 +1113,11 @@ namespace F2B.Forms.Designer
 
         private bool CanAcceptToolboxDrag(DragEventArgs e)
         {
+            if (_isViewer)
+            {
+                return false;
+            }
+
             if (e == null || !TryGetToolboxType(e.Data, out string type))
             {
                 return false;
@@ -1132,11 +1191,6 @@ namespace F2B.Forms.Designer
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (_switchingPeer)
-            {
-                return;
-            }
-
             if (!PromptSaveIfDirty())
             {
                 e.Cancel = true;
@@ -1148,7 +1202,7 @@ namespace F2B.Forms.Designer
         /// </summary>
         private bool PromptSaveIfDirty()
         {
-            if (_isViewer || !_isDirty)
+            if (!_isDirty)
             {
                 return true;
             }
@@ -1376,9 +1430,7 @@ namespace F2B.Forms.Designer
         private void UpdateWindowTitle()
         {
             string app = _isViewer ? "F2B.Forms.Viewer" : "F2B.Forms.Designer";
-            string doc = string.IsNullOrEmpty(_currentPath)
-                ? (_isViewer ? "No Form" : "New Form")
-                : _currentPath;
+            string doc = string.IsNullOrEmpty(_currentPath) ? "New Form" : _currentPath;
             Text = app + "（" + doc + "）" + (!_isViewer && _isDirty ? " *" : string.Empty);
         }
 
@@ -1399,7 +1451,7 @@ namespace F2B.Forms.Designer
                 return;
             }
 
-            OpenForm();
+            TryOpenFormDialog();
         }
 
         private void NewForm()
@@ -1419,6 +1471,8 @@ namespace F2B.Forms.Designer
             UpdateDesignAreaSize();
             ClearDirty();
             ResetHistory();
+            ApplyViewOnlyFlags(_isViewer);
+            BindPropertyGridToSelection();
         }
 
         private void AddControl(string type)
@@ -1428,6 +1482,11 @@ namespace F2B.Forms.Designer
 
         private void AddControl(string type, Point? logicalLocation)
         {
+            if (_isViewer)
+            {
+                return;
+            }
+
             if (FormControlType.IsTabPage(type))
             {
                 DesignItem tabControl = logicalLocation.HasValue
@@ -1754,6 +1813,11 @@ namespace F2B.Forms.Designer
 
         private bool DeleteSelectionCore()
         {
+            if (_isViewer)
+            {
+                return false;
+            }
+
             List<DesignItem> toDelete = GetTopLevelSelection();
             if (toDelete.Count == 0)
             {
@@ -2128,37 +2192,7 @@ namespace F2B.Forms.Designer
                 _propertyGrid.SelectedObjects = _selection.Cast<object>().ToArray();
             }
 
-            if (_isViewer)
-            {
-                MakePropertyGridSelectionReadOnly();
-                _propertyGrid.Refresh();
-            }
-        }
-
-        private void MakePropertyGridSelectionReadOnly()
-        {
-            foreach (DesignItem item in _selection)
-            {
-                if (item != null)
-                {
-                    item.ViewOnlyProperties = true;
-                }
-            }
-
-            TypeDescriptor.AddAttributes(_formSettings, new ReadOnlyAttribute(true));
-
-            object[] targets = _propertyGrid.SelectedObjects;
-            if (targets != null && targets.Length > 0)
-            {
-                _propertyGrid.SelectedObjects = targets;
-                return;
-            }
-
-            object single = _propertyGrid.SelectedObject;
-            if (single != null)
-            {
-                _propertyGrid.SelectedObject = single;
-            }
+            _propertyGrid.Refresh();
         }
 
         private bool IsItemSelected(DesignItem item)
@@ -2228,7 +2262,7 @@ namespace F2B.Forms.Designer
 
         private bool PasteClipboard(bool intoCurrentScope = true)
         {
-            if (!_clipboard.HasContent)
+            if (_isViewer || !_clipboard.HasContent)
             {
                 return false;
             }
@@ -2634,17 +2668,21 @@ namespace F2B.Forms.Designer
             return null;
         }
 
-        private void OpenForm()
+        /// <summary>
+        /// Shows the open-file dialog. Returns true when a form was loaded.
+        /// </summary>
+        private bool TryOpenFormDialog()
         {
             using (var dialog = new OpenFileDialog())
             {
                 dialog.Filter = "Form JSON (*.json)|*.json|All files (*.*)|*.*";
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                 {
-                    return;
+                    return false;
                 }
 
                 LoadFormFromPath(dialog.FileName);
+                return true;
             }
         }
 
@@ -2655,7 +2693,7 @@ namespace F2B.Forms.Designer
                 MessageBox.Show(
                     this,
                     "Form file not found:\n" + path,
-                    _isViewer ? "F2B.Forms.Viewer" : "F2B.Forms.Designer",
+                    "F2B.Forms.Designer",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
                 return;
@@ -2682,6 +2720,8 @@ namespace F2B.Forms.Designer
             UpdateDesignAreaSize();
             ClearDirty();
             ResetHistory();
+            ApplyViewOnlyFlags(_isViewer);
+            BindPropertyGridToSelection();
         }
 
         /// <summary>
@@ -2689,11 +2729,6 @@ namespace F2B.Forms.Designer
         /// </summary>
         private bool SaveForm(bool saveAs)
         {
-            if (_isViewer)
-            {
-                return true;
-            }
-
             if (saveAs || string.IsNullOrEmpty(_currentPath))
             {
                 using (var dialog = new SaveFileDialog())
@@ -2715,116 +2750,123 @@ namespace F2B.Forms.Designer
             return true;
         }
 
-        private void SwitchToPeer()
+        private void ToggleWorkspaceMode()
         {
-            string peerName = _isViewer ? "F2B.Forms.Designer" : "F2B.Forms.Viewer";
-            string caption = _isViewer ? "F2B.Forms.Viewer" : "F2B.Forms.Designer";
-
-            if (!_isViewer)
-            {
-                // Always persist Designer changes before handing off to Viewer.
-                if (!SaveForm(false))
-                {
-                    return;
-                }
-            }
-
-            if (string.IsNullOrEmpty(_currentPath) || !File.Exists(_currentPath))
-            {
-                MessageBox.Show(
-                    this,
-                    "Open or save a Form JSON file before switching.",
-                    caption,
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-                return;
-            }
-
-            string peerExe = ResolvePeerExecutable(peerName);
-            if (string.IsNullOrEmpty(peerExe))
-            {
-                MessageBox.Show(
-                    this,
-                    "Could not find " + peerName + ".exe.\nBuild/deploy Designer and Viewer side by side.",
-                    caption,
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-                return;
-            }
-
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = peerExe,
-                    Arguments = "\"" + _currentPath + "\"",
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    this,
-                    "Failed to start " + peerName + ":\n" + ex.Message,
-                    caption,
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-                return;
-            }
-
-            _switchingPeer = true;
-            Close();
+            _isViewer = !_isViewer;
+            SaveWorkspaceMode(_isViewer);
+            ApplyWorkspaceMode();
         }
 
-        /// <summary>
-        /// Resolves peer exe when deployed next to this app, or in the sibling project output folder (dev).
-        /// </summary>
-        private static string ResolvePeerExecutable(string assemblyName)
+        private void ApplyWorkspaceMode()
         {
-            string exeName = assemblyName + ".exe";
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-
-            string sameFolder = Path.Combine(baseDir, exeName);
-            if (File.Exists(sameFolder))
+            if (_modeButton != null)
             {
-                return sameFolder;
+                _modeButton.Text = _isViewer ? "Designer Mode" : "Viewer Mode";
             }
 
-            // .../{Designer|Viewer}/bin/{Debug|Release}/net462/
+            if (_controlsToolbox != null)
+            {
+                _controlsToolbox.Enabled = !_isViewer;
+            }
+
+            if (_menuNew != null)
+            {
+                _menuNew.Enabled = !_isViewer;
+            }
+
+            if (_menuSave != null)
+            {
+                _menuSave.Enabled = !_isViewer;
+            }
+
+            if (_menuSaveAs != null)
+            {
+                _menuSaveAs.Enabled = !_isViewer;
+            }
+
+            if (_surfaceHeader != null)
+            {
+                _surfaceHeader.Text = _isViewer ? "Viewer Area" : "Designer Area";
+            }
+
+            if (_contextLabel != null)
+            {
+                _contextLabel.Visible = !_isViewer;
+                _contextLabel.Height = _isViewer ? 0 : 22;
+            }
+
+            _canvas.AllowDrop = !_isViewer;
+            _controlTree.AllowDrop = !_isViewer;
+
+            ApplyViewOnlyFlags(_isViewer);
+            BindPropertyGridToSelection();
+            UpdateWindowTitle();
+            _canvas.Invalidate();
+        }
+
+        private void ApplyViewOnlyFlags(bool viewOnly)
+        {
+            _formSettings.ViewOnlyProperties = viewOnly;
+            ApplyViewOnlyRecursive(_roots, viewOnly);
+        }
+
+        private static void ApplyViewOnlyRecursive(IList<DesignItem> items, bool viewOnly)
+        {
+            if (items == null)
+            {
+                return;
+            }
+
+            foreach (DesignItem item in items)
+            {
+                if (item == null)
+                {
+                    continue;
+                }
+
+                item.ViewOnlyProperties = viewOnly;
+                ApplyViewOnlyRecursive(item.Children, viewOnly);
+            }
+        }
+
+        private static string GetWorkspaceModeSettingsPath()
+        {
+            string dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "F2B.Forms.Designer");
+            Directory.CreateDirectory(dir);
+            return Path.Combine(dir, WorkspaceModeSettingsFileName);
+        }
+
+        private static bool LoadSavedViewerMode()
+        {
             try
             {
-                var tfmDir = new DirectoryInfo(baseDir);
-                DirectoryInfo configDir = tfmDir.Parent;
-                DirectoryInfo binDir = configDir?.Parent;
-                DirectoryInfo projectDir = binDir?.Parent;
-                DirectoryInfo formsRoot = projectDir?.Parent;
-                if (formsRoot != null && configDir != null)
+                string path = GetWorkspaceModeSettingsPath();
+                if (!File.Exists(path))
                 {
-                    string peer = Path.Combine(
-                        formsRoot.FullName,
-                        assemblyName,
-                        "bin",
-                        configDir.Name,
-                        tfmDir.Name,
-                        exeName);
-                    if (File.Exists(peer))
-                    {
-                        return peer;
-                    }
-
-                    peer = Path.Combine(formsRoot.FullName, assemblyName, "bin", configDir.Name, exeName);
-                    if (File.Exists(peer))
-                    {
-                        return peer;
-                    }
+                    return false;
                 }
+
+                string text = File.ReadAllText(path).Trim();
+                return string.Equals(text, "Viewer", StringComparison.OrdinalIgnoreCase);
             }
             catch
             {
-                // Ignore path probing failures.
+                return false;
             }
+        }
 
-            return null;
+        private static void SaveWorkspaceMode(bool viewer)
+        {
+            try
+            {
+                File.WriteAllText(GetWorkspaceModeSettingsPath(), viewer ? "Viewer" : "Designer");
+            }
+            catch
+            {
+                // Ignore preference write failures.
+            }
         }
 
         private void Preview()
@@ -4096,9 +4138,129 @@ namespace F2B.Forms.Designer
     }
 
     /// <summary>
+    /// Flat button with rounded corners for the Designer/Viewer mode toggle.
+    /// </summary>
+    internal sealed class RoundedButton : Button
+    {
+        private int _cornerRadius = 10;
+        private Color _borderColor = Color.FromArgb(190, 190, 190);
+
+        public RoundedButton()
+        {
+            FlatStyle = FlatStyle.Flat;
+            FlatAppearance.BorderSize = 0;
+            FlatAppearance.MouseOverBackColor = Color.FromArgb(235, 235, 235);
+            FlatAppearance.MouseDownBackColor = Color.FromArgb(220, 220, 220);
+            SetStyle(
+                ControlStyles.AllPaintingInWmPaint
+                | ControlStyles.UserPaint
+                | ControlStyles.OptimizedDoubleBuffer
+                | ControlStyles.ResizeRedraw,
+                true);
+            UpdateStyles();
+        }
+
+        public int CornerRadius
+        {
+            get { return _cornerRadius; }
+            set
+            {
+                if (_cornerRadius == value)
+                {
+                    return;
+                }
+
+                _cornerRadius = Math.Max(0, value);
+                UpdateRegion();
+                Invalidate();
+            }
+        }
+
+        public Color BorderColor
+        {
+            get { return _borderColor; }
+            set
+            {
+                if (_borderColor == value)
+                {
+                    return;
+                }
+
+                _borderColor = value;
+                Invalidate();
+            }
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            UpdateRegion();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.Clear(Parent == null ? SystemColors.Control : Parent.BackColor);
+
+            Rectangle bounds = new Rectangle(0, 0, Width - 1, Height - 1);
+            using (GraphicsPath path = CreateRoundPath(bounds, _cornerRadius))
+            using (var fill = new SolidBrush(BackColor))
+            using (var border = new Pen(_borderColor))
+            {
+                g.FillPath(fill, path);
+                g.DrawPath(border, path);
+            }
+
+            TextRenderer.DrawText(
+                g,
+                Text,
+                Font,
+                ClientRectangle,
+                ForeColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak);
+        }
+
+        private void UpdateRegion()
+        {
+            if (Width <= 0 || Height <= 0)
+            {
+                return;
+            }
+
+            using (GraphicsPath path = CreateRoundPath(new Rectangle(0, 0, Width, Height), _cornerRadius))
+            {
+                Region = new Region(path);
+            }
+        }
+
+        private static GraphicsPath CreateRoundPath(Rectangle bounds, int radius)
+        {
+            int diameter = Math.Min(radius * 2, Math.Min(bounds.Width, bounds.Height));
+            var path = new GraphicsPath();
+            if (diameter <= 0)
+            {
+                path.AddRectangle(bounds);
+                return path;
+            }
+
+            var arc = new Rectangle(bounds.Location, new Size(diameter, diameter));
+            path.AddArc(arc, 180, 90);
+            arc.X = bounds.Right - diameter;
+            path.AddArc(arc, 270, 90);
+            arc.Y = bounds.Bottom - diameter;
+            path.AddArc(arc, 0, 90);
+            arc.X = bounds.Left;
+            path.AddArc(arc, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+    }
+
+    /// <summary>
     /// Form-level properties shown in the Properties panel when the form root is selected.
     /// </summary>
-    public sealed class FormDesignSettings
+    public sealed class FormDesignSettings : ICustomTypeDescriptor
     {
         [Category("Layout")]
         [DisplayName("Id")]
@@ -4130,6 +4292,97 @@ namespace F2B.Forms.Designer
         [Description("Calendar / DateTimePicker language. (System) = Windows display language. Use en-US to force English calendar.")]
         [TypeConverter(typeof(FormCultureTypeConverter))]
         public string Culture { get; set; } = string.Empty;
+
+        [Browsable(false)]
+        public bool ViewOnlyProperties { get; set; }
+
+        AttributeCollection ICustomTypeDescriptor.GetAttributes()
+        {
+            AttributeCollection typeAttrs = TypeDescriptor.GetAttributes(typeof(FormDesignSettings));
+            if (!ViewOnlyProperties)
+            {
+                return typeAttrs;
+            }
+
+            var merged = new Attribute[typeAttrs.Count + 1];
+            typeAttrs.CopyTo(merged, 0);
+            merged[merged.Length - 1] = new ReadOnlyAttribute(true);
+            return new AttributeCollection(merged);
+        }
+
+        string ICustomTypeDescriptor.GetClassName()
+        {
+            return typeof(FormDesignSettings).Name;
+        }
+
+        string ICustomTypeDescriptor.GetComponentName()
+        {
+            return "form";
+        }
+
+        TypeConverter ICustomTypeDescriptor.GetConverter()
+        {
+            return TypeDescriptor.GetConverter(typeof(FormDesignSettings));
+        }
+
+        EventDescriptor ICustomTypeDescriptor.GetDefaultEvent()
+        {
+            return TypeDescriptor.GetDefaultEvent(typeof(FormDesignSettings));
+        }
+
+        PropertyDescriptor ICustomTypeDescriptor.GetDefaultProperty()
+        {
+            return TypeDescriptor.GetDefaultProperty(typeof(FormDesignSettings));
+        }
+
+        object ICustomTypeDescriptor.GetEditor(Type editorBaseType)
+        {
+            return TypeDescriptor.GetEditor(typeof(FormDesignSettings), editorBaseType);
+        }
+
+        EventDescriptorCollection ICustomTypeDescriptor.GetEvents()
+        {
+            return TypeDescriptor.GetEvents(typeof(FormDesignSettings));
+        }
+
+        EventDescriptorCollection ICustomTypeDescriptor.GetEvents(Attribute[] attributes)
+        {
+            return TypeDescriptor.GetEvents(typeof(FormDesignSettings), attributes);
+        }
+
+        PropertyDescriptorCollection ICustomTypeDescriptor.GetProperties()
+        {
+            return ((ICustomTypeDescriptor)this).GetProperties(null);
+        }
+
+        PropertyDescriptorCollection ICustomTypeDescriptor.GetProperties(Attribute[] attributes)
+        {
+            // Must use the Type overloads. GetProperties(object, bool) would treat typeof(...) as a
+            // System.Type instance and surface reflection metadata (Assembly, BaseType, ...).
+            PropertyDescriptorCollection all = attributes == null
+                ? TypeDescriptor.GetProperties(typeof(FormDesignSettings))
+                : TypeDescriptor.GetProperties(typeof(FormDesignSettings), attributes);
+            if (!ViewOnlyProperties)
+            {
+                return all;
+            }
+
+            var wrapped = new PropertyDescriptor[all.Count];
+            for (int i = 0; i < all.Count; i++)
+            {
+                wrapped[i] = TypeDescriptor.CreateProperty(
+                    typeof(FormDesignSettings),
+                    all[i],
+                    new ReadOnlyAttribute(true));
+            }
+
+            return new PropertyDescriptorCollection(wrapped);
+        }
+
+        object ICustomTypeDescriptor.GetPropertyOwner(PropertyDescriptor pd)
+        {
+            return this;
+        }
     }
 
     public sealed class DesignItem : ICustomTypeDescriptor
