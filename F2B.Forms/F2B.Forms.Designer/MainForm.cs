@@ -3858,7 +3858,8 @@ namespace F2B.Forms.Designer
                         paintFont,
                         item.ForeColor,
                         item.BackColor,
-                        showResizeHandles: !_isViewer);
+                        showResizeHandles: !_isViewer,
+                        textBoxSingleLine: item.SingleLine);
                 }
 
                 if (item.Children != null && item.Children.Count > 0)
@@ -4517,6 +4518,12 @@ namespace F2B.Forms.Designer
         [Description("TextBox only. Set to * to mask input as password. Leave empty for normal text.")]
         public string PasswordChar { get; set; }
 
+        [Category("Behavior")]
+        [DisplayName("Single Line")]
+        [Description("TextBox only. True (default) = single-line input; False = allow multi-line. Ignored when Password Char is set.")]
+        [DefaultValue(true)]
+        public bool SingleLine { get; set; } = true;
+
         [Category("Data")]
         [DisplayName("Minimum")]
         public decimal Minimum { get; set; }
@@ -4792,6 +4799,9 @@ namespace F2B.Forms.Designer
                 case "PasswordChar":
                     return type == FormControlType.TextBox;
 
+                case "SingleLine":
+                    return type == FormControlType.TextBox;
+
                 case "Minimum":
                 case "Maximum":
                 case "Increment":
@@ -4891,6 +4901,11 @@ namespace F2B.Forms.Designer
             if (Type == FormControlType.TextBox && !string.IsNullOrEmpty(PasswordChar))
             {
                 def.PasswordChar = PasswordChar.Trim().Substring(0, 1);
+            }
+
+            if (Type == FormControlType.TextBox)
+            {
+                def.SingleLine = SingleLine;
             }
 
             if (Type == FormControlType.NumericUpDown)
@@ -5015,6 +5030,7 @@ namespace F2B.Forms.Designer
                 SelectedIndex = c.SelectedIndex ?? (FormControlType.IsTabControl(c.Type) ? 0 : -1),
                 Mask = c.Mask,
                 PasswordChar = c.PasswordChar,
+                SingleLine = c.SingleLine ?? true,
                 Minimum = c.Minimum ?? 0m,
                 Maximum = c.Maximum ?? 100m,
                 Increment = c.Increment ?? 1m,

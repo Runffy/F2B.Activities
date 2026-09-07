@@ -126,6 +126,17 @@ namespace F2B.Forms.Engine
 
             if (control is TextBox textBox)
             {
+                string tagged = Convert.ToString(textBox.Tag);
+                if (string.Equals(tagged, FormControlType.TextBox, StringComparison.OrdinalIgnoreCase))
+                {
+                    return FormControlType.TextBox;
+                }
+
+                if (string.Equals(tagged, FormControlType.TextArea, StringComparison.OrdinalIgnoreCase))
+                {
+                    return FormControlType.TextArea;
+                }
+
                 // TextArea is Multiline + AcceptsReturn; designed single-line TextBox uses Multiline without AcceptsReturn.
                 if (textBox.Multiline && textBox.AcceptsReturn)
                 {

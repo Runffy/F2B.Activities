@@ -89,6 +89,13 @@ namespace F2B.Forms.Model
         [JsonProperty("sizeMode")]
         public string SizeMode { get; set; }
 
+        /// <summary>
+        /// TextBox only. true (default) = single-line input; false = multi-line (AcceptsReturn).
+        /// Ignored when PasswordChar is set (WinForms password boxes must stay single-line).
+        /// </summary>
+        [JsonProperty("singleLine")]
+        public bool? SingleLine { get; set; }
+
         [JsonProperty("scrollBars")]
         public string ScrollBars { get; set; }
 

@@ -315,10 +315,14 @@ namespace F2B.Forms.Engine
                     };
                     break;
                 case FormControlType.TextBox:
-                    control = CreateTextBox(definition, multiline: false);
+                    control = CreateTextBox(
+                        definition,
+                        multiline: IsTextBoxMultiline(definition));
+                    control.Tag = FormControlType.TextBox;
                     break;
                 case FormControlType.TextArea:
                     control = CreateTextBox(definition, multiline: true);
+                    control.Tag = FormControlType.TextArea;
                     break;
                 case FormControlType.CheckBox:
                     control = new CheckBox
@@ -574,17 +578,45 @@ namespace F2B.Forms.Engine
             }
 
             var textBox = control as TextBox;
-            if (textBox != null && definition.Height > 0 && !IsTrueMultilineTextArea(definition))
+            if (textBox != null && definition.Height > 0 && !IsTrueMultilineInput(definition))
             {
                 // Ensure single-line style TextBox keeps designed height.
                 textBox.Height = definition.Height;
             }
         }
 
-        private static bool IsTrueMultilineTextArea(ControlDefinition definition)
+        private static bool IsTrueMultilineInput(ControlDefinition definition)
         {
-            return definition != null
-                && string.Equals(definition.Type, FormControlType.TextArea, StringComparison.OrdinalIgnoreCase);
+            if (definition == null)
+            {
+                return false;
+            }
+
+            if (string.Equals(definition.Type, FormControlType.TextArea, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return string.Equals(definition.Type, FormControlType.TextBox, StringComparison.OrdinalIgnoreCase)
+                && IsTextBoxMultiline(definition);
+        }
+
+        /// <summary>
+        /// TextBox is multi-line only when SingleLine is explicitly false and no password mask is set.
+        /// </summary>
+        private static bool IsTextBoxMultiline(ControlDefinition definition)
+        {
+            if (definition == null)
+            {
+                return false;
+            }
+
+            if (ParsePasswordChar(definition.PasswordChar).HasValue)
+            {
+                return false;
+            }
+
+            return definition.SingleLine == false;
         }
 
         private static void ApplyTextAlign(Control control, string type, ControlDefinition definition)

@@ -45,7 +45,8 @@ namespace F2B.Forms.Designer
             Font font,
             Color foreColor,
             Color backColor,
-            bool showResizeHandles = true)
+            bool showResizeHandles = true,
+            bool textBoxSingleLine = true)
         {
             if (g == null || bounds.Width <= 0 || bounds.Height <= 0)
             {
@@ -63,6 +64,7 @@ namespace F2B.Forms.Designer
                 : (enabled ? foreColor : SystemColors.GrayText);
             TextFormatFlags alignFlags = TextAlignUtil.ToTextFormatFlags(textAlignH, textAlignV, wordBreak: false);
             TextFormatFlags multilineFlags = TextAlignUtil.ToTextFormatFlags(textAlignH, textAlignV, wordBreak: true);
+            TextFormatFlags singleLineFlags = TextAlignUtil.ToTextFormatFlags(textAlignH, textAlignV, wordBreak: false);
 
             switch (normalized)
             {
@@ -89,7 +91,16 @@ namespace F2B.Forms.Designer
                         backColor);
                     break;
                 case FormControlType.TextBox:
-                    DrawTextBox(g, bounds, displayText, enabled, multiline: false, multilineFlags, useFont, useFore, backColor);
+                    DrawTextBox(
+                        g,
+                        bounds,
+                        displayText,
+                        enabled,
+                        multiline: !textBoxSingleLine,
+                        textBoxSingleLine ? singleLineFlags : multilineFlags,
+                        useFont,
+                        useFore,
+                        backColor);
                     break;
                 case FormControlType.TextArea:
                     DrawTextBox(g, bounds, displayText, enabled, multiline: true, multilineFlags, useFont, useFore, backColor);
