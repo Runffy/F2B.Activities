@@ -9,6 +9,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(ProcessExistsDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("System")]
     [DisplayName("Process Exists")]
     [Description("Check whether a process is running by process name or full executable path.")]
     public sealed class ProcessExistsActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory

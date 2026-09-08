@@ -5,6 +5,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(BasicSimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Global Container")]
     [DisplayName("Get Global Value")]
     [Description("Read a value from F2B.Global. Expression: F2B.Global.Get(\"keyname\")")]
     public sealed class GetGlobalValueActivity : CodeActivity<object>, System.Activities.Presentation.IActivityTemplateFactory
@@ -37,6 +38,7 @@ namespace F2B.Basic
     }
 
     [Designer(typeof(BasicSimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Global Container")]
     [DisplayName("Set Global Value")]
     [Description("Write a value into F2B.Global. Expression: F2B.Global.Set(\"keyname\", value)")]
     public sealed class SetGlobalValueActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory
@@ -68,6 +70,7 @@ namespace F2B.Basic
     }
 
     [Designer(typeof(BasicSimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Global Container")]
     [DisplayName("Clear Global Value")]
     [Description("Clear the entire F2B.Global dictionary. Expression: F2B.Global.Clear()")]
     public sealed class ClearGlobalValueActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory

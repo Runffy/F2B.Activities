@@ -17,6 +17,7 @@ namespace F2B.Basic
     /// after Retry Interval, until success or the Retry Time limit (by count or by timeout) is reached.
     /// </summary>
     [Designer(typeof(RetryScopeDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Flow Control")]
     [DisplayName("Retry Scope")]
     [Description("Execute Retry Body then Assert Body. Choose By Times or By Timeout; Retry Time is max attempts or duration (ms).")]
     public sealed class RetryScopeActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory

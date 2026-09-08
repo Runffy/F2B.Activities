@@ -10,6 +10,7 @@ namespace F2B.Basic
     /// Scope with only a Try body: any fault inside is swallowed (empty catch of Exception).
     /// </summary>
     [Designer(typeof(OnlyTryDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Exception Handling")]
     [DisplayName("Only Try")]
     [Description("Run the Try body and silently ignore any exception (like Catch Exception with an empty handler).")]
     public sealed class OnlyTryActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory

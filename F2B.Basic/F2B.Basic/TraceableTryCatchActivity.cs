@@ -13,6 +13,7 @@ namespace F2B.Basic
         /// FaultXPath keeps the type-based path.
     /// </summary>
     [Designer(typeof(TraceableTryCatchDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Exception Handling")]
     [DisplayName("Traceable TryCatch")]
     [Description("Try/Catch/Finally that attributes faults to a relative activity path (XPath-like) and DisplayName breadcrumb. Return skips Catch; set Return.Execute Finally=true to still run Finally. Use Traceable Rethrow in Catch to propagate the original exception (keeps Source) after Finally.")]
     public sealed class TraceableTryCatchActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory

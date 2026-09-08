@@ -8,6 +8,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(RunCmdCommandDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("System")]
     [DisplayName("Run CMD Command")]
     public sealed class RunCmdCommandActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {

@@ -17,6 +17,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(LogMessageDesigner), typeof(global::System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Logging")]
     [DisplayName("Log Message")]
     public sealed class LogMessageActivity : CodeActivity, global::System.Activities.Presentation.IActivityTemplateFactory
     {

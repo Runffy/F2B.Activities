@@ -7,6 +7,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(OnlyIfDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Flow Control")]
     [DisplayName("Only If")]
     [Description("Execute the Then branch only when the condition is true. There is no Else branch.")]
     public sealed class OnlyIfActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory

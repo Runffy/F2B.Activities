@@ -6,6 +6,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(ThrowIfDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Exception Handling")]
     [DisplayName("Throw If")]
     [Description("When Condition is true, throw System.Exception with Message. When false, skip silently.")]
     public sealed class ThrowIfActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory

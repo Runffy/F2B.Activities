@@ -12,6 +12,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(HouseKeepingDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Misc")]
     [DisplayName("House Keeping")]
     [Description("Deletes current-project LogMessage csv files and Runtime folders whose name timestamps are strictly earlier than Before.")]
     public sealed class HouseKeepingActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory

@@ -6,6 +6,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(SetWindowsCredentialDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Credentials")]
     [DisplayName("Set Windows Credential")]
     [Description("Creates or updates a Generic credential in Windows Credential Manager.")]
     public sealed class SetWindowsCredentialActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory

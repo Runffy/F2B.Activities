@@ -23,6 +23,7 @@ namespace F2B.Basic
     /// HTTP/S request activity (semantics aligned with Python <c>requests</c>). Only <strong>URL</strong> is configured on the canvas; other inputs are set in the property grid. Returns <see cref="HttpCallResponse"/>.
     /// </summary>
     [Designer(typeof(HttpRequestDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Misc")]
     [DisplayName("HTTP Request")]
     public sealed class HttpRequestActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {

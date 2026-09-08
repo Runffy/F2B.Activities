@@ -11,6 +11,7 @@ using OpenRPA.Interfaces;
 namespace F2B.Basic
 {
     [Designer(typeof(InvokeWorkflowDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Invoke")]
     [DisplayName("Invoke Workflow")]
     [Description("Invoke another OpenRPA workflow. Select Project then Workflow; optionally log mapped In/Out arguments.")]
     public sealed class InvokeWorkflowActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory

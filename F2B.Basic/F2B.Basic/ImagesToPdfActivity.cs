@@ -6,6 +6,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(ImagesToPdfDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Misc")]
     [DisplayName("Images to PDF")]
     [Description("Combine one or more image files into a single PDF. Images are stacked vertically in order, each at its original width and height.")]
     public sealed class ImagesToPdfActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory

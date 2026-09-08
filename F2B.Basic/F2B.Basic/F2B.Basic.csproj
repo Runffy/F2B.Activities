@@ -70,14 +70,13 @@
     <Compile Include="ActivityBodyExpandHelper.cs" />
     <Compile Include="BasicDesignerShared.cs" />
     <Compile Include="ExpressionEditDialog.cs" />
-    <!-- Temporarily disabled: Multiple Assign / Number Increment
-    <Compile Include="AssignEntry.cs" />
-    -->
     <Compile Include="FaultPathTrackingExtension.cs" />
     <Compile Include="GetRuntimeDirectoryActivity.cs" />
     <Compile Include="GetRuntimeDirectoryDesigner.cs" />
     <Compile Include="GetResourcePathActivity.cs" />
     <Compile Include="ResourceDirectory.cs" />
+    <Compile Include="ToolboxLibraryAttribute.cs" />
+    <Compile Include="ToolboxPathAttribute.cs" />
     <Compile Include="OpenRpaSourceWorkflow.cs" />
     <Compile Include="GetWindowsCredentialActivity.cs" />
     <Compile Include="SetWindowsCredentialActivity.cs" />
@@ -112,12 +111,6 @@
     <Compile Include="LogMessageDesigner.cs" />
     <Compile Include="MessageBoxActivity.cs" />
     <Compile Include="MessageBoxDesigner.cs" />
-    <!-- Temporarily disabled: Multiple Assign / Number Increment
-    <Compile Include="MultipleAssignActivity.cs" />
-    <Compile Include="MultipleAssignDesigner.cs" />
-    <Compile Include="NumberIncrementActivity.cs" />
-    <Compile Include="NumberIncrementDesigner.cs" />
-    -->
     <Compile Include="OnlyIfActivity.cs" />
     <Compile Include="OnlyIfDesigner.cs" />
     <Compile Include="ElseIfActivity.cs" />

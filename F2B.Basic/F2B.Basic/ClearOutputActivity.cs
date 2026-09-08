@@ -13,6 +13,7 @@ namespace F2B.Basic
     /// Optionally also clears the Trace panel.
     /// </summary>
     [Designer(typeof(BasicSimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Logging")]
     [DisplayName("Clear Output")]
     [Description("Clear the OpenRPA Output panel text. Optionally clear Trace as well. Place where you want a fresh Output view.")]
     public sealed class ClearOutputActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory

@@ -8,6 +8,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(GetWindowsCredentialDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Credentials")]
     [DisplayName("Get Windows Credential")]
     [Description("Reads a Generic credential from Windows Credential Manager by name.")]
     public sealed class GetWindowsCredentialActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory

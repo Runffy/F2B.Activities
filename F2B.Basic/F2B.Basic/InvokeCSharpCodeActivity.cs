@@ -13,6 +13,7 @@ namespace F2B.Basic
     /// Workflow Imports are ignored. In/Out/InOut values are passed through a generated Args type.
     /// </summary>
     [Designer(typeof(InvokeCSharpCodeDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Invoke")]
     [DisplayName("Invoke C# Code")]
     [Description("Run a standalone C# Program.cs. Write usings and functions in Code. Workflow calls Main(Args) or Main(). Map In/Out/InOut on Arguments.")]
     public sealed class InvokeCSharpCodeActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory

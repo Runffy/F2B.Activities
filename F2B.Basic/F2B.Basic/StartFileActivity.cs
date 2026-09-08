@@ -7,6 +7,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(StartFileDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("System")]
     [DisplayName("Start File")]
     public sealed class StartFileActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {

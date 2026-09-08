@@ -6,6 +6,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(ThrowSystemExceptionDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Exception Handling")]
     [DisplayName("Throw System Exception")]
     public sealed class ThrowSystemExceptionActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {

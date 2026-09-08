@@ -27,6 +27,7 @@ namespace F2B.Basic
     /// Must be placed inside Traceable TryCatch → Catch.
     /// </summary>
     [Designer(typeof(BasicSimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Exception Handling")]
     [DisplayName("Traceable Rethrow")]
     [Description("Rethrow the original exception from Traceable TryCatch Catch (preserves Source). Must be inside Catch.")]
     public sealed class TraceableRethrowActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory

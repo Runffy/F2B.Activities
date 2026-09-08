@@ -28,6 +28,7 @@ namespace F2B.Basic
     /// Must be placed inside a Traceable TryCatch (validated on the workflow canvas).
     /// </summary>
     [Designer(typeof(BasicSimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Exception Handling")]
     [DisplayName("Return")]
     [Description("Exit the enclosing Traceable TryCatch without Catch. Optionally run Finally (Execute Finally). Must be inside Traceable TryCatch.")]
     public sealed class ReturnActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory

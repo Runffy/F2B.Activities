@@ -6,6 +6,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(BasicSimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Credentials")]
     [DisplayName("Get All Windows Credentials")]
     [Description("Enumerate Windows Generic credentials as Dict[address, Dict[username/password]].")]
     public sealed class GetAllWindowsCredentialsActivity

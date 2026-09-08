@@ -8,6 +8,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(MessageBoxDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Dialog")]
     [DisplayName("Message Box")]
     [Description("Shows a native Win32 MessageBox (auto-sizes for multi-line text). Optional Top Most uses MB_TOPMOST for the dialog lifetime.")]
     public sealed class MessageBoxActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory

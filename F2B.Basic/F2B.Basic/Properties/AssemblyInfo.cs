@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using System.Runtime.InteropServices;
+using F2B.Basic;
 
 // General assembly metadata is configured through the attributes below.
 [assembly: AssemblyTitle("F2B.Basic")]
@@ -10,6 +11,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCopyright("Copyright ©  2026")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
+
+// Toolbox root label (activities use [ToolboxPath] only for subfolders).
+[assembly: ToolboxLibrary("Basic")]
 
 // Setting ComVisible to false hides managed types from COM callers; set ComVisible(true) on specific types when needed.
 [assembly: ComVisible(false)]

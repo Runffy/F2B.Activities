@@ -5,6 +5,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(GetRuntimeDirectoryDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Runtime")]
     [DisplayName("Get Runtime Directory")]
     [Description("Returns the per-run runtime directory under OpenRPA ProjectsDirectory\\Runtime\\{sourceProject}\\{timestamp}. Always uses the outermost source workflow's project (follows Invoke OpenRPA caller chain). Mode controls timestamp precision. Expression: F2B.Basic.RuntimeDirectory.Path (Second).")]
     public sealed class GetRuntimeDirectoryActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory

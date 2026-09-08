@@ -8,6 +8,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(ElseIfDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Flow Control")]
     [DisplayName("Else If")]
     [Description("If / ElseIf / Else: run the first branch whose condition is true; otherwise run Else.")]
     public sealed class ElseIfActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory

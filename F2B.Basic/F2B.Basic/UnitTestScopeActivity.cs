@@ -9,6 +9,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(UnitTestScopeDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Misc")]
     [DisplayName("UnitTest Scope")]
     public sealed class UnitTestScopeActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {

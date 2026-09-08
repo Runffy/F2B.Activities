@@ -8,6 +8,7 @@ using System.Windows;
 namespace F2B.Basic
 {
     [Designer(typeof(ReturnIfDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Exception Handling")]
     [DisplayName("Return If")]
     [Description("When Condition is true, exit the enclosing Traceable TryCatch (same as Return). When false, skip silently. Must be inside Traceable TryCatch.")]
     public sealed class ReturnIfActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory
