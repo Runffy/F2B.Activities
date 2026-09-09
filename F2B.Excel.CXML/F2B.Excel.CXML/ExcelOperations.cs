@@ -779,7 +779,7 @@ namespace F2B.Excel.CXML
 
             if ((options & ExcelClearOptions.Hyperlink) != 0)
             {
-                // ClosedXML 0.104 has no Hyperlinks flag on XLClearOptions.
+                // ClosedXML 0.95: clear via Hyperlink setter (no XLClearOptions.Hyperlinks).
                 IEnumerable<IXLCell> cells = singleCell != null
                     ? (IEnumerable<IXLCell>)new[] { singleCell }
                     : range.Cells();
@@ -788,7 +788,7 @@ namespace F2B.Excel.CXML
                 {
                     if (cell.HasHyperlink)
                     {
-                        cell.SetHyperlink(null);
+                        cell.Hyperlink = null;
                     }
                 }
             }
@@ -876,15 +876,13 @@ namespace F2B.Excel.CXML
             }
 
             IXLCell cell = GetTargetCell(wb, sheet, address);
-            IXLRichText rich;
-            if (replace || !cell.HasRichText)
+            bool hadRichText = cell.HasRichText;
+            if (replace || !hadRichText)
             {
-                rich = cell.CreateRichText();
+                cell.Clear(XLClearOptions.Contents);
             }
-            else
-            {
-                rich = cell.GetRichText();
-            }
+
+            IXLRichText rich = cell.RichText;
 
             foreach (ExcelRichTextRun run in runs)
             {
@@ -1032,51 +1030,42 @@ namespace F2B.Excel.CXML
 
         private static object ExtractCellObject(IXLCell cell)
         {
-            XLCellValue v = cell.Value;
-            if (v.IsBlank)
+            // ClosedXML 0.95: Value is object; type comes from DataType.
+            if (cell == null || cell.IsEmpty())
             {
                 return null;
             }
 
-            if (v.IsBoolean)
+            switch (cell.DataType)
             {
-                return v.GetBoolean();
+                case XLDataType.Boolean:
+                    return (bool)cell.Value;
+
+                case XLDataType.DateTime:
+                    return (DateTime)cell.Value;
+
+                case XLDataType.TimeSpan:
+                    return (TimeSpan)cell.Value;
+
+                case XLDataType.Number:
+                    {
+                        double n = Convert.ToDouble(cell.Value, CultureInfo.InvariantCulture);
+                        if (!double.IsNaN(n) && !double.IsInfinity(n)
+                            && Math.Abs(n % 1) < double.Epsilon
+                            && n >= int.MinValue && n <= int.MaxValue)
+                        {
+                            return (int)n;
+                        }
+
+                        return n;
+                    }
+
+                case XLDataType.Text:
+                    return Convert.ToString(cell.Value, CultureInfo.InvariantCulture);
+
+                default:
+                    return cell.Value;
             }
-
-            if (v.IsDateTime)
-            {
-                return v.GetDateTime();
-            }
-
-            if (v.IsTimeSpan)
-            {
-                return v.GetTimeSpan();
-            }
-
-            if (v.IsNumber)
-            {
-                double n = v.GetNumber();
-                if (!double.IsNaN(n) && !double.IsInfinity(n)
-                    && Math.Abs(n % 1) < double.Epsilon
-                    && n >= int.MinValue && n <= int.MaxValue)
-                {
-                    return (int)n;
-                }
-
-                return n;
-            }
-
-            if (v.IsText)
-            {
-                return v.GetText();
-            }
-
-            if (v.IsError)
-            {
-                return v.ToString();
-            }
-
-            return v.ToString();
         }
 
         private static DataTable RangeToDataTable(IXLRange range, bool hasHeaders)
