@@ -44,6 +44,8 @@ namespace F2B.Microsoft.Word
 
         internal InteropWord.Document Document => _document;
 
+        internal InteropWord.Application Application => _application;
+
         internal static WordDocumentSession Acquire(
             string wordFilePath,
             InteropWord.Document existingDocument,

@@ -120,6 +120,7 @@ namespace F2B.Microsoft.Word
 
             if (File.Exists(wordFilePath))
             {
+                WordPictureQuality.TryEnsureDocxOnDisk(wordFilePath);
                 return application.Documents.Open(
                     FileName: wordFilePath,
                     ConfirmConversions: false,
@@ -207,6 +208,7 @@ namespace F2B.Microsoft.Word
                         throw new COMException("SaveAs2 is unavailable.");
                     }
 
+                    WordPictureQuality.TryEnsureDocxOnDisk(wordFilePath);
                     return;
                 }
                 catch (COMException)
@@ -234,6 +236,8 @@ namespace F2B.Microsoft.Word
                     ref missing,
                     ref missing,
                     ref missing);
+
+                WordPictureQuality.TryEnsureDocxOnDisk(wordFilePath);
             }
             catch (COMException ex)
             {

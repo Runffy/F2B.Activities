@@ -7,7 +7,7 @@ using InteropWord = Microsoft.Office.Interop.Word;
 namespace F2B.Microsoft.Word
 {
     [DisplayName("Append Image")]
-    [Description("Append one or more images to the end of a Word document. Creates the document if it does not exist. Multiple image paths can be separated by ';'.")]
+    [Description("Append one or more images to the end of a Word document. Creates the document if it does not exist. Multiple image paths can be separated by ';'. Disables Word auto picture compression for the save so large/AutoFit images keep source fidelity.")]
     [Designer(typeof(AppendImageActivityDesigner))]
     public sealed class AppendImageActivity : CodeActivity
     {
@@ -78,6 +78,7 @@ namespace F2B.Microsoft.Word
                 }
             }
 
+            using (WordPictureQuality.PreferFullFidelity())
             using (var session = WordDocumentSession.Acquire(path, existing, visible, createIfMissing: true, documentBound))
             {
                 WordDocumentOperations.AppendImages(session.Document, imagePaths, SizeMode, width, height, Unit);

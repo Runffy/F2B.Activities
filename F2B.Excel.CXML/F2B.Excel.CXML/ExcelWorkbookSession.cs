@@ -48,12 +48,32 @@ namespace F2B.Excel.CXML
         public static ExcelWorkbook OpenSharedRead(string path)
         {
             path = ExcelActivityHelper.NormalizeExcelFilePath(path);
-            // Allow reading while Excel has the file open (shared read).
-            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+
+            // ClosedXML keeps the constructor stream as _originalStream and reads it again
+            // on Save/SaveAs. Disposing the FileStream in a using-block causes
+            // "Cannot access a closed file". Load into a MemoryStream we own for the
+            // workbook lifetime so the on-disk file is not held locked after open.
+            byte[] bytes;
+            using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
-                var xl = new XLWorkbook(stream);
+                using (var buffer = new MemoryStream())
+                {
+                    fileStream.CopyTo(buffer);
+                    bytes = buffer.ToArray();
+                }
+            }
+
+            var loadStream = new MemoryStream(bytes, writable: true);
+            try
+            {
+                var xl = new XLWorkbook(loadStream);
                 string active = xl.Worksheet(1).Name;
-                return new ExcelWorkbook(xl, path, active);
+                return new ExcelWorkbook(xl, path, active, loadStream);
+            }
+            catch
+            {
+                loadStream.Dispose();
+                throw;
             }
         }
 

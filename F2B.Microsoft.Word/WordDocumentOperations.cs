@@ -16,6 +16,11 @@ namespace F2B.Microsoft.Word
             double customHeight,
             WordImageUnit unit)
         {
+            if (document == null)
+            {
+                throw new ArgumentNullException(nameof(document));
+            }
+
             foreach (var imagePath in imagePaths)
             {
                 AppendOneImage(document, imagePath, sizeMode, customWidth, customHeight, unit);

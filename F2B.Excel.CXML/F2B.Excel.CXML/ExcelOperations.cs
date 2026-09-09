@@ -210,24 +210,7 @@ namespace F2B.Excel.CXML
             }
 
             string path = ExcelActivityHelper.NormalizeExcelFilePath(wb.FilePath);
-            try
-            {
-                wb.XlWorkbook.SaveAs(path);
-                wb.FilePath = path;
-                wb.IsDirty = false;
-            }
-            catch (IOException ex)
-            {
-                throw new IOException(
-                    "Failed to save Excel file (it may be locked by another process such as Excel): " + path,
-                    ex);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                throw new IOException(
-                    "Failed to save Excel file (access denied or file locked): " + path,
-                    ex);
-            }
+            SaveAsCore(wb, path);
         }
 
         internal static void SaveAs(ExcelWorkbook wb, string path, bool overwrite)
@@ -240,11 +223,23 @@ namespace F2B.Excel.CXML
                 throw new IOException("Target file already exists and Overwrite is false: " + path);
             }
 
+            SaveAsCore(wb, path);
+        }
+
+        private static void SaveAsCore(ExcelWorkbook wb, string path)
+        {
             try
             {
                 wb.XlWorkbook.SaveAs(path);
                 wb.FilePath = path;
                 wb.IsDirty = false;
+            }
+            catch (ObjectDisposedException ex)
+            {
+                throw new IOException(
+                    "Failed to save Excel file because the workbook load stream was already closed. "
+                    + "Re-open the workbook and save again. Path: " + path,
+                    ex);
             }
             catch (IOException ex)
             {
