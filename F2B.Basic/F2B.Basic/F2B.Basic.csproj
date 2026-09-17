@@ -75,6 +75,8 @@
     <Compile Include="GetRuntimeDirectoryDesigner.cs" />
     <Compile Include="GetResourcePathActivity.cs" />
     <Compile Include="ResourceDirectory.cs" />
+    <Compile Include="FileName.cs" />
+    <Compile Include="ConvertFileNameStringActivity.cs" />
     <Compile Include="ToolboxLibraryAttribute.cs" />
     <Compile Include="ToolboxPathAttribute.cs" />
     <Compile Include="OpenRpaSourceWorkflow.cs" />
