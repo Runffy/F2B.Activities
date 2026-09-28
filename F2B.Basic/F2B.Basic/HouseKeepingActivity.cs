@@ -89,7 +89,7 @@ namespace F2B.Basic
 
                     if (stampTime < before)
                     {
-                        File.Delete(file);
+                        TryDeleteFile(file);
                     }
                 }
                 catch
@@ -126,12 +126,103 @@ namespace F2B.Basic
 
                     if (stampTime < before)
                     {
-                        Directory.Delete(directory, recursive: true);
+                        DeleteDirectoryTree(directory);
                     }
                 }
                 catch
                 {
                     // Skip in-use folders; continue with the rest.
+                }
+            }
+        }
+
+        /// <summary>
+        /// Best-effort recursive delete: clear attributes, delete files first (AllDirectories),
+        /// then remove directories bottom-up. Continues on per-item failures so locked files
+        /// do not leave the rest of the tree uncleared.
+        /// </summary>
+        private static void DeleteDirectoryTree(string rootPath)
+        {
+            if (string.IsNullOrWhiteSpace(rootPath) || !Directory.Exists(rootPath))
+            {
+                return;
+            }
+
+            // Files first (deepest included via AllDirectories).
+            string[] files;
+            try
+            {
+                files = Directory.GetFiles(rootPath, "*", SearchOption.AllDirectories);
+            }
+            catch
+            {
+                files = Array.Empty<string>();
+            }
+
+            foreach (string file in files)
+            {
+                TryDeleteFile(file);
+            }
+
+            // Directories bottom-up so children are removed before parents.
+            string[] directories;
+            try
+            {
+                directories = Directory.GetDirectories(rootPath, "*", SearchOption.AllDirectories)
+                    .OrderByDescending(d => d.Length)
+                    .ToArray();
+            }
+            catch
+            {
+                directories = Array.Empty<string>();
+            }
+
+            foreach (string directory in directories)
+            {
+                TryDeleteDirectory(directory);
+            }
+
+            TryDeleteDirectory(rootPath);
+        }
+
+        private static void TryDeleteFile(string path)
+        {
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    return;
+                }
+
+                File.SetAttributes(path, FileAttributes.Normal);
+                File.Delete(path);
+            }
+            catch
+            {
+            }
+        }
+
+        private static void TryDeleteDirectory(string path)
+        {
+            try
+            {
+                if (!Directory.Exists(path))
+                {
+                    return;
+                }
+
+                File.SetAttributes(path, FileAttributes.Normal);
+                Directory.Delete(path, recursive: false);
+            }
+            catch
+            {
+                // Still try a recursive call as a last resort (e.g. race with new files).
+                try
+                {
+                    Directory.Delete(path, recursive: true);
+                }
+                catch
+                {
                 }
             }
         }
