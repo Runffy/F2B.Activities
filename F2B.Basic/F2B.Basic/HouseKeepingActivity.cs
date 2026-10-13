@@ -5,7 +5,6 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Windows;
 
@@ -14,7 +13,7 @@ namespace F2B.Basic
     [Designer(typeof(HouseKeepingDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [ToolboxPath("Misc")]
     [DisplayName("House Keeping")]
-    [Description("Deletes current-project LogMessage csv files and Runtime folders whose name timestamps are strictly earlier than Before.")]
+    [Description("Deletes root-run project LogMessage csv files and Runtime folders whose name timestamps are strictly earlier than Before. Project is always the outermost source workflow (follows Invoke OpenRPA caller chain).")]
     public sealed class HouseKeepingActivity : CodeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {
         private static readonly Regex LogFileStampRegex = new Regex(
@@ -44,7 +43,7 @@ namespace F2B.Basic
         protected override void Execute(CodeActivityContext context)
         {
             DateTime before = Before.Get(context);
-            string projectName = ResolveProjectName(context) ?? "UnknownProject";
+            string projectName = OpenRpaSourceWorkflow.ResolveSourceProjectName(context) ?? "UnknownProject";
             string safeProject = SanitizeFileName(projectName);
 
             CleanupLogFiles(before, safeProject);
@@ -254,53 +253,6 @@ namespace F2B.Basic
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
                 out value);
-        }
-
-        private static string ResolveProjectName(CodeActivityContext context)
-        {
-            try
-            {
-                string instanceId = context.WorkflowInstanceId.ToString();
-                Type wfType = Type.GetType("OpenRPA.WorkflowInstance, OpenRPA", false);
-                PropertyInfo instancesProp = wfType?.GetProperty("Instances", BindingFlags.Public | BindingFlags.Static);
-                var instances = instancesProp?.GetValue(null) as System.Collections.IEnumerable;
-                if (instances != null)
-                {
-                    foreach (object item in instances)
-                    {
-                        if (item == null)
-                        {
-                            continue;
-                        }
-
-                        PropertyInfo idProp = item.GetType().GetProperty(
-                            "InstanceId",
-                            BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-                        string id = idProp?.GetValue(item) as string;
-                        if (!string.Equals(id, instanceId, StringComparison.OrdinalIgnoreCase))
-                        {
-                            continue;
-                        }
-
-                        foreach (string name in new[] { "projectname", "ProjectName" })
-                        {
-                            PropertyInfo prop = item.GetType().GetProperty(
-                                name,
-                                BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-                            string project = prop?.GetValue(item) as string;
-                            if (!string.IsNullOrWhiteSpace(project))
-                            {
-                                return project.Trim();
-                            }
-                        }
-                    }
-                }
-            }
-            catch
-            {
-            }
-
-            return null;
         }
 
         private static string SanitizeFileName(string value)
