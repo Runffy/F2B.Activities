@@ -52,12 +52,11 @@ namespace F2B.OpenRpa.Design
                 TextWrapping = TextWrapping.Wrap,
                 Foreground = Brushes.DimGray,
                 Margin = new Thickness(0, 0, 0, 8),
-                Visibility = replaceExpressionWarning ? Visibility.Visible : Visibility.Collapsed
+                Visibility = Visibility.Visible
             };
-            if (replaceExpressionWarning)
-            {
-                _hintText.Text = "当前 Selectors 是自定义表达式。在此保存将替换为标准 VB.NET 字符串数组表达式，例如 New String() { \"...\", \"...\" }。";
-            }
+            _hintText.Text = replaceExpressionWarning
+                ? "使用 {{变量名}} 表示整段 selector 变量，或在 XML 中嵌入 {{变量}}。保存时变量仍为变量，不会变成变量名字符串。"
+                : "提示：整段可用 {{variable}}；属性值可用 {{objectid}}。无占位符时保存为 New String() { \"...\" }。";
 
             Grid.SetRow(_hintText, 0);
             root.Children.Add(_hintText);

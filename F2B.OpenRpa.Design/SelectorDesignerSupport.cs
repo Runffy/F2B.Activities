@@ -79,7 +79,7 @@ namespace F2B.OpenRpa.Design
                 Margin = new Thickness(4, 0, 0, 0),
                 Padding = new Thickness(0),
                 VerticalAlignment = VerticalAlignment.Center,
-                ToolTip = "View or edit selector XML"
+                ToolTip = "View or edit selector XML ({{variable}} keeps variables)"
             };
             viewButton.Click += (sender, args) =>
             {
@@ -154,7 +154,7 @@ namespace F2B.OpenRpa.Design
                 Margin = new Thickness(4, 0, 0, 0),
                 Padding = new Thickness(0),
                 VerticalAlignment = VerticalAlignment.Center,
-                ToolTip = "View or edit selectors list"
+                ToolTip = "View or edit selectors ({{variable}} keeps variables)"
             };
             viewButton.Click += (sender, args) =>
             {
@@ -191,11 +191,10 @@ namespace F2B.OpenRpa.Design
                 return;
             }
 
-            var currentItems = TryReadStringArray(modelItem, propertyName) ?? Array.Empty<string>();
-            var isExpression = !IsManagedSelectorsExpression(modelItem, propertyName) &&
-                !string.IsNullOrWhiteSpace(TryReadStringArrayExpressionText(modelItem, propertyName));
+            var displayItems = TryReadSelectorsForEditor(modelItem, propertyName);
+            var hasVariables = displayItems.Any(SelectorExpressionBridge.ContainsVariablePlaceholder);
 
-            var dialog = new SelectorsEditorDialog(currentItems, isExpression)
+            var dialog = new SelectorsEditorDialog(displayItems, hasVariables)
             {
                 Owner = owner
             };
@@ -205,7 +204,7 @@ namespace F2B.OpenRpa.Design
                 return;
             }
 
-            if (!TryWriteStringArrayExpression(modelItem, propertyName, dialog.Selectors?.ToArray() ?? Array.Empty<string>(), out var error))
+            if (!TryWriteSelectorsFromEditor(modelItem, propertyName, dialog.Selectors?.ToArray() ?? Array.Empty<string>(), out var error))
             {
                 MessageBox.Show(owner, error, "Selectors", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -215,6 +214,50 @@ namespace F2B.OpenRpa.Design
             {
                 editor.GetBindingExpression(ExpressionTextBox.ExpressionProperty)?.UpdateTarget();
             }
+        }
+
+        public static string[] TryReadSelectorsForEditor(ModelItem modelItem, string propertyName = "Selectors")
+        {
+            if (modelItem == null)
+            {
+                return Array.Empty<string>();
+            }
+
+            // Prefer expression text so variables are not collapsed; also covers managed VB arrays
+            // (WF cannot store string[] as Literal, so "literal" selectors are New String() { "..." }).
+            var expressionText = TryReadStringArrayExpressionText(modelItem, propertyName);
+            if (!string.IsNullOrWhiteSpace(expressionText))
+            {
+                if (!LooksLikeVbStringArray(expressionText))
+                {
+                    return new[]
+                    {
+                        SelectorExpressionBridge.ExpressionToDisplay(expressionText, isLiteralValue: false)
+                    };
+                }
+
+                var elements = SelectorExpressionBridge.ParseArrayElementExpressions(expressionText);
+                return elements
+                    .Select(element =>
+                    {
+                        if (TryParseQuotedLiteralElement(element, out var literal))
+                        {
+                            return SelectorExpressionBridge.ExpressionToDisplay(literal, isLiteralValue: true);
+                        }
+
+                        return SelectorExpressionBridge.ExpressionToDisplay(element, isLiteralValue: false);
+                    })
+                    .Where(item => !string.IsNullOrWhiteSpace(item))
+                    .ToArray();
+            }
+
+            var literals = TryReadComputedStringArray(modelItem, propertyName);
+            if (literals != null && literals.Length > 0)
+            {
+                return SelectorExpressionBridge.ExpressionsToDisplay(literals, treatAsLiterals: true);
+            }
+
+            return Array.Empty<string>();
         }
 
         public static string[] TryReadStringArray(ModelItem modelItem, string propertyName = "Selectors")
@@ -236,13 +279,20 @@ namespace F2B.OpenRpa.Design
                 return null;
             }
 
+            // Legacy workflows store Selectors as VisualBasicValue("New String() { ... }").
+            // Prefer editor bridge so variables become {{var}} rather than name strings.
+            if (LooksLikeVbStringArray(expressionText))
+            {
+                return TryReadSelectorsForEditor(modelItem, propertyName);
+            }
+
             return VbStringArrayExpression.Parse(expressionText);
         }
 
-        public static bool TryWriteStringArrayExpression(
+        public static bool TryWriteSelectorsFromEditor(
             ModelItem modelItem,
             string propertyName,
-            string[] values,
+            string[] displayValues,
             out string error)
         {
             error = null;
@@ -259,12 +309,63 @@ namespace F2B.OpenRpa.Design
                 return false;
             }
 
-            var expressionText = VbStringArrayExpression.Build(values ?? Array.Empty<string>());
-            property.SetValue(new InArgument<string[]>(new VisualBasicValue<string[]>(expressionText)));
+            var items = (displayValues ?? Array.Empty<string>())
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Select(item => item.Trim())
+                .ToArray();
+
+            if (items.Length == 0)
+            {
+                error = "至少添加一个 selector。";
+                return false;
+            }
+
+            // WF Literal<T> only allows value types and System.String — never string[].
+            // Pure literal selectors are stored as VB: New String() { "..." }.
+            // Items with {{var}} become VB expressions that keep variables as variables.
+            string expression;
+            if (SelectorExpressionBridge.TryBuildLiteralArray(items, out var literals))
+            {
+                expression = VbStringArrayExpression.Build(literals);
+            }
+            else
+            {
+                expression = SelectorExpressionBridge.BuildArrayExpression(items);
+            }
+
+            property.SetValue(new InArgument<string[]>(new VisualBasicValue<string[]>(expression)));
             return true;
         }
 
+        /// <summary>
+        /// Writes Selectors as a VB <c>New String() { ... }</c> expression (WF cannot Literal string[]).
+        /// Items with <c>{{variable}}</c> keep variables; pure XML stays quoted string literals inside the array.
+        /// </summary>
+        public static bool TryWriteStringArrayLiteral(
+            ModelItem modelItem,
+            string propertyName,
+            string[] values,
+            out string error)
+        {
+            return TryWriteSelectorsFromEditor(modelItem, propertyName, values, out error);
+        }
+
+        [Obsolete("Use TryWriteStringArrayLiteral. Kept for binary compatibility.")]
+        public static bool TryWriteStringArrayExpression(
+            ModelItem modelItem,
+            string propertyName,
+            string[] values,
+            out string error)
+        {
+            return TryWriteStringArrayLiteral(modelItem, propertyName, values, out error);
+        }
+
         public static bool IsManagedSelectorsExpression(ModelItem modelItem, string propertyName)
+        {
+            return IsLiteralSelectors(modelItem, propertyName);
+        }
+
+        public static bool IsLiteralSelectors(ModelItem modelItem, string propertyName)
         {
             if (modelItem == null)
             {
@@ -284,9 +385,27 @@ namespace F2B.OpenRpa.Design
             }
 
             var value = expressionProperty.Value.GetCurrentValue();
-            return value is VisualBasicValue<string[]>
-                || value is Literal<string[]>
-                || value is Literal<List<string>>;
+            if (value is Literal<string[]> || value is Literal<List<string>> || value is Literal<Array>)
+            {
+                return true;
+            }
+
+            // Legacy designer-written VB array literals with only quoted strings are treated as managed literals.
+            if (value is VisualBasicValue<string[]> vb && !string.IsNullOrWhiteSpace(vb.ExpressionText))
+            {
+                var trimmed = vb.ExpressionText.TrimStart();
+                if (!(trimmed.StartsWith("New String()", StringComparison.OrdinalIgnoreCase)
+                    || trimmed.StartsWith("New String() {", StringComparison.OrdinalIgnoreCase)
+                    || trimmed.StartsWith("New String(){", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return false;
+                }
+
+                var elements = SelectorExpressionBridge.ParseArrayElementExpressions(vb.ExpressionText);
+                return elements.Length > 0 && elements.All(element => TryParseQuotedLiteralElement(element, out _));
+            }
+
+            return false;
         }
 
         public static string TryReadStringArrayExpressionText(ModelItem modelItem, string propertyName = "Selectors")
@@ -347,6 +466,13 @@ namespace F2B.OpenRpa.Design
                 return stringArray;
             }
 
+            // Do not evaluate VisualBasicValue / other expressions via ComputedValue —
+            // that would collapse variables into design-time strings or fail silently.
+            if (value is ITextExpression)
+            {
+                return null;
+            }
+
             if (expressionProperty.ComputedValue is string[] computedArray)
             {
                 return computedArray;
@@ -378,10 +504,10 @@ namespace F2B.OpenRpa.Design
                 return;
             }
 
-            var currentText = TryReadSelectorText(modelItem, propertyName) ?? string.Empty;
-            var isExpression = !IsLiteralSelector(modelItem, propertyName) && !string.IsNullOrWhiteSpace(currentText);
+            var displayText = TryReadSelectorForEditor(modelItem, propertyName) ?? string.Empty;
+            var hasVariables = SelectorExpressionBridge.ContainsVariablePlaceholder(displayText);
 
-            var dialog = new SelectorXmlEditorDialog(currentText, isExpression)
+            var dialog = new SelectorXmlEditorDialog(displayText, hasVariables)
             {
                 Owner = owner
             };
@@ -391,7 +517,7 @@ namespace F2B.OpenRpa.Design
                 return;
             }
 
-            if (!TryWriteSelectorLiteral(modelItem, propertyName, dialog.SelectorText ?? string.Empty, out var error))
+            if (!TryWriteSelectorFromEditor(modelItem, propertyName, dialog.SelectorText ?? string.Empty, out var error))
             {
                 MessageBox.Show(owner, error, "Selector", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -403,6 +529,29 @@ namespace F2B.OpenRpa.Design
             }
         }
 
+        public static string TryReadSelectorForEditor(ModelItem modelItem, string propertyName = "Selector")
+        {
+            if (modelItem == null)
+            {
+                return string.Empty;
+            }
+
+            if (IsLiteralSelector(modelItem, propertyName))
+            {
+                return SelectorExpressionBridge.ExpressionToDisplay(
+                    TryReadLiteralSelectorValue(modelItem, propertyName) ?? string.Empty,
+                    isLiteralValue: true);
+            }
+
+            var expressionText = TryReadSelectorExpressionText(modelItem, propertyName);
+            if (string.IsNullOrWhiteSpace(expressionText))
+            {
+                return string.Empty;
+            }
+
+            return SelectorExpressionBridge.ExpressionToDisplay(expressionText, isLiteralValue: false);
+        }
+
         public static string TryReadSelectorText(ModelItem modelItem, string propertyName = "Selector")
         {
             if (modelItem == null)
@@ -410,10 +559,14 @@ namespace F2B.OpenRpa.Design
                 return null;
             }
 
-            return TryReadInArgumentString(modelItem, propertyName);
+            return TryReadSelectorForEditor(modelItem, propertyName);
         }
 
-        public static bool TryWriteSelectorLiteral(ModelItem modelItem, string propertyName, string text, out string error)
+        public static bool TryWriteSelectorFromEditor(
+            ModelItem modelItem,
+            string propertyName,
+            string displayText,
+            out string error)
         {
             error = null;
             if (modelItem == null)
@@ -429,8 +582,29 @@ namespace F2B.OpenRpa.Design
                 return false;
             }
 
-            property.SetValue(new InArgument<string>(new Literal<string>(text ?? string.Empty)));
+            if (!SelectorExpressionBridge.TryDisplayToExpression(
+                    displayText,
+                    out var expressionText,
+                    out var isPureLiteral,
+                    out var literalValue))
+            {
+                error = "Unable to parse selector editor text.";
+                return false;
+            }
+
+            if (isPureLiteral)
+            {
+                property.SetValue(new InArgument<string>(new Literal<string>(literalValue ?? string.Empty)));
+                return true;
+            }
+
+            property.SetValue(new InArgument<string>(new VisualBasicValue<string>(expressionText)));
             return true;
+        }
+
+        public static bool TryWriteSelectorLiteral(ModelItem modelItem, string propertyName, string text, out string error)
+        {
+            return TryWriteSelectorFromEditor(modelItem, propertyName, text, out error);
         }
 
         public static bool IsLiteralSelector(ModelItem modelItem, string propertyName)
@@ -494,7 +668,7 @@ namespace F2B.OpenRpa.Design
             editor.FontFamily = new FontFamily("Consolas");
         }
 
-        private static string TryReadInArgumentString(ModelItem modelItem, string propertyName)
+        private static string TryReadSelectorExpressionText(ModelItem modelItem, string propertyName)
         {
             var property = modelItem.Properties[propertyName];
             if (property?.Value == null)
@@ -503,53 +677,93 @@ namespace F2B.OpenRpa.Design
             }
 
             var expressionProperty = property.Value.Properties["Expression"];
-            if (expressionProperty == null)
+            if (expressionProperty?.Value == null)
             {
                 return null;
             }
 
-            if (expressionProperty.ComputedValue is string computed)
+            var value = expressionProperty.Value.GetCurrentValue();
+            if (value is ITextExpression textExpression && !string.IsNullOrWhiteSpace(textExpression.ExpressionText))
             {
-                return computed;
+                return textExpression.ExpressionText;
             }
 
-            if (expressionProperty.Value != null)
+            if (value is Literal<string> literal)
             {
-                var value = expressionProperty.Value.GetCurrentValue();
-                if (value is Literal<string> literal)
-                {
-                    return literal.Value;
-                }
-
-                if (value is string literalString)
-                {
-                    return literalString;
-                }
+                return literal.Value;
             }
 
-            var text = expressionProperty.Value?.ToString();
-            return string.IsNullOrWhiteSpace(text) ? null : UnquoteLiteral(text);
+            return expressionProperty.Value.ToString();
         }
 
-        private static string UnquoteLiteral(string text)
+        private static string TryReadLiteralSelectorValue(ModelItem modelItem, string propertyName)
         {
-            if (string.IsNullOrWhiteSpace(text))
+            var property = modelItem.Properties[propertyName];
+            if (property?.Value == null)
             {
-                return text;
+                return null;
             }
 
-            text = text.Trim();
-            if (text.Length >= 2 && text[0] == '"' && text[text.Length - 1] == '"')
+            var expressionProperty = property.Value.Properties["Expression"];
+            if (expressionProperty?.Value == null)
             {
-                return text
-                    .Substring(1, text.Length - 2)
-                    .Replace("\\r\\n", "\r\n")
-                    .Replace("\\n", "\n")
-                    .Replace("\\t", "\t")
-                    .Replace("\\\"", "\"");
+                return null;
             }
 
-            return text;
+            if (expressionProperty.Value.GetCurrentValue() is Literal<string> literal)
+            {
+                return literal.Value;
+            }
+
+            return null;
+        }
+
+        private static bool LooksLikeVbStringArray(string expressionText)
+        {
+            if (string.IsNullOrWhiteSpace(expressionText))
+            {
+                return false;
+            }
+
+            var trimmed = expressionText.TrimStart();
+            return trimmed.StartsWith("New String()", StringComparison.OrdinalIgnoreCase)
+                || trimmed.StartsWith("New String() {", StringComparison.OrdinalIgnoreCase)
+                || trimmed.StartsWith("New String(){", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool TryParseQuotedLiteralElement(string element, out string literal)
+        {
+            literal = null;
+            if (string.IsNullOrWhiteSpace(element))
+            {
+                return false;
+            }
+
+            // Reuse bridge by pretending it's a quoted expression via Vb helper path:
+            // only accept pure quoted strings / vbCrLf concatenations of quotes.
+            var parsed = VbStringArrayExpression.Parse("New String() { " + element + " }");
+            if (parsed.Length != 1)
+            {
+                return false;
+            }
+
+            var trimmed = element.Trim();
+            if (trimmed.Length >= 2 && trimmed[0] == '"' && trimmed[trimmed.Length - 1] == '"')
+            {
+                literal = parsed[0];
+                return true;
+            }
+
+            if (trimmed.IndexOf('"') >= 0
+                && trimmed.IndexOf("vbCrLf", StringComparison.OrdinalIgnoreCase) >= 0
+                && trimmed.IndexOf("{{", StringComparison.Ordinal) < 0)
+            {
+                // Quoted multiline literal concatenation without variables.
+                literal = parsed[0];
+                return true;
+            }
+
+            return false;
         }
     }
 }

@@ -31,12 +31,11 @@ namespace F2B.OpenRpa.Design
                 TextWrapping = TextWrapping.Wrap,
                 Foreground = Brushes.DimGray,
                 Margin = new Thickness(0, 0, 0, 8),
-                Visibility = replaceExpressionWarning ? Visibility.Visible : Visibility.Collapsed
+                Visibility = Visibility.Visible
             };
-            if (replaceExpressionWarning)
-            {
-                _hintText.Text = "当前 Selector 是表达式。在此保存将替换为字面量 XML。";
-            }
+            _hintText.Text = replaceExpressionWarning
+                ? "使用 {{变量名}} 表示变量（例如 <ctrl id='{{objectid}}' />）。保存时变量仍为变量，不会变成变量名字符串。"
+                : "提示：可用 {{变量名}} 嵌入变量；纯 XML 字面量仍按字面量保存。";
 
             Grid.SetRow(_hintText, 0);
             root.Children.Add(_hintText);

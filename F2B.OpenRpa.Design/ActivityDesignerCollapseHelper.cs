@@ -9,6 +9,7 @@ namespace F2B.OpenRpa.Design
 {
     /// <summary>
     /// Wires OpenRPA/WF activity Expand/Collapse (ShowExpanded) for code-first designers.
+    /// Safe to call from designer constructors: never throws; Content is always assigned.
     /// </summary>
     public static class ActivityDesignerCollapseHelper
     {
@@ -24,48 +25,63 @@ namespace F2B.OpenRpa.Design
                 throw new ArgumentNullException(nameof(expandedContent));
             }
 
-            var collapsed = new TextBlock
+            try
             {
-                Text = string.IsNullOrWhiteSpace(collapsedHint) ? "Click to view" : collapsedHint.Trim(),
-                FontStyle = FontStyles.Italic,
-                Foreground = Brushes.Gray,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(8, 4, 8, 4)
-            };
-
-            var host = new ContentControl
-            {
-                Focusable = false,
-                Content = expandedContent
-            };
-
-            void Sync()
-            {
-                bool showExpanded = true;
-                try
+                var collapsed = new TextBlock
                 {
-                    showExpanded = designer.ShowExpanded;
-                }
-                catch
+                    Text = string.IsNullOrWhiteSpace(collapsedHint) ? "Click to view" : collapsedHint.Trim(),
+                    FontStyle = FontStyles.Italic,
+                    Foreground = Brushes.Gray,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(8, 4, 8, 4)
+                };
+
+                var host = new ContentControl
                 {
-                    showExpanded = true;
+                    Focusable = false,
+                    Content = expandedContent
+                };
+
+                void Sync()
+                {
+                    try
+                    {
+                        bool showExpanded = true;
+                        try
+                        {
+                            showExpanded = designer.ShowExpanded;
+                        }
+                        catch
+                        {
+                            showExpanded = true;
+                        }
+
+                        host.Content = showExpanded ? (object)expandedContent : collapsed;
+                    }
+                    catch
+                    {
+                        host.Content = expandedContent;
+                    }
                 }
 
-                host.Content = showExpanded ? (object)expandedContent : collapsed;
-            }
+                designer.Content = host;
 
-            DependencyPropertyDescriptor descriptor = DependencyPropertyDescriptor.FromProperty(
-                ActivityDesigner.ExpandStateProperty,
-                typeof(ActivityDesigner));
-            if (descriptor != null)
+                designer.Loaded += (s, e) => Sync();
+
+                DependencyPropertyDescriptor descriptor = DependencyPropertyDescriptor.FromProperty(
+                    ActivityDesigner.ExpandStateProperty,
+                    typeof(ActivityDesigner));
+                if (descriptor != null)
+                {
+                    descriptor.AddValueChanged(designer, (s, e) => Sync());
+                }
+            }
+            catch
             {
-                descriptor.AddValueChanged(designer, (s, e) => Sync());
+                // Last resort: plain content so OpenRPA can still render the activity view.
+                designer.Content = expandedContent;
             }
-
-            designer.Loaded += (s, e) => Sync();
-            Sync();
-            designer.Content = host;
         }
     }
 }
