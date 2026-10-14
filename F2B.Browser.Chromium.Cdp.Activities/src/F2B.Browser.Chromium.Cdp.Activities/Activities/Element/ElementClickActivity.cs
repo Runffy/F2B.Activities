@@ -4,14 +4,16 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-Click")]
+    [ToolboxPath("Element")]
+    [DisplayName("Click")]
     [Description("Click the target element.")]
     public sealed class ElementClickActivity : CdpElementTargetActivityBase
     {
         public ElementClickActivity()
-            : base("Element-Click")
+            : base("Click")
         {
         }
+
 
         [DisplayName("Button")]
         [Description("Mouse button used for the click.")]
@@ -20,6 +22,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [TypeConverter(typeof(CdpMouseButtonConverter))]
         public CdpMouseButton Button { get; set; } = CdpMouseButton.Left;
 
+
         [DisplayName("Method")]
         [Description("Interaction method used for the click.")]
         [Category("Input.D")]
@@ -27,11 +30,13 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [TypeConverter(typeof(CdpInteractionMethodConverter))]
         public CdpInteractionMethod Method { get; set; } = CdpInteractionMethod.Simulate;
 
+
         [DisplayName("Count")]
         [Description("Number of clicks.")]
         [Category("Input.D")]
         [DefaultValue(1)]
         public InArgument<int> Count { get; set; } = 1;
+
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]

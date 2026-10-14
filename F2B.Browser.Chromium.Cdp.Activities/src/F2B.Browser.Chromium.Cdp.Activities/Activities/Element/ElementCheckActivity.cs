@@ -4,14 +4,16 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-Check")]
+    [ToolboxPath("Element")]
+    [DisplayName("Check")]
     [Description("Check or uncheck the target element.")]
     public sealed class ElementCheckActivity : CdpElementTargetActivityBase
     {
         public ElementCheckActivity()
-            : base("Element-Check")
+            : base("Check")
         {
         }
+
 
         [DisplayName("Uncheck")]
         [Description("When true, unchecks the element instead of checking it.")]
@@ -19,12 +21,14 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [DefaultValue(false)]
         public InArgument<bool> Uncheck { get; set; } = false;
 
+
         [DisplayName("Method")]
         [Description("Interaction method used for checking.")]
         [Category("Input.D")]
         [DefaultValue(CdpInteractionMethod.Simulate)]
         [TypeConverter(typeof(CdpInteractionMethodConverter))]
         public CdpInteractionMethod Method { get; set; } = CdpInteractionMethod.Simulate;
+
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]

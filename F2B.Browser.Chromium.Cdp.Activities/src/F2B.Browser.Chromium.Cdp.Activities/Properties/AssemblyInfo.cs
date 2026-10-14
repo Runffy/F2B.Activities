@@ -10,3 +10,5 @@ using System.Runtime.InteropServices;
 [assembly: Guid("d4e5f6a7-b8c9-0123-def0-234567890abc")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
+
+[assembly: F2B.Browser.Chromium.Cdp.Activities.ToolboxLibrary("ChromiumCdp")]

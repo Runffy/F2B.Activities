@@ -5,6 +5,7 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
+    [ToolboxPath("Common")]
     [DisplayName("Find Elements")]
     [Description("Query all matching elements under ParentObject or via a full <wnd> selector.")]
     [Designer(typeof(CdpCanvasFieldsActivityDesigner))]
@@ -15,21 +16,25 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             DisplayName = "Find Elements";
         }
 
+
         [DisplayName("Parent Object")]
         [Description("Optional search root (CdpTab / CdpFrame / CdpElement). Required when Selector has no <wnd>.")]
         [Category("Input.A")]
         public InArgument<CdpBase> ParentObject { get; set; }
+
 
         [DisplayName("Selector")]
         [Description("Selector XML used to locate matching elements.")]
         [Category("Input.B")]
         public InArgument<string> Selector { get; set; }
 
+
         [DisplayName("Throw Exception")]
         [Description("When true, throws if no elements are found.")]
         [Category("Input.Z")]
         [DefaultValue(false)]
         public InArgument<bool> ThrowException { get; set; } = false;
+
 
         [DisplayName("Elements")]
         [Description("Outputs all currently matching elements.")]

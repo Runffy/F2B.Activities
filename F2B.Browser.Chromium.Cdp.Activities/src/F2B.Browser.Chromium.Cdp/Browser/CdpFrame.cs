@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using F2B.Browser.Chromium.Cdp.Internal;
@@ -47,6 +48,14 @@ namespace F2B.Browser.Chromium.Cdp.Browser
         /// <summary>CDP frame id.</summary>
         public string FrameId { get; private set; }
 
+        /// <summary>Network request/response listener for this frame.</summary>
+        public CdpNetworkListener Listen
+        {
+            get { return _listen ?? (_listen = new CdpNetworkListener(this)); }
+        }
+
+        private CdpNetworkListener _listen;
+
         /// <summary>Host iframe/frame element in the parent document.</summary>
         public CdpElement Element { get; private set; }
 
@@ -88,11 +97,12 @@ namespace F2B.Browser.Chromium.Cdp.Browser
                 var scriptCopy = script;
                 var argsCopy = args;
                 var asExprCopy = asExpression;
-                System.Threading.ThreadPool.QueueUserWorkItem(_ => RunJsSync(scriptCopy, argsCopy, asExprCopy));
+                var timeoutCopy = timeoutMs;
+                System.Threading.ThreadPool.QueueUserWorkItem(_ => RunJsSync(scriptCopy, argsCopy, asExprCopy, timeoutCopy));
                 return null;
             }
 
-            return RunJsSync(script, args, asExpression);
+            return RunJsSync(script, args, asExpression, timeoutMs);
         }
 
         public override CdpElement FindElement(string selectorXml, int timeoutMs = 15000, bool throwException = true)
@@ -231,12 +241,17 @@ namespace F2B.Browser.Chromium.Cdp.Browser
 
         public CdpElement[] Children()
         {
-            return Children(null, false);
+            return Children(null, false, 0);
         }
 
         public CdpElement[] Children(string childSelectorXml, bool deepdive = false)
         {
-            return RequireElement().Children(childSelectorXml, deepdive);
+            return Children(childSelectorXml, deepdive, 0);
+        }
+
+        public CdpElement[] Children(string childSelectorXml, bool deepdive, int timeoutMs)
+        {
+            return RequireElement().Children(childSelectorXml, deepdive, timeoutMs);
         }
 
         public void Click(
@@ -327,6 +342,53 @@ namespace F2B.Browser.Chromium.Cdp.Browser
             return CdpDomContext.ForFrameId(_tab, _tab.GetSession(), FrameId);
         }
 
+        /// <summary>
+        /// True when this frame is in the parent tab's frame tree (same CDP target / typically same-origin).
+        /// </summary>
+        internal bool IsInnerFrame()
+        {
+            try
+            {
+                var result = _tab.GetSession().Send("Page.getFrameTree");
+                var tree = CdpValueConverter.GetDictionary(result, "frameTree");
+                return ContainsFrameId(tree, FrameId);
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        private static bool ContainsFrameId(Dictionary<string, object> tree, string frameId)
+        {
+            if (tree == null || string.IsNullOrEmpty(frameId))
+            {
+                return false;
+            }
+
+            var frame = CdpValueConverter.GetDictionary(tree, "frame");
+            if (string.Equals(CdpValueConverter.GetString(frame, "id"), frameId, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            var children = CdpValueConverter.GetList(tree, "childFrames");
+            if (children == null)
+            {
+                return false;
+            }
+
+            foreach (var child in children)
+            {
+                if (ContainsFrameId(child as Dictionary<string, object>, frameId))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private CdpElement RequireElement()
         {
             if (Element == null)
@@ -354,20 +416,21 @@ namespace F2B.Browser.Chromium.Cdp.Browser
                 .Replace("\n", "\\n") + "'";
         }
 
-        private object RunJsSync(string script, object[] args, bool asExpression)
+        private object RunJsSync(string script, object[] args, bool asExpression, int timeoutMs)
         {
+            var timeout = TimeSpan.FromMilliseconds(timeoutMs <= 0 ? 30000 : timeoutMs);
             using (var context = CreateDomContext())
             {
                 if (asExpression)
                 {
-                    return context.Evaluate(script);
+                    return context.Evaluate(script, timeout);
                 }
 
                 var serializer = new CdpJsonSerializer();
                 var argsLiteral = serializer.Serialize(args ?? new object[0]);
                 var wrapped = CdpJsScript.WrapAsFunction(script);
                 var expression = "(" + wrapped + ").apply(document, " + argsLiteral + ")";
-                return context.Evaluate(expression);
+                return context.Evaluate(expression, timeout);
             }
         }
     }

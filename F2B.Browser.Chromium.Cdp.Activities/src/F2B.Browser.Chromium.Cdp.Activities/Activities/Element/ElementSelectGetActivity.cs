@@ -4,19 +4,22 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-Select-Get")]
+    [ToolboxPath("Element")]
+    [DisplayName("Select-Get")]
     [Description("Get currently selected options from a select element.")]
     public sealed class ElementSelectGetActivity : CdpElementTargetActivityBase
     {
         public ElementSelectGetActivity()
-            : base("Element-Select-Get")
+            : base("Select-Get")
         {
         }
+
 
         [DisplayName("Selected Options")]
         [Description("Outputs the selected options.")]
         [Category("Output")]
         public OutArgument<CdpSelectedOption[]> SelectedOptions { get; set; }
+
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]

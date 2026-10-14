@@ -8,6 +8,7 @@ using F2B.Browser.Chromium.Cdp.Selectors;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
+    [ToolboxPath("Common")]
     [DisplayName("ParallelFindElement")]
     [Description("Poll multiple selector XML strings in parallel and return the first match.")]
     [Designer(typeof(CdpParallelFindElementActivityDesigner))]
@@ -18,10 +19,12 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             DisplayName = "ParallelFindElement";
         }
 
+
         [DisplayName("Parent Object")]
         [Description("Optional common search root. When empty, each selector must contain <wnd>.")]
         [Category("Input.A")]
         public InArgument<CdpBase> ParentObject { get; set; }
+
 
         [DisplayName("Selectors")]
         [Description("Selector XML list. Prefer editing via the activity designer ... button (stored as VB New String() { ... }; use {{var}} for variables).")]
@@ -29,11 +32,13 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [Category("Input.B")]
         public InArgument<string[]> Selectors { get; set; }
 
+
         [DisplayName("Timeout (ms)")]
         [Description("Maximum wait time in milliseconds.")]
         [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
+
 
         [DisplayName("Result")]
         [Description("Outputs the first matched selector index and element.")]

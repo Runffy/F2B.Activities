@@ -5,12 +5,13 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-GetParent")]
+    [ToolboxPath("Element")]
+    [DisplayName("GetParent")]
     [Description("Get the parent element. Target must be a CdpElement.")]
     public sealed class ElementGetParentActivity : CdpElementTargetActivityBase
     {
         public ElementGetParentActivity()
-            : base("Element-GetParent")
+            : base("GetParent")
         {
         }
 
@@ -19,15 +20,18 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             get { return true; }
         }
 
+
         [DisplayName("Level")]
         [Category("Input.D")]
         [DefaultValue(1)]
         public InArgument<int> Level { get; set; } = 1;
 
+
         [DisplayName("Timeout (ms)")]
         [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
+
 
         [DisplayName("Parent")]
         [Category("Output")]

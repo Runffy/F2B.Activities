@@ -156,7 +156,15 @@ namespace F2B.Browser.Chromium.Cdp.Internal
 
         public Dictionary<string, object> Send(string method, Dictionary<string, object> parameters = null)
         {
-            return Client.Send(method, parameters);
+            return Send(method, parameters, null);
+        }
+
+        public Dictionary<string, object> Send(
+            string method,
+            Dictionary<string, object> parameters,
+            TimeSpan? commandTimeout)
+        {
+            return Client.Send(method, parameters, commandTimeout);
         }
 
         public string EvaluateString(string expression)
@@ -166,6 +174,11 @@ namespace F2B.Browser.Chromium.Cdp.Internal
         }
 
         public object Evaluate(string expression)
+        {
+            return Evaluate(expression, null);
+        }
+
+        public object Evaluate(string expression, TimeSpan? commandTimeout)
         {
             var parameters = new Dictionary<string, object>
             {
@@ -178,7 +191,7 @@ namespace F2B.Browser.Chromium.Cdp.Internal
                 parameters["contextId"] = ExecutionContextId.Value;
             }
 
-            var response = Send("Runtime.evaluate", parameters);
+            var response = Send("Runtime.evaluate", parameters, commandTimeout);
             object exceptionDetails;
             if (response.TryGetValue("exceptionDetails", out exceptionDetails) && exceptionDetails != null)
             {

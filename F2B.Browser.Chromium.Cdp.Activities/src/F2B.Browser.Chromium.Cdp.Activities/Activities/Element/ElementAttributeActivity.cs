@@ -4,20 +4,23 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-Attribute")]
+    [ToolboxPath("Element")]
+    [DisplayName("Attribute")]
     [Description("Get, set, or remove an attribute on the target element.")]
     public sealed class ElementAttributeActivity : CdpElementTargetActivityBase
     {
         public ElementAttributeActivity()
-            : base("Element-Attribute")
+            : base("Attribute")
         {
         }
+
 
         [DisplayName("Name")]
         [Description("Attribute name.")]
         [RequiredArgument]
         [Category("Input.D")]
         public InArgument<string> Name { get; set; }
+
 
         [DisplayName("Type")]
         [Description("Attribute operation type.")]
@@ -26,15 +29,18 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [TypeConverter(typeof(CdpAttributeOperationTypeConverter))]
         public CdpAttributeOperationType Type { get; set; } = CdpAttributeOperationType.Get;
 
+
         [DisplayName("Set Value")]
         [Description("Attribute value used when Type is Set.")]
         [Category("Input.E")]
         public InArgument<string> SetValue { get; set; }
 
+
         [DisplayName("Output Result")]
         [Description("Attribute value returned when Type is Get.")]
         [Category("Output")]
         public OutArgument<string> OutputResult { get; set; }
+
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]

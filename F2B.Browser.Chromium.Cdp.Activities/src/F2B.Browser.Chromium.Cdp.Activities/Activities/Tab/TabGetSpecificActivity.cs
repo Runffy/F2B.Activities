@@ -5,21 +5,24 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Tab-GetSpecific")]
+    [ToolboxPath("Tab")]
+    [DisplayName("GetSpecific")]
     [Description("Find a specific tab using selector XML.")]
     [Designer(typeof(CdpCanvasFieldsActivityDesigner))]
     public sealed class TabGetSpecificActivity : CodeActivity
     {
         public TabGetSpecificActivity()
         {
-            DisplayName = "Tab-GetSpecific";
+            DisplayName = "GetSpecific";
         }
+
 
         [DisplayName("Selector")]
         [Description("Selector XML with <wnd> used to locate the tab.")]
         [RequiredArgument]
         [Category("Input.A")]
         public InArgument<string> Selector { get; set; }
+
 
         [DisplayName("Tab")]
         [Description("Outputs the matched tab.")]

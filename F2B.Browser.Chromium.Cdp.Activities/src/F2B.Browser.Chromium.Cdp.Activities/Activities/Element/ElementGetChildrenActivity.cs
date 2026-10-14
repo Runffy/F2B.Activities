@@ -5,13 +5,14 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-GetChildren")]
+    [ToolboxPath("Element")]
+    [DisplayName("GetChildren")]
     [Description("Get child elements under Target. Child Selector filters children (direct by default; Deepdive searches descendants). Target must be a CdpElement.")]
     [TypeDescriptionProvider(typeof(ElementGetChildrenTypeDescriptionProvider))]
     public sealed class ElementGetChildrenActivity : CdpElementTargetActivityBase
     {
         public ElementGetChildrenActivity()
-            : base("Element-GetChildren")
+            : base("GetChildren")
         {
         }
 
@@ -20,6 +21,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             get { return true; }
         }
 
+
         [DisplayName("Deepdive")]
         [Description("When true, search all descendants matching Child Selector. When false, match direct children only.")]
         [Category("Input.C")]
@@ -27,10 +29,13 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [TypeConverter(typeof(CdpBooleanTypeConverter))]
         public bool Deepdive { get; set; }
 
+
         [DisplayName("Timeout (ms)")]
+        [Description("Wait for matching children to appear. 0 = single instantaneous lookup. Default: 15000.")]
         [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
+
 
         [DisplayName("Children")]
         [Category("Output")]
@@ -49,7 +54,8 @@ namespace F2B.Browser.Chromium.Cdp.Activities
 
             // Selector is a child filter, not a re-resolve of Target (unlike other Element-* activities).
             var childSelector = Selector == null ? null : Selector.Get(context);
-            Children?.Set(context, target.Children(childSelector, Deepdive));
+            var timeoutMs = CdpActivityArgumentHelper.GetOrDefault(Timeout, context, 15000);
+            Children?.Set(context, target.Children(childSelector, Deepdive, timeoutMs));
         }
     }
 }

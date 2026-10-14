@@ -6,6 +6,7 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
+    [ToolboxPath("Common")]
     [DisplayName("Scroll")]
     [Description("Scroll a tab/frame document or an element.")]
     [Designer(typeof(CdpCanvasFieldsActivityDesigner))]
@@ -16,13 +17,16 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             DisplayName = "Scroll";
         }
 
+
         [DisplayName("Target")]
         [Category("Input.A")]
         public InArgument<CdpBase> Target { get; set; }
 
+
         [DisplayName("Selector")]
         [Category("Input.B")]
         public InArgument<string> Selector { get; set; }
+
 
         [DisplayName("Direction")]
         [Category("Input.F")]
@@ -30,15 +34,18 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [TypeConverter(typeof(CdpScrollDirectionConverter))]
         public CdpScrollDirection Direction { get; set; } = CdpScrollDirection.Down;
 
+
         [DisplayName("Pixels")]
         [Category("Input.F")]
         [DefaultValue(300)]
         public InArgument<int> Pixels { get; set; } = 300;
 
+
         [DisplayName("Timeout (ms)")]
         [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
+
 
         [DisplayName("Delay Before (ms)")]
         [Category("Input.Z")]

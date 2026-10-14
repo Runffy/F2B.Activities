@@ -4,12 +4,13 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-SendKeys")]
+    [ToolboxPath("Element")]
+    [DisplayName("SendKeys")]
     [Description("Send special keys or key chords. Tab/Frame with empty Selector targets the document body.")]
     public sealed class ElementSendKeysActivity : CdpElementTargetActivityBase
     {
         public ElementSendKeysActivity()
-            : base("Element-SendKeys")
+            : base("SendKeys")
         {
         }
 
@@ -18,11 +19,13 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             get { return true; }
         }
 
+
         [DisplayName("Keys")]
         [Description("Keys to send. Use CdpKey constants or string values.")]
         [RequiredArgument]
         [Category("Input.D")]
         public InArgument<object[]> Keys { get; set; }
+
 
         [DisplayName("Timeout (ms)")]
         [Category("Input.Z")]

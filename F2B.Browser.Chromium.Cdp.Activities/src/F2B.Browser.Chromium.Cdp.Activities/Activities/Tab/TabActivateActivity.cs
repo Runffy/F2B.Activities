@@ -5,25 +5,29 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Tab-Activate")]
+    [ToolboxPath("Tab")]
+    [DisplayName("Activate")]
     [Description("Activate a tab by instance or selector.")]
     [Designer(typeof(CdpEmptyActivityDesigner))]
     public sealed class TabActivateActivity : CodeActivity
     {
         public TabActivateActivity()
         {
-            DisplayName = "Tab-Activate";
+            DisplayName = "Activate";
         }
+
 
         [DisplayName("Tab")]
         [Description("Tab instance to activate.")]
         [Category("Input.A")]
         public InArgument<CdpTab> Tab { get; set; }
 
+
         [DisplayName("Selector")]
         [Description("Selector XML with <wnd> used to locate the tab.")]
         [Category("Input.A")]
         public InArgument<string> Selector { get; set; }
+
 
         [DisplayName("Tab")]
         [Description("Outputs the activated tab.")]

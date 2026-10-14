@@ -5,20 +5,23 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-Class")]
+    [ToolboxPath("Element")]
+    [DisplayName("Class")]
     [Description("Check, add, or remove a CSS class on the target element.")]
     public sealed class ElementClassActivity : CdpElementTargetActivityBase
     {
         public ElementClassActivity()
-            : base("Element-Class")
+            : base("Class")
         {
         }
+
 
         [DisplayName("Name")]
         [Description("CSS class name.")]
         [RequiredArgument]
         [Category("Input.D")]
         public InArgument<string> Name { get; set; }
+
 
         [DisplayName("Type")]
         [Description("Class operation type.")]
@@ -27,10 +30,12 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [TypeConverter(typeof(CdpClassOperationTypeConverter))]
         public CdpClassOperationType Type { get; set; } = CdpClassOperationType.Exists;
 
+
         [DisplayName("Result")]
         [Description("Outputs whether the class exists when Type=Exists.")]
         [Category("Output")]
         public OutArgument<bool> Result { get; set; }
+
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]

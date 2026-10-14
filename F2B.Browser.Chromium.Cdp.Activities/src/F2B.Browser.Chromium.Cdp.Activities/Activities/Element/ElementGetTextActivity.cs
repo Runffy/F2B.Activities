@@ -4,14 +4,16 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-GetText")]
+    [ToolboxPath("Element")]
+    [DisplayName("GetText")]
     [Description("Get text content from the target element.")]
     public sealed class ElementGetTextActivity : CdpElementTargetActivityBase
     {
         public ElementGetTextActivity()
-            : base("Element-GetText")
+            : base("GetText")
         {
         }
+
 
         [DisplayName("Type")]
         [Description("Text content type.")]
@@ -20,10 +22,12 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [TypeConverter(typeof(CdpElementTextTypeConverter))]
         public CdpElementTextType Type { get; set; } = CdpElementTextType.InnerText;
 
+
         [DisplayName("Text")]
         [Description("Outputs the element text.")]
         [Category("Output")]
         public OutArgument<string> Text { get; set; }
+
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]

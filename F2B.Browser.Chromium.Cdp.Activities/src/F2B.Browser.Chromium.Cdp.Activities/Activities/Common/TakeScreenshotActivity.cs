@@ -7,6 +7,7 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
+    [ToolboxPath("Common")]
     [DisplayName("TakeScreenshot")]
     [Description("Capture a screenshot of a tab/frame document or an element.")]
     [Designer(typeof(CdpCanvasFieldsActivityDesigner))]
@@ -17,23 +18,28 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             DisplayName = "TakeScreenshot";
         }
 
+
         [DisplayName("Target")]
         [Category("Input.A")]
         public InArgument<CdpBase> Target { get; set; }
 
+
         [DisplayName("Selector")]
         [Category("Input.B")]
         public InArgument<string> Selector { get; set; }
+
 
         [DisplayName("Save File Path")]
         [RequiredArgument]
         [Category("Input.F")]
         public InArgument<string> SaveFilePath { get; set; }
 
+
         [DisplayName("Delay Before (ms)")]
         [Category("Input.Z")]
         [DefaultValue(300)]
         public InArgument<int> DelayBefore { get; set; } = 300;
+
 
         [DisplayName("Timeout (ms)")]
         [Category("Input.Z")]

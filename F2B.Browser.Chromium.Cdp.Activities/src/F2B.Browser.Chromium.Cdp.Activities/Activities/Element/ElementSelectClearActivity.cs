@@ -4,14 +4,16 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-Select-Clear")]
+    [ToolboxPath("Element")]
+    [DisplayName("Select-Clear")]
     [Description("Unselect all options in a multi-select element.")]
     public sealed class ElementSelectClearActivity : CdpElementTargetActivityBase
     {
         public ElementSelectClearActivity()
-            : base("Element-Select-Clear")
+            : base("Select-Clear")
         {
         }
+
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]

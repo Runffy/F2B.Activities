@@ -5,20 +5,23 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Tab-Close")]
+    [ToolboxPath("Tab")]
+    [DisplayName("Close")]
     [Description("Close a tab by instance or selector.")]
     [Designer(typeof(CdpEmptyActivityDesigner))]
     public sealed class TabCloseActivity : CodeActivity
     {
         public TabCloseActivity()
         {
-            DisplayName = "Tab-Close";
+            DisplayName = "Close";
         }
+
 
         [DisplayName("Tab")]
         [Description("Tab instance to close.")]
         [Category("Input.A")]
         public InArgument<CdpTab> Tab { get; set; }
+
 
         [DisplayName("Selector")]
         [Description("Selector XML with <wnd> used to locate the tab.")]

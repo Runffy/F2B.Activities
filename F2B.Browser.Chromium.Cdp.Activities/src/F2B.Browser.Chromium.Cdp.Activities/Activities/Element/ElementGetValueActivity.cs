@@ -4,19 +4,22 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-GetValue")]
+    [ToolboxPath("Element")]
+    [DisplayName("GetValue")]
     [Description("Get the value property from the target element.")]
     public sealed class ElementGetValueActivity : CdpElementTargetActivityBase
     {
         public ElementGetValueActivity()
-            : base("Element-GetValue")
+            : base("GetValue")
         {
         }
+
 
         [DisplayName("Value")]
         [Description("Outputs the element value.")]
         [Category("Output")]
         public OutArgument<string> Value { get; set; }
+
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]

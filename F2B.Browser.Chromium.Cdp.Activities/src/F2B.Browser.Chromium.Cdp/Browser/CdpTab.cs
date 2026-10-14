@@ -16,6 +16,7 @@ namespace F2B.Browser.Chromium.Cdp.Browser
         private CdpTabSession _session;
         private CdpTabStates _states;
         private CdpTabRect _rect;
+        private CdpNetworkListener _listen;
 
         internal CdpTab(CdpBrowser browser, string id, string title, string url, string webSocketDebuggerUrl)
         {
@@ -113,6 +114,18 @@ namespace F2B.Browser.Chromium.Cdp.Browser
         public CdpTabRect Rect
         {
             get { return _rect ?? (_rect = new CdpTabRect(this)); }
+        }
+
+        /// <summary>Network request/response listener for this tab.</summary>
+        public CdpNetworkListener Listen
+        {
+            get
+            {
+                lock (_syncRoot)
+                {
+                    return _listen ?? (_listen = new CdpNetworkListener(this));
+                }
+            }
         }
 
         /// <summary>
@@ -296,6 +309,12 @@ namespace F2B.Browser.Chromium.Cdp.Browser
         {
             lock (_syncRoot)
             {
+                if (_listen != null)
+                {
+                    _listen.Dispose();
+                    _listen = null;
+                }
+
                 if (_session != null)
                 {
                     _session.Dispose();

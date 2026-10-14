@@ -6,25 +6,29 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Tab-GetAll")]
+    [ToolboxPath("Tab")]
+    [DisplayName("GetAll")]
     [Description("Get all visible tabs in the browser.")]
     [Designer(typeof(CdpEmptyActivityDesigner))]
     public sealed class TabGetAllActivity : CodeActivity
     {
         public TabGetAllActivity()
         {
-            DisplayName = "Tab-GetAll";
+            DisplayName = "GetAll";
         }
+
 
         [DisplayName("Port")]
         [Description("CDP port used to attach when Browser is not provided.")]
         [Category("Input.A")]
         public InArgument<int?> Port { get; set; }
 
+
         [DisplayName("Browser")]
         [Description("Browser instance.")]
         [Category("Input.A")]
         public InArgument<CdpBrowser> Browser { get; set; }
+
 
         [DisplayName("Tabs")]
         [Description("Outputs all visible tabs.")]

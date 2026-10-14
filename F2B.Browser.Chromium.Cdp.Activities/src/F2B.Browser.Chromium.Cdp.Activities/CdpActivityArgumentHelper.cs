@@ -9,7 +9,7 @@ namespace F2B.Browser.Chromium.Cdp.Activities
 {
     internal static class CdpActivityArgumentHelper
     {
-        public static T GetOrDefault<T>(InArgument<T> argument, CodeActivityContext context, T fallback)
+        public static T GetOrDefault<T>(InArgument<T> argument, ActivityContext context, T fallback)
         {
             if (argument == null || argument.Expression == null)
             {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using F2B.Browser.Chromium.Cdp.Exceptions;
 using F2B.Browser.Chromium.Cdp.Internal;
 
 namespace F2B.Browser.Chromium.Cdp.Browser
@@ -134,15 +135,58 @@ namespace F2B.Browser.Chromium.Cdp.Browser
 
         public CdpElement[] Children()
         {
-            return Children(null, false);
+            return Children(null, false, 0);
+        }
+
+        /// <summary>
+        /// Get child elements (single instantaneous lookup). Prefer the overload with timeoutMs
+        /// when waiting for children to appear.
+        /// </summary>
+        public CdpElement[] Children(string childSelectorXml, bool deepdive = false)
+        {
+            return Children(childSelectorXml, deepdive, 0);
         }
 
         /// <summary>
         /// Get child elements. When <paramref name="childSelectorXml"/> is empty, returns all direct children.
         /// When provided and <paramref name="deepdive"/> is false, filters direct children (Bridge GetChildren semantics).
         /// When <paramref name="deepdive"/> is true, searches all descendants matching the selector.
+        /// Retries until at least one match is found or <paramref name="timeoutMs"/> elapses.
+        /// When timeout is 0, performs a single instantaneous lookup.
         /// </summary>
-        public CdpElement[] Children(string childSelectorXml, bool deepdive = false)
+        public CdpElement[] Children(string childSelectorXml, bool deepdive, int timeoutMs)
+        {
+            var deadline = DateTime.UtcNow.AddMilliseconds(Math.Max(0, timeoutMs));
+            CdpElement[] children = null;
+
+            do
+            {
+                try
+                {
+                    children = QueryChildrenOnce(childSelectorXml, deepdive);
+                    if (children != null && children.Length > 0)
+                    {
+                        return children;
+                    }
+                }
+                catch (BrowserException)
+                {
+                    // Transient CDP/JS failures: retry until timeout (aligned with FindElement).
+                }
+
+                if (timeoutMs <= 0)
+                {
+                    break;
+                }
+
+                System.Threading.Thread.Sleep(100);
+            }
+            while (DateTime.UtcNow < deadline);
+
+            return children ?? new CdpElement[0];
+        }
+
+        private CdpElement[] QueryChildrenOnce(string childSelectorXml, bool deepdive)
         {
             if (string.IsNullOrWhiteSpace(childSelectorXml))
             {

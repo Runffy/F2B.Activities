@@ -5,19 +5,22 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-GetProperties")]
+    [ToolboxPath("Element")]
+    [DisplayName("GetProperties")]
     [Description("Get readable DOM/JS properties from the target element as a dictionary.")]
     public sealed class ElementGetPropertiesActivity : CdpElementTargetActivityBase
     {
         public ElementGetPropertiesActivity()
-            : base("Element-GetProperties")
+            : base("GetProperties")
         {
         }
+
 
         [DisplayName("Prop Dict")]
         [Description("Outputs properties as a dictionary.")]
         [Category("Output")]
         public OutArgument<Dictionary<string, string>> PropDict { get; set; }
+
 
         [DisplayName("Timeout (ms)")]
         [Category("Input.Z")]

@@ -5,19 +5,22 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-GetAttributes")]
+    [ToolboxPath("Element")]
+    [DisplayName("GetAttributes")]
     [Description("Get all attributes from the target element.")]
     public sealed class ElementGetAttributesActivity : CdpElementTargetActivityBase
     {
         public ElementGetAttributesActivity()
-            : base("Element-GetAttributes")
+            : base("GetAttributes")
         {
         }
+
 
         [DisplayName("Attr Dict")]
         [Description("Outputs all attributes as a dictionary.")]
         [Category("Output")]
         public OutArgument<Dictionary<string, string>> AttrDict { get; set; }
+
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]

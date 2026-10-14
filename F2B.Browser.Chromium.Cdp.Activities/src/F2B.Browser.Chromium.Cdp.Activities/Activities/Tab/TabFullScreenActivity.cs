@@ -5,20 +5,23 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Tab-FullScreen")]
+    [ToolboxPath("Tab")]
+    [DisplayName("FullScreen")]
     [Description("Enter browser fullscreen for the tab window (equivalent to pressing F11).")]
     [Designer(typeof(CdpEmptyActivityDesigner))]
     public sealed class TabFullScreenActivity : CodeActivity
     {
         public TabFullScreenActivity()
         {
-            DisplayName = "Tab-FullScreen";
+            DisplayName = "FullScreen";
         }
+
 
         [DisplayName("Input Tab")]
         [Description("Tab to fullscreen. Optional when Selector contains <wnd>.")]
         [Category("Input.A")]
         public InArgument<CdpTab> Tab { get; set; }
+
 
         [DisplayName("Selector")]
         [Description("Optional window selector XML containing <wnd>. Use instead of Input Tab.")]

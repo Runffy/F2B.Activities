@@ -5,25 +5,29 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Tab-GetRequest")]
+    [ToolboxPath("Tab")]
+    [DisplayName("GetRequest")]
     [Description("Send a GET request in the tab context.")]
     [Designer(typeof(CdpCanvasFieldsActivityDesigner))]
     public sealed class TabGetRequestActivity : CodeActivity
     {
         public TabGetRequestActivity()
         {
-            DisplayName = "Tab-GetRequest";
+            DisplayName = "GetRequest";
         }
+
 
         [DisplayName("Tab")]
         [Description("Tab instance. Optional when Selector contains <wnd>.")]
         [Category("Input.A")]
         public InArgument<CdpTab> Tab { get; set; }
 
+
         [DisplayName("Selector")]
         [Description("Selector XML with <wnd> used to locate the tab.")]
         [Category("Input.A")]
         public InArgument<string> Selector { get; set; }
+
 
         [DisplayName("Url")]
         [Description("Request URL.")]
@@ -31,16 +35,19 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [Category("Input.B")]
         public InArgument<string> Url { get; set; }
 
+
         [DisplayName("Timeout (ms)")]
         [Description("Request timeout in milliseconds.")]
         [Category("Input.C")]
         [DefaultValue(30000)]
         public InArgument<int> Timeout { get; set; } = 30000;
 
+
         [DisplayName("Certifications")]
         [Description("Client certificate file paths (reserved for future support).")]
         [Category("Input.C")]
         public InArgument<string[]> Certifications { get; set; }
+
 
         [DisplayName("Response")]
         [Description("Outputs the HTTP response.")]

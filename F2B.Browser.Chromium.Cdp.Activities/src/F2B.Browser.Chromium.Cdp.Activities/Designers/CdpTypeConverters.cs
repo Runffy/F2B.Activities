@@ -127,4 +127,20 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         {
         }
     }
+
+    internal sealed class CdpNetworkMethodConverter : EnumConverter
+    {
+        public CdpNetworkMethodConverter()
+            : base(typeof(Browser.CdpNetworkMethod))
+        {
+        }
+    }
+
+    internal sealed class CdpNetworkResourceTypeConverter : EnumConverter
+    {
+        public CdpNetworkResourceTypeConverter()
+            : base(typeof(Browser.CdpNetworkResourceType))
+        {
+        }
+    }
 }

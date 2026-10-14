@@ -18,6 +18,7 @@ namespace F2B.Browser.Chromium.Cdp.Internal
         private readonly object _sendLock = new object();
         private readonly ConcurrentDictionary<int, BlockingCollection<Dictionary<string, object>>> _pendingCommands =
             new ConcurrentDictionary<int, BlockingCollection<Dictionary<string, object>>>();
+        private readonly object _handlerLock = new object();
         private readonly Dictionary<string, Action<Dictionary<string, object>>> _eventHandlers =
             new Dictionary<string, Action<Dictionary<string, object>>>(StringComparer.Ordinal);
         private readonly Dictionary<string, Action<Dictionary<string, object>>> _immediateEventHandlers =
@@ -90,14 +91,17 @@ namespace F2B.Browser.Chromium.Cdp.Internal
 
         public void SetCallback(string eventName, Action<Dictionary<string, object>> handler, bool immediate = false)
         {
-            var handlers = immediate ? _immediateEventHandlers : _eventHandlers;
-            if (handler == null)
+            lock (_handlerLock)
             {
-                handlers.Remove(eventName);
-            }
-            else
-            {
-                handlers[eventName] = handler;
+                var handlers = immediate ? _immediateEventHandlers : _eventHandlers;
+                if (handler == null)
+                {
+                    handlers.Remove(eventName);
+                }
+                else
+                {
+                    handlers[eventName] = handler;
+                }
             }
         }
 
@@ -439,15 +443,16 @@ namespace F2B.Browser.Chromium.Cdp.Internal
 
         private void DispatchEvent(string method, Dictionary<string, object> parameters)
         {
-            Action<Dictionary<string, object>> immediateHandler;
-            if (_immediateEventHandlers.TryGetValue(method, out immediateHandler))
+            Action<Dictionary<string, object>> handler = null;
+            lock (_handlerLock)
             {
-                immediateHandler(parameters);
-                return;
+                if (!_immediateEventHandlers.TryGetValue(method, out handler))
+                {
+                    _eventHandlers.TryGetValue(method, out handler);
+                }
             }
 
-            Action<Dictionary<string, object>> handler;
-            if (_eventHandlers.TryGetValue(method, out handler))
+            if (handler != null)
             {
                 handler(parameters);
             }

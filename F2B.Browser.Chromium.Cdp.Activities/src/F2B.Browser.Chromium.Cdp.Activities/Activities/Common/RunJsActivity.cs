@@ -6,6 +6,7 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
+    [ToolboxPath("Common")]
     [DisplayName("Run JavaScript")]
     [Description("Run JavaScript on Target (Tab/Frame/Element) or an element resolved from Selector.")]
     [Designer(typeof(CdpCanvasFieldsActivityDesigner))]
@@ -16,39 +17,47 @@ namespace F2B.Browser.Chromium.Cdp.Activities
             DisplayName = "Run JavaScript";
         }
 
+
         [DisplayName("Target")]
         [Description("Optional context root (CdpTab / CdpFrame / CdpElement).")]
         [Category("Input.A")]
         public InArgument<CdpBase> Target { get; set; }
+
 
         [DisplayName("Selector")]
         [Description("Optional selector to locate an element under Target, or a full <wnd> selector.")]
         [Category("Input.B")]
         public InArgument<string> Selector { get; set; }
 
+
         [DisplayName("Delay Before (ms)")]
         [Category("Input.Z")]
         [DefaultValue(300)]
         public InArgument<int> DelayBefore { get; set; } = 300;
+
 
         [DisplayName("Timeout (ms)")]
         [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
 
+
         [DisplayName("Script")]
         [RequiredArgument]
         [Category("Input.F")]
         public InArgument<string> Script { get; set; }
 
+
         [DisplayName("Arguments")]
         [Category("Input.G")]
         public InArgument<object[]> Arguments { get; set; }
+
 
         [DisplayName("Is Async")]
         [Category("Input.G")]
         [DefaultValue(false)]
         public InArgument<bool> IsAsync { get; set; } = false;
+
 
         [DisplayName("Result")]
         [Category("Output")]

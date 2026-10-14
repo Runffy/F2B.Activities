@@ -5,20 +5,23 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Browser-Close")]
+    [ToolboxPath("Browser")]
+    [DisplayName("Close")]
     [Description("Close the browser process when this instance launched it.")]
     [Designer(typeof(CdpEmptyActivityDesigner))]
     public sealed class BrowserCloseActivity : CodeActivity
     {
         public BrowserCloseActivity()
         {
-            DisplayName = "Browser-Close";
+            DisplayName = "Close";
         }
+
 
         [DisplayName("Port")]
         [Description("CDP port used to attach when Browser is not provided.")]
         [Category("Input.A")]
         public InArgument<int?> Port { get; set; }
+
 
         [DisplayName("Browser")]
         [Description("Browser instance to close.")]

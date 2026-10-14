@@ -6,14 +6,15 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-DragToElement")]
+    [ToolboxPath("Element")]
+    [DisplayName("DragToElement")]
     [Description("Drag a source element to a destination element.")]
     [Designer(typeof(CdpElementTargetActivityDesigner))]
     public sealed class ElementDragToElementActivity : CodeActivity
     {
         public ElementDragToElementActivity()
         {
-            DisplayName = "Element-DragToElement";
+            DisplayName = "DragToElement";
         }
 
         /// <summary>
@@ -22,35 +23,42 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [Browsable(false)]
         public string Screencast { get; set; }
 
+
         [DisplayName("Parent Object")]
         [Description("Optional parent/root for the drag source.")]
         [Category("Input.A")]
         public InArgument<CdpBase> ParentObject { get; set; }
+
 
         [DisplayName("Selector")]
         [Description("Selector for the drag source element.")]
         [Category("Input.B")]
         public InArgument<string> Selector { get; set; }
 
+
         [DisplayName("Destination Parent Object")]
         [Description("Optional parent/root for the drop target.")]
         [Category("Input.C")]
         public InArgument<CdpBase> DestinationParentObject { get; set; }
+
 
         [DisplayName("Destination Selector")]
         [Description("Selector for the drop target element.")]
         [Category("Input.D")]
         public InArgument<string> DestinationSelector { get; set; }
 
+
         [DisplayName("Duration")]
         [Category("Input.E")]
         [DefaultValue(0.5)]
         public InArgument<double> Duration { get; set; } = 0.5;
 
+
         [DisplayName("Timeout (ms)")]
         [Category("Input.Z")]
         [DefaultValue(15000)]
         public InArgument<int> Timeout { get; set; } = 15000;
+
 
         [DisplayName("Delay Before (ms)")]
         [Category("Input.Z")]

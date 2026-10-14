@@ -5,6 +5,7 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
+    [ToolboxPath("Common")]
     [DisplayName("Element Exists")]
     [Description("Check whether a matching element exists under ParentObject or via a full <wnd> selector.")]
     [Designer(typeof(CdpCanvasFieldsActivityDesigner))]
@@ -21,15 +22,18 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [Browsable(false)]
         public string Screencast { get; set; }
 
+
         [DisplayName("Parent Object")]
         [Description("Optional search root (CdpTab / CdpFrame / CdpElement). Required when Selector has no <wnd>.")]
         [Category("Input.A")]
         public InArgument<CdpBase> ParentObject { get; set; }
 
+
         [DisplayName("Selector")]
         [Description("Selector XML used to locate the element.")]
         [Category("Input.B")]
         public InArgument<string> Selector { get; set; }
+
 
         [DisplayName("Exists")]
         [Description("Outputs whether the element exists.")]

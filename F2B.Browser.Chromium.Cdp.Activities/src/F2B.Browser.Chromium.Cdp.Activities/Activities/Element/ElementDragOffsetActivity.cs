@@ -4,14 +4,16 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-DragOffset")]
+    [ToolboxPath("Element")]
+    [DisplayName("DragOffset")]
     [Description("Drag the target element by offset.")]
     public sealed class ElementDragOffsetActivity : CdpElementTargetActivityBase
     {
         public ElementDragOffsetActivity()
-            : base("Element-DragOffset")
+            : base("DragOffset")
         {
         }
+
 
         [DisplayName("Offset X")]
         [Description("Horizontal drag offset in pixels.")]
@@ -19,17 +21,20 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [DefaultValue(0)]
         public InArgument<int> OffsetX { get; set; } = 0;
 
+
         [DisplayName("Offset Y")]
         [Description("Vertical drag offset in pixels.")]
         [Category("Input.D")]
         [DefaultValue(0)]
         public InArgument<int> OffsetY { get; set; } = 0;
 
+
         [DisplayName("Duration")]
         [Description("Drag duration in seconds.")]
         [Category("Input.D")]
         [DefaultValue(0.5)]
         public InArgument<double> Duration { get; set; } = 0.5;
+
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]

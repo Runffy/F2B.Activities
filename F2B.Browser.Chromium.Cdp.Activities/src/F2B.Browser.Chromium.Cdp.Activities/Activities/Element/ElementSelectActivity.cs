@@ -4,14 +4,16 @@ using F2B.Browser.Chromium.Cdp.Browser;
 
 namespace F2B.Browser.Chromium.Cdp.Activities
 {
-    [DisplayName("Element-Select")]
+    [ToolboxPath("Element")]
+    [DisplayName("Select")]
     [Description("Select options in a select element.")]
     public sealed class ElementSelectActivity : CdpElementTargetActivityBase
     {
         public ElementSelectActivity()
-            : base("Element-Select")
+            : base("Select")
         {
         }
+
 
         [DisplayName("By")]
         [Description("Selection criteria.")]
@@ -20,11 +22,13 @@ namespace F2B.Browser.Chromium.Cdp.Activities
         [TypeConverter(typeof(CdpActivitySelectByConverter))]
         public CdpActivitySelectBy By { get; set; } = CdpActivitySelectBy.Text;
 
+
         [DisplayName("Value")]
         [Description("Values to select.")]
         [RequiredArgument]
         [Category("Input.D")]
         public InArgument<object[]> Value { get; set; }
+
 
         [DisplayName("Timeout (ms)")]
         [Description("Timeout in milliseconds for locating the target element.")]
