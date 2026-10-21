@@ -19,6 +19,7 @@ namespace F2B.Basic
             FontColor = new InArgument<string>("#FF0000");
             FontSize = new InArgument<float>(30f);
             Bold = true;
+            LogMessage = "INFO";
             Timeout = new InArgument<int>(5000);
             MaxWidth = new InArgument<int>(360);
             MaxHeight = new InArgument<int>(200);
@@ -29,6 +30,12 @@ namespace F2B.Basic
         [Description("Text to display on the transparent toast.")]
         [Category("Input.A")]
         public InArgument<string> Message { get; set; }
+
+        [DisplayName("Log Message")]
+        [Description("Also write this notification through Log Message at the selected level. INFO / WARN / ERROR, or NONE to skip logging. Default: INFO.")]
+        [Category("Input.A")]
+        [DefaultValue("INFO")]
+        public string LogMessage { get; set; }
 
         [DisplayName("Font Color")]
         [Description("Text color as #RRGGBB, #AARRGGBB, or a known color name (default #FF0000).")]
@@ -73,6 +80,7 @@ namespace F2B.Basic
                 FontColor = new InArgument<string>("#FF0000"),
                 FontSize = new InArgument<float>(30f),
                 Bold = true,
+                LogMessage = "INFO",
                 Timeout = new InArgument<int>(5000),
                 MaxWidth = new InArgument<int>(360),
                 MaxHeight = new InArgument<int>(200)
@@ -114,7 +122,27 @@ namespace F2B.Basic
                 maxHeight = 200;
             }
 
+            string logLevel = NormalizeLogLevel(LogMessage);
+            if (!string.Equals(logLevel, "NONE", StringComparison.Ordinal))
+            {
+                LogMessageActivity.WriteFormatted(
+                    context.WorkflowInstanceId.ToString(),
+                    logLevel,
+                    message);
+            }
+
             NotificationToastService.Show(message, color, fontSize, Bold, timeoutMs, maxWidth, maxHeight);
+        }
+
+        private static string NormalizeLogLevel(string value)
+        {
+            string level = (value ?? "INFO").Trim().ToUpperInvariant();
+            if (level == "INFO" || level == "WARN" || level == "ERROR" || level == "NONE")
+            {
+                return level;
+            }
+
+            return "INFO";
         }
 
         private static Color ParseColor(string value, Color fallback)
