@@ -19,11 +19,17 @@ namespace F2B.Excel.CXML
         [Description("Optional .xlsx/.xlsm path used when Workbook is not provided.")]
         public InArgument<string> FilePath { get; set; }
 
+        [DisplayName("Password")]
+        [Category("Input.A")]
+        [Description("Optional. Used only when opening via File Path and the file has file-level encryption. Prefer Workbook-Open + Workbook handle.")]
+        public InArgument<string> Password { get; set; }
+
         protected ExcelWorkbook ResolveWorkbook(CodeActivityContext context)
         {
             ExcelWorkbook existing = ExcelActivityHelper.GetOptionalWorkbook(Workbook, context);
             string path = ExcelActivityHelper.GetOptionalString(FilePath, context);
-            using (ExcelWorkbookSession session = ExcelWorkbookSession.Acquire(existing, path))
+            string password = ExcelActivityHelper.GetOptionalString(Password, context);
+            using (ExcelWorkbookSession session = ExcelWorkbookSession.Acquire(existing, path, password))
             {
                 ExcelWorkbook wb = session.Workbook;
                 ExcelActivityHelper.SetWorkbook(Workbook, context, wb);

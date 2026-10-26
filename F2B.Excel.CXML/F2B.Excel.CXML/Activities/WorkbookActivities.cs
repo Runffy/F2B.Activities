@@ -4,7 +4,7 @@ using System.ComponentModel;
 namespace F2B.Excel.CXML
 {
     [DisplayName("Workbook-Open")]
-    [Description("Open an existing .xlsx/.xlsm file (shared read). Outputs Workbook handle.")]
+    [Description("Open an existing .xlsx/.xlsm file (shared read). Outputs Workbook handle. For file-level password protection, set Password.")]
     public sealed class WorkbookOpenActivity : CodeActivity
     {
         public WorkbookOpenActivity()
@@ -17,6 +17,11 @@ namespace F2B.Excel.CXML
         [Category("Input.A")]
         public InArgument<string> FilePath { get; set; }
 
+        [DisplayName("Password")]
+        [Category("Input.A")]
+        [Description("Optional. Required when the workbook has file-level (open) password protection. Not for sheet/structure protect.")]
+        public InArgument<string> Password { get; set; }
+
         [DisplayName("Workbook")]
         [Category("Output")]
         public InOutArgument<ExcelWorkbook> Workbook { get; set; }
@@ -24,7 +29,8 @@ namespace F2B.Excel.CXML
         protected override void Execute(CodeActivityContext context)
         {
             string path = ExcelActivityHelper.RequireNonEmpty(FilePath, context, nameof(FilePath));
-            ExcelWorkbook wb = ExcelWorkbookSession.OpenSharedRead(path);
+            string password = ExcelActivityHelper.GetOptionalString(Password, context);
+            ExcelWorkbook wb = ExcelWorkbookSession.OpenSharedRead(path, password);
             ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
         }
     }

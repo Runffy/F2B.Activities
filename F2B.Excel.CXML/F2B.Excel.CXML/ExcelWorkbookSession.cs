@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using ClosedXML.Excel;
+using OfficeOpenXml;
 
 namespace F2B.Excel.CXML
 {
@@ -9,6 +10,12 @@ namespace F2B.Excel.CXML
     /// </summary>
     internal sealed class ExcelWorkbookSession : IDisposable
     {
+        // OLE Compound File Binary signature (encrypted OOXML packages).
+        private static readonly byte[] OleCompoundSignature =
+        {
+            0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1
+        };
+
         private readonly bool _openedHere;
 
         private ExcelWorkbookSession(ExcelWorkbook workbook, bool openedHere)
@@ -22,7 +29,10 @@ namespace F2B.Excel.CXML
         /// <summary>
         /// Workbook object takes priority over FilePath. When only FilePath is provided, opens and keeps it for InOut.
         /// </summary>
-        public static ExcelWorkbookSession Acquire(ExcelWorkbook existing, string filePath)
+        public static ExcelWorkbookSession Acquire(
+            ExcelWorkbook existing,
+            string filePath,
+            string password = null)
         {
             if (existing != null)
             {
@@ -41,25 +51,50 @@ namespace F2B.Excel.CXML
                 throw new FileNotFoundException("Excel file not found: " + path, path);
             }
 
-            ExcelWorkbook workbook = OpenSharedRead(path);
+            ExcelWorkbook workbook = OpenSharedRead(path, password);
             return new ExcelWorkbookSession(workbook, openedHere: true);
         }
 
-        public static ExcelWorkbook OpenSharedRead(string path)
+        public static ExcelWorkbook OpenSharedRead(string path, string password = null)
         {
             path = ExcelActivityHelper.NormalizeExcelFilePath(path);
+            if (!File.Exists(path))
+            {
+                throw new FileNotFoundException("Excel file not found: " + path, path);
+            }
 
             // ClosedXML keeps the constructor stream as _originalStream and reads it again
             // on Save/SaveAs. Disposing the FileStream in a using-block causes
             // "Cannot access a closed file". Load into a MemoryStream we own for the
             // workbook lifetime so the on-disk file is not held locked after open.
-            byte[] bytes;
-            using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            byte[] bytes = ReadAllBytesShared(path);
+
+            if (IsOleCompoundDocument(bytes))
             {
-                using (var buffer = new MemoryStream())
+                if (string.IsNullOrEmpty(password))
                 {
-                    fileStream.CopyTo(buffer);
-                    bytes = buffer.ToArray();
+                    throw new InvalidOperationException(
+                        "Excel file is password-protected (file-level encryption). " +
+                        "Provide Password on Workbook-Open, then reuse the Workbook handle.");
+                }
+
+                try
+                {
+                    bytes = DecryptPackage(bytes, password);
+                }
+                catch (FileNotFoundException ex)
+                {
+                    throw new InvalidOperationException(
+                        "Failed to decrypt password-protected Excel file because EPPlus.dll was not found. " +
+                        "Copy EPPlus.dll next to F2B.Excel.CXML.dll (e.g. OpenRPA extensions folder).",
+                        ex);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException(
+                        "Failed to decrypt password-protected Excel file. Check the password. " +
+                        "Detail: " + ex.GetType().Name + ": " + ex.Message,
+                        ex);
                 }
             }
 
@@ -75,6 +110,49 @@ namespace F2B.Excel.CXML
                 loadStream.Dispose();
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Decrypts an MS-OFFCRYPTO encrypted package to plain OOXML bytes via EPPlus 4,
+        /// then ClosedXML loads the result. Does not keep an EPPlus workbook alive.
+        /// </summary>
+        private static byte[] DecryptPackage(byte[] encryptedBytes, string password)
+        {
+            using (var encrypted = new MemoryStream(encryptedBytes, writable: true))
+            using (var package = new ExcelPackage(encrypted, password))
+            {
+                package.Encryption.IsEncrypted = false;
+                package.Encryption.Password = null;
+                return package.GetAsByteArray();
+            }
+        }
+
+        private static byte[] ReadAllBytesShared(string path)
+        {
+            using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            using (var buffer = new MemoryStream())
+            {
+                fileStream.CopyTo(buffer);
+                return buffer.ToArray();
+            }
+        }
+
+        private static bool IsOleCompoundDocument(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length < OleCompoundSignature.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < OleCompoundSignature.Length; i++)
+            {
+                if (bytes[i] != OleCompoundSignature[i])
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public void Dispose()

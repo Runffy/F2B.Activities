@@ -14,6 +14,9 @@
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="ClosedXML" Version="0.95.4" />
+    <!-- Locked to OpenRPA's bundled ClosedXML; do not bump without coordinating host binding. -->
+    <PackageReference Include="ClosedXML" Version="[0.95.4]" />
+    <!-- EPPlus 4.x (LGPL): decrypt file-level encrypted OOXML before ClosedXML load. Deploy EPPlus.dll with this plugin. -->
+    <PackageReference Include="EPPlus" Version="4.5.3.3" />
   </ItemGroup>
 </Project>
