@@ -27,7 +27,8 @@ namespace F2B.Excel.CXML
         public ExcelWorkbook Workbook { get; }
 
         /// <summary>
-        /// Workbook object takes priority over FilePath. When only FilePath is provided, opens and keeps it for InOut.
+        /// Low-level resolve without lifetime policy. Prefer <see cref="ExcelWorkbookLease"/> in activities.
+        /// Workbook object takes priority over FilePath.
         /// </summary>
         public static ExcelWorkbookSession Acquire(
             ExcelWorkbook existing,
@@ -45,13 +46,7 @@ namespace F2B.Excel.CXML
                 throw new ArgumentException("Workbook or FilePath is required.");
             }
 
-            string path = ExcelActivityHelper.NormalizeExcelFilePath(filePath);
-            if (!File.Exists(path))
-            {
-                throw new FileNotFoundException("Excel file not found: " + path, path);
-            }
-
-            ExcelWorkbook workbook = OpenSharedRead(path, password);
+            ExcelWorkbook workbook = OpenSharedRead(filePath, password);
             return new ExcelWorkbookSession(workbook, openedHere: true);
         }
 

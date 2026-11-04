@@ -11,7 +11,7 @@ namespace F2B.Excel.CXML
             return argument != null && argument.Expression != null;
         }
 
-        internal static T GetOrDefault<T>(InArgument<T> argument, CodeActivityContext context, T fallback)
+        internal static T GetOrDefault<T>(InArgument<T> argument, ActivityContext context, T fallback)
         {
             if (!IsBound(argument))
             {
@@ -21,7 +21,7 @@ namespace F2B.Excel.CXML
             return argument.Get(context);
         }
 
-        internal static string GetOptionalString(InArgument<string> argument, CodeActivityContext context)
+        internal static string GetOptionalString(InArgument<string> argument, ActivityContext context)
         {
             if (!IsBound(argument))
             {
@@ -32,7 +32,7 @@ namespace F2B.Excel.CXML
             return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
         }
 
-        internal static string RequireNonEmpty(InArgument<string> argument, CodeActivityContext context, string name)
+        internal static string RequireNonEmpty(InArgument<string> argument, ActivityContext context, string name)
         {
             string value = GetOptionalString(argument, context);
             if (string.IsNullOrEmpty(value))
@@ -45,7 +45,7 @@ namespace F2B.Excel.CXML
 
         internal static ExcelWorkbook GetOptionalWorkbook(
             InOutArgument<ExcelWorkbook> argument,
-            CodeActivityContext context)
+            ActivityContext context)
         {
             if (!IsBound(argument))
             {
@@ -57,7 +57,7 @@ namespace F2B.Excel.CXML
 
         internal static void SetWorkbook(
             InOutArgument<ExcelWorkbook> argument,
-            CodeActivityContext context,
+            ActivityContext context,
             ExcelWorkbook workbook)
         {
             if (IsBound(argument))
@@ -66,7 +66,7 @@ namespace F2B.Excel.CXML
             }
         }
 
-        internal static void SetIfBound<T>(OutArgument<T> argument, CodeActivityContext context, T value)
+        internal static void SetIfBound<T>(OutArgument<T> argument, ActivityContext context, T value)
         {
             if (IsBound(argument))
             {

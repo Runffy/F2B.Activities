@@ -35,18 +35,19 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            string sheet = ExcelActivityHelper.GetOptionalString(SheetName, context);
-            string address = ExcelActivityHelper.GetOptionalString(Address, context);
-            bool headers = ExcelActivityHelper.GetOrDefault(HasHeaders, context, true);
-            DataTable table = ExcelOperations.ReadRangeToDataTable(wb, sheet, address, headers);
-            ExcelActivityHelper.SetIfBound(DataTable, context, table);
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: false))
+            {
+                string sheet = ExcelActivityHelper.GetOptionalString(SheetName, context);
+                string address = ExcelActivityHelper.GetOptionalString(Address, context);
+                bool headers = ExcelActivityHelper.GetOrDefault(HasHeaders, context, true);
+                DataTable table = ExcelOperations.ReadRangeToDataTable(lease.Workbook, sheet, address, headers);
+                ExcelActivityHelper.SetIfBound(DataTable, context, table);
+            }
         }
     }
 
     [DisplayName("Worksheet-WriteRange")]
-    [Description("Write DataTable. Sheet empty=Active; Address empty=from A1; full range clears target first.")]
+    [Description("Write DataTable. Sheet empty=Active; Address empty=from A1; full range clears target first. FilePath alone saves and closes.")]
     public sealed class WorksheetWriteRangeActivity : ExcelWorkbookActivity
     {
         public WorksheetWriteRangeActivity()
@@ -75,13 +76,14 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            string sheet = ExcelActivityHelper.GetOptionalString(SheetName, context);
-            string address = ExcelActivityHelper.GetOptionalString(Address, context);
-            DataTable table = DataTable.Get(context);
-            bool headers = ExcelActivityHelper.GetOrDefault(HasHeaders, context, true);
-            ExcelOperations.WriteRangeFromDataTable(wb, sheet, address, table, headers);
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: true))
+            {
+                string sheet = ExcelActivityHelper.GetOptionalString(SheetName, context);
+                string address = ExcelActivityHelper.GetOptionalString(Address, context);
+                DataTable table = DataTable.Get(context);
+                bool headers = ExcelActivityHelper.GetOrDefault(HasHeaders, context, true);
+                ExcelOperations.WriteRangeFromDataTable(lease.Workbook, sheet, address, table, headers);
+            }
         }
     }
 
@@ -103,6 +105,10 @@ namespace F2B.Excel.CXML
         [Category("Input.A")]
         public InArgument<string> FilePath { get; set; }
 
+        [DisplayName("Password")]
+        [Category("Input.A")]
+        public InArgument<string> Password { get; set; }
+
         [DisplayName("Sheet Name")]
         [Category("Input.B")]
         public InArgument<string> SheetName { get; set; }
@@ -114,33 +120,22 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(NativeActivityContext context)
         {
-            ExcelWorkbook existing = Workbook != null && Workbook.Expression != null ? Workbook.Get(context) : null;
-            string path = FilePath != null && FilePath.Expression != null ? FilePath.Get(context) : null;
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                path = null;
-            }
-            else
-            {
-                path = path.Trim();
-            }
+            ExcelWorkbook existing = ExcelActivityHelper.GetOptionalWorkbook(Workbook, context);
+            string path = ExcelActivityHelper.GetOptionalString(FilePath, context);
+            string password = ExcelActivityHelper.GetOptionalString(Password, context);
+            bool bound = ExcelActivityHelper.IsBound(Workbook);
 
-            using (ExcelWorkbookSession session = ExcelWorkbookSession.Acquire(existing, path))
+            using (ExcelWorkbookLease lease = ExcelWorkbookLease.Acquire(
+                existing,
+                path,
+                password,
+                bound,
+                wb => ExcelActivityHelper.SetWorkbook(Workbook, context, wb),
+                writes: false))
             {
-                ExcelWorkbook wb = session.Workbook;
-                if (Workbook != null && Workbook.Expression != null)
-                {
-                    Workbook.Set(context, wb);
-                }
-
-                string sheet = SheetName != null && SheetName.Expression != null ? SheetName.Get(context) : null;
-                if (string.IsNullOrWhiteSpace(sheet))
-                {
-                    sheet = null;
-                }
-
+                string sheet = ExcelActivityHelper.GetOptionalString(SheetName, context);
                 string address = Address.Get(context);
-                object raw = ExcelOperations.ReadCellValue(wb, sheet, address);
+                object raw = ExcelOperations.ReadCellValue(lease.Workbook, sheet, address);
                 Result.Set(context, ExcelOperations.ConvertCellValueTo<TResult>(raw));
             }
         }
@@ -164,6 +159,10 @@ namespace F2B.Excel.CXML
         [Category("Input.A")]
         public InArgument<string> FilePath { get; set; }
 
+        [DisplayName("Password")]
+        [Category("Input.A")]
+        public InArgument<string> Password { get; set; }
+
         [DisplayName("Sheet Name")]
         [Category("Input.B")]
         public InArgument<string> SheetName { get; set; }
@@ -179,28 +178,29 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(NativeActivityContext context)
         {
-            ExcelWorkbook existing = Workbook != null && Workbook.Expression != null ? Workbook.Get(context) : null;
-            string path = FilePath != null && FilePath.Expression != null ? FilePath.Get(context) : null;
-            path = string.IsNullOrWhiteSpace(path) ? null : path.Trim();
+            ExcelWorkbook existing = ExcelActivityHelper.GetOptionalWorkbook(Workbook, context);
+            string path = ExcelActivityHelper.GetOptionalString(FilePath, context);
+            string password = ExcelActivityHelper.GetOptionalString(Password, context);
+            bool bound = ExcelActivityHelper.IsBound(Workbook);
 
-            using (ExcelWorkbookSession session = ExcelWorkbookSession.Acquire(existing, path))
+            using (ExcelWorkbookLease lease = ExcelWorkbookLease.Acquire(
+                existing,
+                path,
+                password,
+                bound,
+                wb => ExcelActivityHelper.SetWorkbook(Workbook, context, wb),
+                writes: true))
             {
-                ExcelWorkbook wb = session.Workbook;
-                if (Workbook != null && Workbook.Expression != null)
-                {
-                    Workbook.Set(context, wb);
-                }
-
-                string sheet = SheetName != null && SheetName.Expression != null ? SheetName.Get(context) : null;
-                sheet = string.IsNullOrWhiteSpace(sheet) ? null : sheet.Trim();
+                string sheet = ExcelActivityHelper.GetOptionalString(SheetName, context);
                 string address = Address.Get(context);
                 TValue value = Value != null && Value.Expression != null ? Value.Get(context) : default(TValue);
-                ExcelOperations.WriteCellValue(wb, sheet, address, value);
+                ExcelOperations.WriteCellValue(lease.Workbook, sheet, address, value);
             }
         }
     }
 
     [DisplayName("Worksheet-GetCellByAddress")]
+    [Description("Returns a Cell handle. Requires Workbook binding (not FilePath alone).")]
     public sealed class WorksheetGetCellByAddressActivity : ExcelWorkbookActivity
     {
         public WorksheetGetCellByAddressActivity()
@@ -223,16 +223,19 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            string sheet = ExcelActivityHelper.GetOptionalString(SheetName, context);
-            string address = ExcelActivityHelper.RequireNonEmpty(Address, context, nameof(Address));
-            ExcelCell cell = ExcelOperations.CreateCellHandle(wb, sheet, address);
-            ExcelActivityHelper.SetIfBound(Cell, context, cell);
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: false))
+            {
+                EnsureNotEphemeralForHandles(lease, DisplayName);
+                string sheet = ExcelActivityHelper.GetOptionalString(SheetName, context);
+                string address = ExcelActivityHelper.RequireNonEmpty(Address, context, nameof(Address));
+                ExcelCell cell = ExcelOperations.CreateCellHandle(lease.Workbook, sheet, address);
+                ExcelActivityHelper.SetIfBound(Cell, context, cell);
+            }
         }
     }
 
     [DisplayName("Worksheet-GetRangeByAddress")]
+    [Description("Returns a Range handle. Requires Workbook binding (not FilePath alone).")]
     public sealed class WorksheetGetRangeByAddressActivity : ExcelWorkbookActivity
     {
         public WorksheetGetRangeByAddressActivity()
@@ -255,12 +258,14 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            string sheet = ExcelActivityHelper.GetOptionalString(SheetName, context);
-            string address = ExcelActivityHelper.RequireNonEmpty(Address, context, nameof(Address));
-            ExcelRange range = ExcelOperations.CreateRangeHandle(wb, sheet, address);
-            ExcelActivityHelper.SetIfBound(Range, context, range);
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: false))
+            {
+                EnsureNotEphemeralForHandles(lease, DisplayName);
+                string sheet = ExcelActivityHelper.GetOptionalString(SheetName, context);
+                string address = ExcelActivityHelper.RequireNonEmpty(Address, context, nameof(Address));
+                ExcelRange range = ExcelOperations.CreateRangeHandle(lease.Workbook, sheet, address);
+                ExcelActivityHelper.SetIfBound(Range, context, range);
+            }
         }
     }
 
@@ -293,25 +298,27 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            ExcelRange range = ExcelActivityHelper.IsBound(Range) ? Range.Get(context) : null;
-            string sheet = ExcelOperations.ResolveSheetName(
-                wb,
-                ExcelActivityHelper.GetOptionalString(SheetName, context),
-                null,
-                range);
-            string address = ExcelActivityHelper.GetOptionalString(Address, context);
-            if (string.IsNullOrEmpty(address) && range != null)
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: true))
             {
-                address = range.Address;
-                if (range.Workbook != null)
+                ExcelWorkbook wb = lease.Workbook;
+                ExcelRange range = ExcelActivityHelper.IsBound(Range) ? Range.Get(context) : null;
+                string sheet = ExcelOperations.ResolveSheetName(
+                    wb,
+                    ExcelActivityHelper.GetOptionalString(SheetName, context),
+                    null,
+                    range);
+                string address = ExcelActivityHelper.GetOptionalString(Address, context);
+                if (string.IsNullOrEmpty(address) && range != null)
                 {
-                    wb = range.Workbook;
+                    address = range.Address;
+                    if (range.Workbook != null)
+                    {
+                        wb = range.Workbook;
+                    }
                 }
-            }
 
-            ExcelOperations.Clear(wb, sheet, address, ClearOptions, isCell: false);
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+                ExcelOperations.Clear(wb, sheet, address, ClearOptions, isCell: false);
+            }
         }
     }
 
@@ -343,30 +350,32 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            ExcelCell cell = ExcelActivityHelper.IsBound(Cell) ? Cell.Get(context) : null;
-            string sheet = ExcelOperations.ResolveSheetName(
-                wb,
-                ExcelActivityHelper.GetOptionalString(SheetName, context),
-                cell,
-                null);
-            string address = ExcelActivityHelper.GetOptionalString(Address, context);
-            if (string.IsNullOrEmpty(address) && cell != null)
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: true))
             {
-                address = cell.Address;
-                if (cell.Workbook != null)
+                ExcelWorkbook wb = lease.Workbook;
+                ExcelCell cell = ExcelActivityHelper.IsBound(Cell) ? Cell.Get(context) : null;
+                string sheet = ExcelOperations.ResolveSheetName(
+                    wb,
+                    ExcelActivityHelper.GetOptionalString(SheetName, context),
+                    cell,
+                    null);
+                string address = ExcelActivityHelper.GetOptionalString(Address, context);
+                if (string.IsNullOrEmpty(address) && cell != null)
                 {
-                    wb = cell.Workbook;
+                    address = cell.Address;
+                    if (cell.Workbook != null)
+                    {
+                        wb = cell.Workbook;
+                    }
                 }
-            }
 
-            if (string.IsNullOrEmpty(address))
-            {
-                throw new ArgumentException("Cell or Address is required.");
-            }
+                if (string.IsNullOrEmpty(address))
+                {
+                    throw new ArgumentException("Cell or Address is required.");
+                }
 
-            ExcelOperations.Clear(wb, sheet, address, ClearOptions, isCell: true);
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+                ExcelOperations.Clear(wb, sheet, address, ClearOptions, isCell: true);
+            }
         }
     }
 }

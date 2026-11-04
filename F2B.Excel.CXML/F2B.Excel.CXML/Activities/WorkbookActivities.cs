@@ -36,7 +36,7 @@ namespace F2B.Excel.CXML
     }
 
     [DisplayName("Workbook-Close")]
-    [Description("Close workbook. Optionally save changes first.")]
+    [Description("Close workbook. Optionally save changes first. Prefer passing Workbook from Open.")]
     public sealed class WorkbookCloseActivity : CodeActivity
     {
         public WorkbookCloseActivity()
@@ -53,6 +53,11 @@ namespace F2B.Excel.CXML
         [Category("Input.A")]
         public InArgument<string> FilePath { get; set; }
 
+        [DisplayName("Password")]
+        [Category("Input.A")]
+        [Description("Optional. Only used when opening via File Path (no Workbook).")]
+        public InArgument<string> Password { get; set; }
+
         [DisplayName("Save Changes")]
         [Category("Input.B")]
         [DefaultValue(true)]
@@ -62,7 +67,8 @@ namespace F2B.Excel.CXML
         {
             ExcelWorkbook existing = ExcelActivityHelper.GetOptionalWorkbook(Workbook, context);
             string path = ExcelActivityHelper.GetOptionalString(FilePath, context);
-            ExcelWorkbook wb = ExcelWorkbookSession.Acquire(existing, path).Workbook;
+            string password = ExcelActivityHelper.GetOptionalString(Password, context);
+            ExcelWorkbook wb = ExcelWorkbookSession.Acquire(existing, path, password).Workbook;
             bool save = ExcelActivityHelper.GetOrDefault(SaveChanges, context, true);
             ExcelOperations.Close(wb, save);
             ExcelActivityHelper.SetWorkbook(Workbook, context, null);
@@ -79,9 +85,10 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            ExcelOperations.Save(wb);
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: true))
+            {
+                ExcelOperations.Save(lease.Workbook);
+            }
         }
     }
 
@@ -106,11 +113,12 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            string path = ExcelActivityHelper.RequireNonEmpty(SaveAsPath, context, nameof(SaveAsPath));
-            bool overwrite = ExcelActivityHelper.GetOrDefault(Overwrite, context, true);
-            ExcelOperations.SaveAs(wb, path, overwrite);
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: true))
+            {
+                string path = ExcelActivityHelper.RequireNonEmpty(SaveAsPath, context, nameof(SaveAsPath));
+                bool overwrite = ExcelActivityHelper.GetOrDefault(Overwrite, context, true);
+                ExcelOperations.SaveAs(lease.Workbook, path, overwrite);
+            }
         }
     }
 
@@ -133,11 +141,12 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            string name = ExcelActivityHelper.GetOptionalString(SheetName, context);
-            string created = ExcelOperations.NewSheet(wb, name);
-            ExcelActivityHelper.SetIfBound(CreatedSheetName, context, created);
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: true))
+            {
+                string name = ExcelActivityHelper.GetOptionalString(SheetName, context);
+                string created = ExcelOperations.NewSheet(lease.Workbook, name);
+                ExcelActivityHelper.SetIfBound(CreatedSheetName, context, created);
+            }
         }
     }
 
@@ -160,11 +169,12 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            string name = ExcelActivityHelper.GetOptionalString(SheetName, context);
-            int? index = ExcelActivityHelper.GetOrDefault(SheetIndex, context, null);
-            ExcelOperations.DeleteSheet(wb, name, index);
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: true))
+            {
+                string name = ExcelActivityHelper.GetOptionalString(SheetName, context);
+                int? index = ExcelActivityHelper.GetOrDefault(SheetIndex, context, null);
+                ExcelOperations.DeleteSheet(lease.Workbook, name, index);
+            }
         }
     }
 
@@ -182,9 +192,10 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            ExcelActivityHelper.SetIfBound(SheetNames, context, ExcelOperations.GetAllSheetNames(wb));
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: false))
+            {
+                ExcelActivityHelper.SetIfBound(SheetNames, context, ExcelOperations.GetAllSheetNames(lease.Workbook));
+            }
         }
     }
 
@@ -208,11 +219,13 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            string name = ExcelActivityHelper.GetOptionalString(SheetName, context);
-            int? index = ExcelActivityHelper.GetOrDefault(SheetIndex, context, null);
-            ExcelOperations.ActivateSheet(wb, name, index);
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+            // Active sheet is session state (not marked dirty); ephemeral = close without save.
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: false))
+            {
+                string name = ExcelActivityHelper.GetOptionalString(SheetName, context);
+                int? index = ExcelActivityHelper.GetOrDefault(SheetIndex, context, null);
+                ExcelOperations.ActivateSheet(lease.Workbook, name, index);
+            }
         }
     }
 
@@ -230,9 +243,10 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            ExcelActivityHelper.SetIfBound(SheetName, context, ExcelOperations.GetActiveSheetName(wb));
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: false))
+            {
+                ExcelActivityHelper.SetIfBound(SheetName, context, ExcelOperations.GetActiveSheetName(lease.Workbook));
+            }
         }
     }
 
@@ -260,12 +274,13 @@ namespace F2B.Excel.CXML
 
         protected override void Execute(CodeActivityContext context)
         {
-            ExcelWorkbook wb = ResolveWorkbook(context);
-            string source = ExcelActivityHelper.GetOptionalString(SourceSheetName, context);
-            string newName = ExcelActivityHelper.RequireNonEmpty(NewSheetName, context, nameof(NewSheetName));
-            string created = ExcelOperations.CopySheet(wb, source, newName);
-            ExcelActivityHelper.SetIfBound(CreatedSheetName, context, created);
-            ExcelActivityHelper.SetWorkbook(Workbook, context, wb);
+            using (ExcelWorkbookLease lease = LeaseWorkbook(context, writes: true))
+            {
+                string source = ExcelActivityHelper.GetOptionalString(SourceSheetName, context);
+                string newName = ExcelActivityHelper.RequireNonEmpty(NewSheetName, context, nameof(NewSheetName));
+                string created = ExcelOperations.CopySheet(lease.Workbook, source, newName);
+                ExcelActivityHelper.SetIfBound(CreatedSheetName, context, created);
+            }
         }
     }
 }
