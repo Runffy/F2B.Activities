@@ -59,6 +59,7 @@
     <Reference Include="System.Data.DataSetExtensions"/>
     <Reference Include="Microsoft.CSharp"/>
     <Reference Include="System.Data"/>
+    <Reference Include="System.DirectoryServices" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Net.Http"/>
     <Reference Include="System.Web.Extensions" />
@@ -71,6 +72,7 @@
     <Compile Include="BasicDesignerShared.cs" />
     <Compile Include="ExpressionEditDialog.cs" />
     <Compile Include="FaultPathTrackingExtension.cs" />
+    <Compile Include="GetUserInformationActivity.cs" />
     <Compile Include="GetRuntimeDirectoryActivity.cs" />
     <Compile Include="GetRuntimeDirectoryDesigner.cs" />
     <Compile Include="GetResourcePathActivity.cs" />

@@ -33,8 +33,8 @@ MixTable 是面向「业务表格」的控件，适合：
 1. 打开 **F2B.Forms.Designer**（使用与当前代码一致的编译版本）
 2. 工具箱 **Operators** 中拖入 **MixTable**
 3. 设置 `Id`（如 `mixtable1`）、`Width` / `Height`
-4. 在属性 **Data** 中填写：
-   - **Columns Json**：列定义（必填才有表头）
+4. 选中画布上的 **MixTable**，在右侧属性 **Data** 中：
+   - **Columns Json**：列定义。点右侧 **…** 打开 Columns Generator（增删改列、设 type/width 等），OK 后写回本字段；也可直接改 JSON。再次打开会按当前内容加载；语法无效时提示错误且不打开 Generator。
    - **Initial Rows Json**：初始行（设计器预览 + 运行时/Preview 都会加载）
 
 画布会按列类型画出表头与初始行示意；`Preview` 按钮会打开真实 WinForms 窗体并加载初始行。
