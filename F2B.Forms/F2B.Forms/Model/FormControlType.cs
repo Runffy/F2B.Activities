@@ -23,6 +23,7 @@ namespace F2B.Forms.Model
         public const string ScrollContainer = "ScrollContainer";
         public const string TableLayout = "TableLayout";
         public const string DataGrid = "DataGrid";
+        public const string MixTable = "MixTable";
         public const string TabControl = "TabControl";
         public const string TabPage = "TabPage";
         public const string Form = "Form";
@@ -55,6 +56,7 @@ namespace F2B.Forms.Model
                 case ScrollContainer:
                 case TableLayout:
                 case DataGrid:
+                case MixTable:
                 case TabControl:
                 case TabPage:
                     return true;
@@ -133,6 +135,12 @@ namespace F2B.Forms.Model
         {
             return !string.IsNullOrWhiteSpace(type)
                 && string.Equals(type.Trim(), DataGrid, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool IsMixTable(string type)
+        {
+            return !string.IsNullOrWhiteSpace(type)
+                && string.Equals(type.Trim(), MixTable, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>May own nested normal controls (Panel / GroupBox / TabPage / ScrollContainer / TableLayout).</summary>

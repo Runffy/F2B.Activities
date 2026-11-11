@@ -186,6 +186,8 @@ namespace F2B.Forms.Designer
             _controlTree.DragOver += OnTreeDragOver;
             _controlTree.DragDrop += OnTreeDragDrop;
             _controlTree.DragLeave += OnTreeDragLeave;
+            _controlTree.NodeMouseClick += OnTreeNodeMouseClick;
+            _controlTree.ContextMenuStrip = BuildTreeContextMenu();
 
             // Layout: left Tree View | center Designer/Viewer Area | right Properties (full height).
             // Use TableLayoutPanel instead of SplitContainer to avoid startup SplitterDistance exceptions.
@@ -568,7 +570,8 @@ namespace F2B.Forms.Designer
                     Tuple.Create("DatePicker", FormControlType.DatePicker),
                     Tuple.Create("DateTimePicker", FormControlType.DateTimePicker),
                     Tuple.Create("PictureBox", FormControlType.PictureBox),
-                    Tuple.Create("DataGrid", FormControlType.DataGrid)
+                    Tuple.Create("DataGrid", FormControlType.DataGrid),
+                    Tuple.Create("MixTable", FormControlType.MixTable)
                 });
 
             var divider = new Panel
@@ -1159,11 +1162,104 @@ namespace F2B.Forms.Designer
             if (e.Node != null && e.Node.Tag is DesignItem item)
             {
                 SelectItem(item, syncTree: false);
+                ScrollItemIntoView(item);
             }
             else if (e.Node != null && e.Node.Tag == null)
             {
                 SelectFormRoot(syncTree: false);
             }
+        }
+
+        private void OnTreeNodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right && e.Node != null)
+            {
+                _controlTree.SelectedNode = e.Node;
+            }
+        }
+
+        private ContextMenuStrip BuildTreeContextMenu()
+        {
+            var menu = new ContextMenuStrip();
+            var locate = new ToolStripMenuItem(
+                "定位到画布",
+                null,
+                (s, e) =>
+                {
+                    if (_controlTree.SelectedNode != null && _controlTree.SelectedNode.Tag is DesignItem item)
+                    {
+                        SelectItem(item, syncTree: false);
+                        ScrollItemIntoView(item);
+                    }
+                    else if (_controlTree.SelectedNode != null && _controlTree.SelectedNode.Tag == null)
+                    {
+                        // Form root — scroll to top-left of canvas.
+                        if (_viewport != null)
+                        {
+                            _viewport.AutoScrollPosition = new Point(0, 0);
+                        }
+
+                        SelectFormRoot(syncTree: false);
+                    }
+                });
+            menu.Items.Add(locate);
+            menu.Opening += (s, e) =>
+            {
+                locate.Enabled = _controlTree.SelectedNode != null;
+            };
+            return menu;
+        }
+
+        /// <summary>
+        /// Scroll the designer viewport so the item is centered (or as close as possible).
+        /// </summary>
+        private void ScrollItemIntoView(DesignItem item)
+        {
+            if (item == null || _viewport == null || _canvas == null)
+            {
+                return;
+            }
+
+            EnsureTabSelection(item);
+
+            Point abs;
+            int width;
+            int height;
+            if (FormControlType.IsTabPage(item.Type)
+                && item.Parent != null
+                && FormControlType.IsTabControl(item.Parent.Type))
+            {
+                abs = GetAbsoluteLocation(item.Parent);
+                width = Math.Max(40, item.Parent.Width);
+                height = Math.Max(40, item.Parent.Height);
+            }
+            else
+            {
+                abs = GetAbsoluteLocation(item);
+                width = Math.Max(20, item.Width);
+                height = Math.Max(20, item.Height);
+            }
+
+            var target = new Rectangle(abs.X, abs.Y, width, height);
+            int viewW = Math.Max(1, _viewport.ClientSize.Width);
+            int viewH = Math.Max(1, _viewport.ClientSize.Height);
+            int viewX = -_viewport.AutoScrollPosition.X;
+            int viewY = -_viewport.AutoScrollPosition.Y;
+            var view = new Rectangle(viewX, viewY, viewW, viewH);
+
+            // Already fully visible — keep current scroll.
+            if (view.Contains(target))
+            {
+                _canvas.Invalidate();
+                return;
+            }
+
+            int centerX = target.X + target.Width / 2;
+            int centerY = target.Y + target.Height / 2;
+            int newX = Math.Max(0, centerX - viewW / 2);
+            int newY = Math.Max(0, centerY - viewH / 2);
+            _viewport.AutoScrollPosition = new Point(newX, newY);
+            _canvas.Invalidate();
         }
 
         private void SelectFormRoot(bool syncTree)
@@ -2120,7 +2216,15 @@ namespace F2B.Forms.Designer
                 SelectTreeNode(item);
             }
 
-            _canvas.Invalidate();
+            // Newly added / programmatically selected items on a large canvas jump into view.
+            if (syncTree)
+            {
+                ScrollItemIntoView(item);
+            }
+            else
+            {
+                _canvas.Invalidate();
+            }
         }
 
         private void ToggleSelection(DesignItem item, bool syncTree)
@@ -3859,7 +3963,9 @@ namespace F2B.Forms.Designer
                         item.ForeColor,
                         item.BackColor,
                         showResizeHandles: !_isViewer,
-                        textBoxSingleLine: item.SingleLine);
+                        textBoxSingleLine: item.SingleLine,
+                        mixTableColumnsJson: FormControlType.IsMixTable(item.Type) ? item.ColumnsJson : null,
+                        mixTablePreviewRowsJson: FormControlType.IsMixTable(item.Type) ? item.InitialRowsJson : null);
                 }
 
                 if (item.Children != null && item.Children.Count > 0)
@@ -3956,6 +4062,7 @@ namespace F2B.Forms.Designer
                 case FormControlType.ScrollContainer:
                 case FormControlType.TableLayout:
                 case FormControlType.DataGrid:
+                case FormControlType.MixTable:
                 case FormControlType.TabControl:
                     return string.Empty;
                 case FormControlType.GroupBox:
@@ -3986,6 +4093,7 @@ namespace F2B.Forms.Designer
                     return 300;
                 case FormControlType.TableLayout:
                 case FormControlType.DataGrid:
+                case FormControlType.MixTable:
                     return 400;
                 case FormControlType.TabControl:
                     return 320;
@@ -4026,6 +4134,7 @@ namespace F2B.Forms.Designer
                 case FormControlType.ScrollContainer:
                 case FormControlType.TableLayout:
                 case FormControlType.DataGrid:
+                case FormControlType.MixTable:
                     return 200;
                 case FormControlType.TabControl:
                     return 220;
@@ -4505,6 +4614,18 @@ namespace F2B.Forms.Designer
         public List<string> Items { get; set; }
 
         [Category("Data")]
+        [DisplayName("Columns Json")]
+        [Description("MixTable columns JSON: [{name,type,text,items,width,headerAlign}]. type: Label|TextBox|ComboBox|CheckBox|Button|Link. headerAlign: left-top|middle-center|right-bottom|...")]
+        [Editor(typeof(MultilineStringEditor), typeof(UITypeEditor))]
+        public string ColumnsJson { get; set; }
+
+        [Category("Data")]
+        [DisplayName("Initial Rows Json")]
+        [Description("Initial MixTable rows for designer + runtime/Preview. JSON array of objects keyed by column name. Still loaded when the form opens (unless Bind MixTable replaces them).")]
+        [Editor(typeof(MultilineStringEditor), typeof(UITypeEditor))]
+        public string InitialRowsJson { get; set; }
+
+        [Category("Data")]
         [DisplayName("Selected Index")]
         public int SelectedIndex { get; set; } = -1;
 
@@ -4766,6 +4887,7 @@ namespace F2B.Forms.Designer
                         || FormControlType.IsContainer(type)
                         || FormControlType.IsTabControl(type)
                         || FormControlType.IsDataGrid(type)
+                        || FormControlType.IsMixTable(type)
                         || FormControlType.IsPictureBox(type);
 
                 case "ReadOnly":
@@ -4786,6 +4908,10 @@ namespace F2B.Forms.Designer
                     return type == FormControlType.ComboBox
                         || type == FormControlType.ListBox
                         || type == FormControlType.CheckedListBox;
+
+                case "ColumnsJson":
+                case "InitialRowsJson":
+                    return FormControlType.IsMixTable(type);
 
                 case "SelectedIndex":
                     return type == FormControlType.ComboBox
@@ -4940,6 +5066,35 @@ namespace F2B.Forms.Designer
                 def.ColumnCount = Math.Max(1, ColumnCount);
             }
 
+            if (FormControlType.IsMixTable(Type))
+            {
+                if (!string.IsNullOrWhiteSpace(ColumnsJson))
+                {
+                    try
+                    {
+                        def.Columns = JsonConvert.DeserializeObject<List<MixTableColumnDefinition>>(ColumnsJson);
+                    }
+                    catch (JsonException)
+                    {
+                        // Keep invalid JSON out of saved form; designer value remains editable.
+                        def.Columns = null;
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(InitialRowsJson))
+                {
+                    try
+                    {
+                        def.InitialRows =
+                            JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(InitialRowsJson);
+                    }
+                    catch (JsonException)
+                    {
+                        def.InitialRows = null;
+                    }
+                }
+            }
+
             if (Parent != null && FormControlType.IsTableLayout(Parent.Type))
             {
                 def.Row = Row;
@@ -5006,6 +5161,7 @@ namespace F2B.Forms.Designer
                 || type == FormControlType.ScrollContainer
                 || type == FormControlType.TableLayout
                 || type == FormControlType.DataGrid
+                || type == FormControlType.MixTable
                 || type == FormControlType.TabControl
                 || type == FormControlType.TabPage;
         }
@@ -5027,6 +5183,13 @@ namespace F2B.Forms.Designer
                 ReadOnly = c.ReadOnly == true,
                 Checked = c.Checked == true,
                 Items = c.Items,
+                ColumnsJson = c.Columns == null || c.Columns.Count == 0
+                    ? string.Empty
+                    : JsonConvert.SerializeObject(c.Columns, Formatting.Indented),
+                InitialRowsJson = (c.InitialRows ?? c.PreviewRows) == null
+                    || (c.InitialRows ?? c.PreviewRows).Count == 0
+                    ? string.Empty
+                    : JsonConvert.SerializeObject(c.InitialRows ?? c.PreviewRows, Formatting.Indented),
                 SelectedIndex = c.SelectedIndex ?? (FormControlType.IsTabControl(c.Type) ? 0 : -1),
                 Mask = c.Mask,
                 PasswordChar = c.PasswordChar,

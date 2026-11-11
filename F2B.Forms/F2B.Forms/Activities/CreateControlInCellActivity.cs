@@ -2,17 +2,19 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
-    [DisplayName("Create Control In Cell")]
+    [ToolboxPath("Control")]
+    [DisplayName("Create In Cell")]
     [Description("Create a control inside a TableLayout cell (row/column are zero-based). Clear the cell first if occupied.")]
     public sealed class CreateControlInCellActivity : CodeActivity
     {
         public CreateControlInCellActivity()
         {
-            DisplayName = "Create Control In Cell";
+            DisplayName = "Create In Cell";
         }
 
         [RequiredArgument]
@@ -39,6 +41,7 @@ namespace F2B.Forms.Activities
         [DisplayName("Control Id")]
         [Category("Input.B")]
         public InArgument<string> ControlId { get; set; }
+
 
         [DisplayName("Text")]
         [Category("Input.B")]

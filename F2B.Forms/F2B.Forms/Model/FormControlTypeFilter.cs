@@ -35,11 +35,12 @@ namespace F2B.Forms.Model
         DataGrid = 1L << 18,
         TabControl = 1L << 19,
         TabPage = 1L << 20,
+        MixTable = 1L << 21,
 
         All = Button | Label | TextBox | TextArea | CheckBox | ComboBox
             | DatePicker | DateTimePicker | CheckedListBox | ListBox | MaskedTextBox
             | NumericUpDown | PictureBox | RadioButton | Panel | GroupBox
-            | ScrollContainer | TableLayout | DataGrid | TabControl | TabPage
+            | ScrollContainer | TableLayout | DataGrid | TabControl | TabPage | MixTable
     }
 
     /// <summary>
@@ -69,7 +70,8 @@ namespace F2B.Forms.Model
             new KeyValuePair<FormControlTypeFilter, string>(FormControlTypeFilter.TableLayout, FormControlType.TableLayout),
             new KeyValuePair<FormControlTypeFilter, string>(FormControlTypeFilter.DataGrid, FormControlType.DataGrid),
             new KeyValuePair<FormControlTypeFilter, string>(FormControlTypeFilter.TabControl, FormControlType.TabControl),
-            new KeyValuePair<FormControlTypeFilter, string>(FormControlTypeFilter.TabPage, FormControlType.TabPage)
+            new KeyValuePair<FormControlTypeFilter, string>(FormControlTypeFilter.TabPage, FormControlType.TabPage),
+            new KeyValuePair<FormControlTypeFilter, string>(FormControlTypeFilter.MixTable, FormControlType.MixTable)
         };
 
         public static HashSet<string> ToTypeNameSet(FormControlTypeFilter filter)

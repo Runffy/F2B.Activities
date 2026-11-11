@@ -2,10 +2,12 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Form")]
     [DisplayName("Close Form")]
     [Description("Close the active AsyncForm from a Bind Event (or other non-Close-Scope) handler when a condition is met. Idempotent if already closed.")]
     public sealed class CloseFormActivity : CodeActivity

@@ -2,6 +2,7 @@ using System.Activities;
 using System.ComponentModel;
 using System.Windows;
 using F2B.Forms.Designers;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
@@ -11,6 +12,7 @@ namespace F2B.Forms.Activities
     /// Kept for clarity: Init is a Sequence on AsyncForm, not this type.
     /// </summary>
     [Designer(typeof(SimpleBodyDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Form")]
     [DisplayName("Init Scope")]
     [Description("Initialization scope for AsyncForm. Prefer the Init slot on AsyncForm.")]
     public sealed class InitScopeActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory

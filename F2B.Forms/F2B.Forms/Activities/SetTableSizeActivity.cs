@@ -2,10 +2,12 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Table")]
     [DisplayName("Set Table Size")]
     [Description("Set RowCount/ColumnCount of a TableLayout. Cells outside the new size are removed.")]
     public sealed class SetTableSizeActivity : CodeActivity

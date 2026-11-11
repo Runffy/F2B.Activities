@@ -2,23 +2,26 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
-    [DisplayName("Get Control Text")]
+    [ToolboxPath("Control")]
+    [DisplayName("Get Text")]
     [Description("Get the display text of a control. Expression (VB): F2B.Forms.GetControlText(\"ControlId\")")]
     public sealed class GetControlTextActivity : CodeActivity<string>
     {
         public GetControlTextActivity()
         {
-            DisplayName = "Get Control Text";
+            DisplayName = "Get Text";
         }
 
         [RequiredArgument]
         [DisplayName("Control Id")]
         [Category("Input.A")]
         public InArgument<string> ControlId { get; set; }
+
 
         [DisplayName("Text")]
         [Category("Output")]

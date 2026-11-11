@@ -376,6 +376,9 @@ namespace F2B.Forms.Engine
                 case FormControlType.DataGrid:
                     control = CreateDataGrid(definition);
                     break;
+                case FormControlType.MixTable:
+                    control = MixTableBuilder.CreateEmpty(definition);
+                    break;
                 case FormControlType.GroupBox:
                     control = CreateGroupBox(definition, map);
                     break;
@@ -413,6 +416,12 @@ namespace F2B.Forms.Engine
 
             ApplyTextAlign(control, type, definition);
             ApplyFontAndColors(control, type, definition);
+            if (FormControlType.IsMixTable(type) && control is DataGridView mixGrid)
+            {
+                // DataGridView cells use CellStyle fonts; sync from control chrome defaults.
+                MixTableStyle.ApplyControlChromeToCellStyles(mixGrid);
+            }
+
             // Apply size last: TextBox/ComboBox may ignore Height unless prepared above.
             if (!FormControlType.IsTabPage(type))
             {
@@ -545,6 +554,7 @@ namespace F2B.Forms.Engine
                 || type == FormControlType.ScrollContainer
                 || type == FormControlType.TableLayout
                 || type == FormControlType.DataGrid
+                || type == FormControlType.MixTable
                 || type == FormControlType.TabControl
                 || type == FormControlType.TabPage
                 || type == FormControlType.PictureBox;
@@ -555,6 +565,7 @@ namespace F2B.Forms.Engine
             return SupportsFont(type)
                 || FormControlType.IsContainer(type)
                 || FormControlType.IsDataGrid(type)
+                || FormControlType.IsMixTable(type)
                 || FormControlType.IsPictureBox(type);
         }
 

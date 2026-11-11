@@ -83,6 +83,7 @@ namespace F2B.Forms.Designer
                         DrawTableLayoutThumb(g);
                         break;
                     case FormControlType.DataGrid:
+                    case FormControlType.MixTable:
                         DrawDataGridThumb(g);
                         break;
                     case FormControlType.GroupBox:

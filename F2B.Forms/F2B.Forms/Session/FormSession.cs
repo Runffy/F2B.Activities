@@ -421,6 +421,12 @@ namespace F2B.Forms.Session
             object result = null;
             InvokeOnUi(() =>
             {
+                if (TryResolveMixTableCell(controlId, out string tableId, out int rowIndex, out string column))
+                {
+                    result = MixTableBuilder.GetCellValue(GetMixTable(tableId), rowIndex, column);
+                    return;
+                }
+
                 Control control = GetControl(controlId);
                 if (control is CheckBox checkBox)
                 {
@@ -476,6 +482,14 @@ namespace F2B.Forms.Session
         {
             InvokeOnUi(() =>
             {
+                if (TryResolveMixTableCell(controlId, out string tableId, out int rowIndex, out string column))
+                {
+                    DataGridView grid = GetMixTable(tableId);
+                    MixTableBuilder.SetCellValue(grid, rowIndex, column, value);
+                    FlushControlPaint(grid);
+                    return;
+                }
+
                 Control control = GetControl(controlId);
                 FormRenderer.ApplyValue(control, value);
                 FlushControlPaint(control);
@@ -486,6 +500,14 @@ namespace F2B.Forms.Session
         {
             InvokeOnUi(() =>
             {
+                if (TryResolveMixTableCell(controlId, out string tableId, out int rowIndex, out string column))
+                {
+                    DataGridView grid = GetMixTable(tableId);
+                    MixTableBuilder.SetCellValue(grid, rowIndex, column, text);
+                    FlushControlPaint(grid);
+                    return;
+                }
+
                 Control control = GetControl(controlId);
                 if (control is DateTimePicker dateTimePicker)
                 {
@@ -679,8 +701,126 @@ namespace F2B.Forms.Session
                     ApplyForeColor(control, fore.Value);
                 }
 
+                if (MixTableBuilder.IsMixTableGrid(control))
+                {
+                    MixTableStyle.ApplyControlChromeToCellStyles((DataGridView)control);
+                }
+
                 FlushControlPaint(control);
             });
+        }
+
+        /// <summary>
+        /// Partially update MixTable font/colors for Default (table), Column, Row, or Cell.
+        /// Empty style arguments keep the current value. Color is separate from Font (same as WinForms).
+        /// </summary>
+        public void SetMixTableStyle(
+            string controlId,
+            string scope,
+            int? rowIndex,
+            string column,
+            string fontFamily,
+            float? fontSize,
+            bool? bold,
+            bool? italic,
+            bool? underline,
+            string foreColor,
+            string backColor)
+        {
+            InvokeOnUi(() =>
+            {
+                DataGridView grid = GetMixTable(controlId);
+                string normalized = MixTableStyle.NormalizeScope(scope);
+                DataGridViewCellStyle style;
+                switch (normalized)
+                {
+                    case "Column":
+                        {
+                            DataGridViewColumn col = ResolveMixTableColumn(grid, column);
+                            style = col.DefaultCellStyle;
+                            break;
+                        }
+                    case "Row":
+                        {
+                            if (!rowIndex.HasValue)
+                            {
+                                throw new ArgumentException("Row Index is required for Row scope.");
+                            }
+
+                            EnsureMixTableRow(grid, rowIndex.Value);
+                            style = grid.Rows[rowIndex.Value].DefaultCellStyle;
+                            break;
+                        }
+                    case "Cell":
+                        {
+                            if (!rowIndex.HasValue)
+                            {
+                                throw new ArgumentException("Row Index is required for Cell scope.");
+                            }
+
+                            DataGridViewColumn col = ResolveMixTableColumn(grid, column);
+                            EnsureMixTableRow(grid, rowIndex.Value);
+                            style = grid.Rows[rowIndex.Value].Cells[col.Index].Style;
+                            break;
+                        }
+                    default:
+                        style = grid.DefaultCellStyle;
+                        break;
+                }
+
+                MixTableStyle.ApplyPartial(
+                    style,
+                    grid.Font,
+                    fontFamily,
+                    fontSize,
+                    bold,
+                    italic,
+                    underline,
+                    foreColor,
+                    backColor);
+
+                if (normalized == "Default")
+                {
+                    // Keep header / rows default in sync when changing table default.
+                    MixTableStyle.ApplyPartial(
+                        grid.ColumnHeadersDefaultCellStyle,
+                        grid.Font,
+                        fontFamily,
+                        fontSize,
+                        bold,
+                        italic,
+                        underline,
+                        foreColor,
+                        null);
+                    MixTableStyle.ApplyPartial(
+                        grid.RowsDefaultCellStyle,
+                        grid.Font,
+                        fontFamily,
+                        fontSize,
+                        bold,
+                        italic,
+                        underline,
+                        foreColor,
+                        backColor);
+                }
+
+                FlushControlPaint(grid);
+            });
+        }
+
+        private static void EnsureMixTableRow(DataGridView grid, int rowIndex)
+        {
+            int rows = MixTableBuilder.GetRowCount(grid);
+            if (rowIndex < 0 || rowIndex >= rows)
+            {
+                throw new InvalidOperationException("Row index out of range: " + rowIndex);
+            }
+
+            // When bound to DataTable, Rows collection mirrors data rows.
+            if (rowIndex >= grid.Rows.Count)
+            {
+                throw new InvalidOperationException("Row index out of range: " + rowIndex);
+            }
         }
 
         public void UpdateOptionsList(string controlId, IEnumerable<string> options, bool clearExisting = true)
@@ -1001,7 +1141,8 @@ namespace F2B.Forms.Session
                     || FormControlType.IsTabPage(controlType)
                     || FormControlType.IsTabControl(controlType)
                     || FormControlType.IsTableLayout(controlType)
-                    || FormControlType.IsDataGrid(controlType))
+                    || FormControlType.IsDataGrid(controlType)
+                    || FormControlType.IsMixTable(controlType))
                 {
                     throw new InvalidOperationException(
                         "Type '" + controlType + "' cannot be placed in a TableLayout cell.");
@@ -1199,6 +1340,277 @@ namespace F2B.Forms.Session
             return result;
         }
 
+        public void SetMixTableColumns(string controlId, string columnsJson)
+        {
+            InvokeOnUi(() =>
+            {
+                DataGridView grid = GetMixTable(controlId);
+                MixTableBuilder.ApplyColumns(grid, MixTableBuilder.ParseColumnsJson(columnsJson));
+                FlushControlPaint(grid);
+            });
+        }
+
+        public void SetMixTableColumns(string controlId, IList<MixTableColumnDefinition> columns)
+        {
+            InvokeOnUi(() =>
+            {
+                DataGridView grid = GetMixTable(controlId);
+                MixTableBuilder.ApplyColumns(grid, columns);
+                FlushControlPaint(grid);
+            });
+        }
+
+        public void BindMixTable(string controlId, DataTable dataTable)
+        {
+            InvokeOnUi(() =>
+            {
+                DataGridView grid = GetMixTable(controlId);
+                bool prev = _acceptEvents;
+                _acceptEvents = false;
+                try
+                {
+                    MixTableBuilder.BindDataTable(grid, dataTable);
+                }
+                finally
+                {
+                    _acceptEvents = prev;
+                }
+
+                FlushControlPaint(grid);
+            });
+        }
+
+        public int AddMixTableRow(string controlId, object values)
+        {
+            int index = -1;
+            InvokeOnUi(() =>
+            {
+                DataGridView grid = GetMixTable(controlId);
+                bool prev = _acceptEvents;
+                _acceptEvents = false;
+                try
+                {
+                    index = MixTableBuilder.AddRow(grid, MixTableBuilder.ParseRowValues(values));
+                }
+                finally
+                {
+                    _acceptEvents = prev;
+                }
+
+                FlushControlPaint(grid);
+            });
+            return index;
+        }
+
+        public void RemoveMixTableRow(string controlId, int rowIndex)
+        {
+            InvokeOnUi(() =>
+            {
+                DataGridView grid = GetMixTable(controlId);
+                bool prev = _acceptEvents;
+                _acceptEvents = false;
+                try
+                {
+                    MixTableBuilder.RemoveRow(grid, rowIndex);
+                }
+                finally
+                {
+                    _acceptEvents = prev;
+                }
+
+                FlushControlPaint(grid);
+            });
+        }
+
+        public object GetMixTableCellValue(string controlId, int rowIndex, string column)
+        {
+            object result = null;
+            InvokeOnUi(() =>
+            {
+                result = MixTableBuilder.GetCellValue(GetMixTable(controlId), rowIndex, column);
+            });
+            return result;
+        }
+
+        public void SetMixTableCellValue(string controlId, int rowIndex, string column, object value)
+        {
+            InvokeOnUi(() =>
+            {
+                DataGridView grid = GetMixTable(controlId);
+                bool prev = _acceptEvents;
+                _acceptEvents = false;
+                try
+                {
+                    MixTableBuilder.SetCellValue(grid, rowIndex, column, value);
+                }
+                finally
+                {
+                    _acceptEvents = prev;
+                }
+
+                FlushControlPaint(grid);
+            });
+        }
+
+        /// <summary>
+        /// Update one column. Scalar value → all rows; sequence → row index alignment
+        /// (extra items ignored; uncovered MixTable rows unchanged). Returns updated row count.
+        /// </summary>
+        public int SetMixTableColumnValues(string controlId, string column, object values)
+        {
+            int updated = 0;
+            InvokeOnUi(() =>
+            {
+                DataGridView grid = GetMixTable(controlId);
+                bool prev = _acceptEvents;
+                _acceptEvents = false;
+                try
+                {
+                    updated = MixTableBuilder.SetColumnValues(grid, column, values);
+                }
+                finally
+                {
+                    _acceptEvents = prev;
+                }
+
+                FlushControlPaint(grid);
+            });
+            return updated;
+        }
+
+        /// <summary>
+        /// Control | Text | Hidden for one cell. Column type is unchanged; only this cell's editor chrome changes.
+        /// </summary>
+        public void SetMixTableCellDisplay(string controlId, int rowIndex, string column, string displayMode)
+        {
+            InvokeOnUi(() =>
+            {
+                DataGridView grid = GetMixTable(controlId);
+                bool prev = _acceptEvents;
+                _acceptEvents = false;
+                try
+                {
+                    MixTableBuilder.SetCellDisplay(grid, rowIndex, column, displayMode);
+                }
+                finally
+                {
+                    _acceptEvents = prev;
+                }
+
+                FlushControlPaint(grid);
+            });
+        }
+
+        public string GetMixTableCellDisplay(string controlId, int rowIndex, string column)
+        {
+            string mode = MixTableCellDisplayMode.Control;
+            InvokeOnUi(() =>
+            {
+                mode = MixTableBuilder.GetCellDisplay(GetMixTable(controlId), rowIndex, column);
+            });
+            return mode;
+        }
+
+        public int GetMixTableRowCount(string controlId)
+        {
+            int count = 0;
+            InvokeOnUi(() =>
+            {
+                count = MixTableBuilder.GetRowCount(GetMixTable(controlId));
+            });
+            return count;
+        }
+
+        /// <summary>
+        /// Virtual control id for a MixTable cell; usable with Get/Set Control Value and Get/Set Text.
+        /// </summary>
+        public string GetMixTableCellControlId(string controlId, int rowIndex, string column)
+        {
+            string cellControlId = null;
+            InvokeOnUi(() =>
+            {
+                DataGridView grid = GetMixTable(controlId);
+                DataGridViewColumn col = ResolveMixTableColumn(grid, column);
+                int rows = MixTableBuilder.GetRowCount(grid);
+                if (rowIndex < 0 || rowIndex >= rows)
+                {
+                    throw new InvalidOperationException(
+                        "Row index " + rowIndex + " is out of range for MixTable '" + controlId + "'.");
+                }
+
+                cellControlId = MixTableCellId.Create(controlId.Trim(), rowIndex, col.Name);
+            });
+            return cellControlId;
+        }
+
+        private bool TryResolveMixTableCell(
+            string controlId,
+            out string tableId,
+            out int rowIndex,
+            out string columnName)
+        {
+            if (!MixTableCellId.TryParse(controlId, out tableId, out rowIndex, out columnName))
+            {
+                return false;
+            }
+
+            // Validate live table/row/column so bad ids fail clearly.
+            DataGridView grid = GetMixTable(tableId);
+            ResolveMixTableColumn(grid, columnName);
+            int rows = MixTableBuilder.GetRowCount(grid);
+            if (rowIndex < 0 || rowIndex >= rows)
+            {
+                throw new InvalidOperationException(
+                    "MixTable cell id '" + controlId + "' row is out of range.");
+            }
+
+            return true;
+        }
+
+        private static DataGridViewColumn ResolveMixTableColumn(DataGridView grid, string column)
+        {
+            // Reuse builder resolution via a get that throws with the same rules.
+            // Touch the cell API with row 0 only for column resolve when rows exist;
+            // otherwise resolve from schema/columns directly.
+            if (grid == null)
+            {
+                throw new ArgumentNullException(nameof(grid));
+            }
+
+            if (string.IsNullOrWhiteSpace(column))
+            {
+                throw new ArgumentException("Column is required.", nameof(column));
+            }
+
+            string text = column.Trim();
+            if (int.TryParse(text, out int index))
+            {
+                if (index < 0 || index >= grid.Columns.Count)
+                {
+                    throw new InvalidOperationException("Column index out of range: " + index);
+                }
+
+                return grid.Columns[index];
+            }
+
+            if (grid.Columns.Contains(text))
+            {
+                return grid.Columns[text];
+            }
+
+            foreach (DataGridViewColumn col in grid.Columns)
+            {
+                if (string.Equals(col.HeaderText, text, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(col.Name, text, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(col.DataPropertyName, text, StringComparison.OrdinalIgnoreCase))
+                {
+                    return col;
+                }
+            }
+
+            throw new InvalidOperationException("Column not found: '" + column + "'.");
+        }
+
         private TableLayoutPanel GetTableLayout(string tableId)
         {
             Control control = GetControl(tableId);
@@ -1216,10 +1628,23 @@ namespace F2B.Forms.Session
         {
             Control control = GetControl(controlId);
             var grid = control as DataGridView;
-            if (grid == null)
+            if (grid == null || MixTableBuilder.IsMixTableGrid(grid))
             {
                 throw new InvalidOperationException(
                     "Control '" + controlId + "' is not a DataGrid.");
+            }
+
+            return grid;
+        }
+
+        private DataGridView GetMixTable(string controlId)
+        {
+            Control control = GetControl(controlId);
+            var grid = control as DataGridView;
+            if (grid == null || !MixTableBuilder.IsMixTableGrid(grid))
+            {
+                throw new InvalidOperationException(
+                    "Control '" + controlId + "' is not a MixTable.");
             }
 
             return grid;
@@ -1757,11 +2182,60 @@ namespace F2B.Forms.Session
             return confirmed;
         }
 
+        /// <summary>
+        /// Modal popup owned by the active form: message + dropdown + OK.
+        /// Blocks until OK or the window is closed (X → selected item null).
+        /// When <paramref name="allowNull"/> is false, a null selection throws.
+        /// </summary>
+        public object ShowSelectPopup(
+            string title,
+            string message,
+            object options,
+            string buttonName = null,
+            bool allowNull = true)
+        {
+            object selected = null;
+            InvokeOnUi(() =>
+            {
+                EnsureOpen();
+                if (_form != null && !_form.IsDisposed)
+                {
+                    FormNativeWindowActivator.SoftBringToFront(_form);
+                }
+
+                using (var popup = new SelectPopupForm(
+                    title,
+                    message,
+                    SelectPopupForm.ParseOptions(options),
+                    string.IsNullOrWhiteSpace(buttonName) ? "OK" : buttonName))
+                {
+                    popup.ShowDialog(_form);
+                    selected = popup.SelectedItem;
+                }
+            });
+
+            if (!allowNull && selected == null)
+            {
+                throw new InvalidOperationException(
+                    "Select popup returned null but Allow Null is false "
+                    + "(no selection, null option, or the dialog was closed).");
+            }
+
+            return selected;
+        }
+
         public string GetControlText(string controlId)
         {
             string result = string.Empty;
             InvokeOnUi(() =>
             {
+                if (TryResolveMixTableCell(controlId, out string tableId, out int rowIndex, out string column))
+                {
+                    object value = MixTableBuilder.GetCellValue(GetMixTable(tableId), rowIndex, column);
+                    result = value == null ? string.Empty : Convert.ToString(value);
+                    return;
+                }
+
                 Control control = GetControl(controlId);
                 result = ReadTextLocal(control);
             });
@@ -2050,6 +2524,30 @@ namespace F2B.Forms.Session
             switch (normalized.ToLowerInvariant())
             {
                 case "click":
+                    if (MixTableBuilder.IsMixTableGrid(control))
+                    {
+                        var mixClick = (DataGridView)control;
+                        DataGridViewCellEventHandler handler = (s, e) =>
+                        {
+                            if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.ColumnIndex >= mixClick.Columns.Count)
+                            {
+                                return;
+                            }
+
+                            DataGridViewColumn col = mixClick.Columns[e.ColumnIndex];
+                            if (!(col is DataGridViewButtonColumn) && !(col is DataGridViewLinkColumn))
+                            {
+                                return;
+                            }
+
+                            LastRowIndex = e.RowIndex;
+                            LastColumnName = col.Name;
+                            Raise(controlId, "Click", e);
+                        };
+                        mixClick.CellContentClick += handler;
+                        return () => mixClick.CellContentClick -= handler;
+                    }
+                    else
                     {
                         EventHandler handler = (s, e) => Raise(controlId, "Click", e);
                         control.Click += handler;
@@ -2156,6 +2654,36 @@ namespace F2B.Forms.Session
                         else
                         {
                             raiseAs = "Change";
+                        }
+
+                        if (MixTableBuilder.IsMixTableGrid(control))
+                        {
+                            var mixChange = (DataGridView)control;
+                            EventHandler dirtyHandler = (s, e) =>
+                            {
+                                if (mixChange.IsCurrentCellDirty)
+                                {
+                                    mixChange.CommitEdit(DataGridViewDataErrorContexts.Commit);
+                                }
+                            };
+                            DataGridViewCellEventHandler valueHandler = (s, e) =>
+                            {
+                                if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.ColumnIndex >= mixChange.Columns.Count)
+                                {
+                                    return;
+                                }
+
+                                LastRowIndex = e.RowIndex;
+                                LastColumnName = mixChange.Columns[e.ColumnIndex].Name;
+                                Raise(controlId, raiseAs, e);
+                            };
+                            mixChange.CurrentCellDirtyStateChanged += dirtyHandler;
+                            mixChange.CellValueChanged += valueHandler;
+                            return () =>
+                            {
+                                mixChange.CurrentCellDirtyStateChanged -= dirtyHandler;
+                                mixChange.CellValueChanged -= valueHandler;
+                            };
                         }
 
                         if (control is ComboBox comboBox)

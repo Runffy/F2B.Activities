@@ -2,10 +2,12 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Table")]
     [DisplayName("Clear Table")]
     [Description("Remove all controls from a TableLayout (keeps row/column size).")]
     public sealed class ClearTableActivity : CodeActivity

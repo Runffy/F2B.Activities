@@ -2,23 +2,26 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
-    [DisplayName("Unbind Event")]
+    [ToolboxPath("Event")]
+    [DisplayName("Unbind")]
     [Description("Unregister a previously bound control event. Leave Event Name empty to unbind all events for that control.")]
     public sealed class UnbindEventActivity : CodeActivity
     {
         public UnbindEventActivity()
         {
-            DisplayName = "Unbind Event";
+            DisplayName = "Unbind";
         }
 
         [RequiredArgument]
         [DisplayName("Control Id")]
         [Category("Input.A")]
         public InArgument<string> ControlId { get; set; }
+
 
         [DisplayName("Event Name")]
         [Description("Event to unbind, e.g. Click. Empty = unbind all events on this control.")]

@@ -2,10 +2,12 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Table")]
     [DisplayName("Get Cell Value")]
     [Description("Read a cell from a DataGrid by row index and column name or index.")]
     public sealed class GetDataGridCellValueActivity : CodeActivity
@@ -30,6 +32,7 @@ namespace F2B.Forms.Activities
         [Description("Column name or zero-based index.")]
         [Category("Input.A")]
         public InArgument<string> Column { get; set; }
+
 
         [DisplayName("Value")]
         [Category("Output")]

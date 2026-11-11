@@ -2,17 +2,19 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
-    [DisplayName("Set Control Text")]
+    [ToolboxPath("Control")]
+    [DisplayName("Set Text")]
     [Description("Set the visible Text of Label, Button, CheckBox, TextBox, Form title, etc.")]
     public sealed class SetControlTextActivity : CodeActivity
     {
         public SetControlTextActivity()
         {
-            DisplayName = "Set Control Text";
+            DisplayName = "Set Text";
         }
 
         [RequiredArgument]

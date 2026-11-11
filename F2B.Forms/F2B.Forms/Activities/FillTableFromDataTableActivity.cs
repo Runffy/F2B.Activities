@@ -3,10 +3,12 @@ using System.ComponentModel;
 using System.Data;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Table")]
     [DisplayName("Fill Table From DataTable")]
     [Description("Resize a TableLayout and fill cells from a DataTable. Default cell type is Label; list editable column names to use TextBox.")]
     public sealed class FillTableFromDataTableActivity : CodeActivity
@@ -27,10 +29,12 @@ namespace F2B.Forms.Activities
         [Category("Input.A")]
         public InArgument<DataTable> DataTable { get; set; }
 
+
         [DisplayName("Header Row")]
         [Description("When true, row 0 shows column names as Labels.")]
         [Category("Input.B")]
         public InArgument<bool> HeaderRow { get; set; }
+
 
         [DisplayName("Editable Columns")]
         [Description("Comma-separated column names that become TextBox. Empty = all Labels.")]

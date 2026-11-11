@@ -6,10 +6,12 @@ using System.ComponentModel;
 using System.Windows;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(AsyncFormDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Form")]
     [DisplayName("Async Form")]
     [Description("Open a JSON WinForms UI, run Init once, loop BindEvent handlers, optional Close Scope on user close.")]
     public sealed class AsyncFormActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory
@@ -32,14 +34,17 @@ namespace F2B.Forms.Activities
         [Category("Input.A")]
         public InArgument<string> FormPath { get; set; }
 
+
         [DisplayName("Timeout (ms)")]
         [Description("Auto-close after this many milliseconds. 0 = no timeout.")]
         [Category("Input.B")]
         public InArgument<int> Timeout { get; set; }
 
+
         [DisplayName("Result Json")]
         [Category("Output")]
         public OutArgument<string> ResultJson { get; set; }
+
 
         [DisplayName("Error Message")]
         [Category("Output")]

@@ -3,10 +3,12 @@ using System.ComponentModel;
 using System.Data;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Table")]
     [DisplayName("Bind DataTable")]
     [Description("Bind a DataTable to a read-only DataGrid. Do not mutate the table from another thread while the form is open.")]
     public sealed class BindDataTableActivity : CodeActivity

@@ -2,17 +2,19 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
-    [DisplayName("Update Control")]
+    [ToolboxPath("Control")]
+    [DisplayName("Update")]
     [Description("Update any writable control property by name (e.g. SelectedIndex, Enabled, Text). Value/Items/ReadOnly/color aliases keep form semantics.")]
     public sealed class UpdateControlActivity : CodeActivity
     {
         public UpdateControlActivity()
         {
-            DisplayName = "Update Control";
+            DisplayName = "Update";
         }
 
         [RequiredArgument]

@@ -3,17 +3,19 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
-    [DisplayName("Resize Control")]
+    [ToolboxPath("Control")]
+    [DisplayName("Resize")]
     [Description("Resize a control or the form at runtime. Use Control Id 'form' (or the form id) for the window. Leave Width/Height empty to keep that dimension.")]
     public sealed class ResizeControlActivity : CodeActivity
     {
         public ResizeControlActivity()
         {
-            DisplayName = "Resize Control";
+            DisplayName = "Resize";
         }
 
         [RequiredArgument]
@@ -22,10 +24,12 @@ namespace F2B.Forms.Activities
         [Category("Input.A")]
         public InArgument<string> ControlId { get; set; }
 
+
         [DisplayName("Width")]
         [Description("New width in pixels. Empty / null / 0 = keep current.")]
         [Category("Input.A")]
         public InArgument<string> Width { get; set; }
+
 
         [DisplayName("Height")]
         [Description("New height in pixels. Empty / null / 0 = keep current.")]

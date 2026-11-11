@@ -3,10 +3,12 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SetFontDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Control")]
     [DisplayName("Set Font")]
     [Description("Partially update font on a control. Leave a field empty to keep the current value.")]
     public sealed class SetFontActivity : CodeActivity
@@ -25,30 +27,36 @@ namespace F2B.Forms.Activities
         [Category("Input.A")]
         public InArgument<string> ControlId { get; set; }
 
+
         [DisplayName("Font Family")]
         [Description("Empty / null = do not change.")]
         [Category("Input.B")]
         public InArgument<string> FontFamily { get; set; }
+
 
         [DisplayName("Font Size")]
         [Description("Point size. Empty / null = do not change.")]
         [Category("Input.B")]
         public InArgument<string> FontSize { get; set; }
 
+
         [DisplayName("Bold")]
         [Description("Blank = keep; None = not bold; True = bold.")]
         [Category("Input.C")]
         public InArgument<string> Bold { get; set; }
+
 
         [DisplayName("Italic")]
         [Description("Blank = keep; None = not italic; True = italic.")]
         [Category("Input.C")]
         public InArgument<string> Italic { get; set; }
 
+
         [DisplayName("Underline")]
         [Description("Blank = keep; None = not underline; True = underline.")]
         [Category("Input.C")]
         public InArgument<string> Underline { get; set; }
+
 
         [DisplayName("Fore Color")]
         [Description("HTML color e.g. #000000 or Red. Empty / null = do not change.")]

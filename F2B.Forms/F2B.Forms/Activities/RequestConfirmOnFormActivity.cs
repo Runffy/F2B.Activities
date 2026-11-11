@@ -2,10 +2,12 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Dialog")]
     [DisplayName("Request Confirm On Form")]
     [Description("Show a native Win32 Yes/No confirmation owned by the active form (soft-brings form to front first). Returns true when Yes is chosen. Button captions follow the OS language.")]
     public sealed class RequestConfirmOnFormActivity : CodeActivity<bool>
@@ -22,19 +24,23 @@ namespace F2B.Forms.Activities
         [Category("Input.A")]
         public InArgument<string> Message { get; set; }
 
+
         [DisplayName("Title")]
         [Category("Input.A")]
         public InArgument<string> Title { get; set; }
+
 
         [DisplayName("Yes Text")]
         [Description("Ignored for native Win32 MessageBox (kept for workflow compatibility).")]
         [Category("Input.B")]
         public InArgument<string> YesText { get; set; }
 
+
         [DisplayName("No Text")]
         [Description("Ignored for native Win32 MessageBox (kept for workflow compatibility).")]
         [Category("Input.B")]
         public InArgument<string> NoText { get; set; }
+
 
         [DisplayName("Confirmed")]
         [Category("Output")]

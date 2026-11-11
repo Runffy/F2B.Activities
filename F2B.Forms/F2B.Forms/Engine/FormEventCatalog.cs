@@ -77,6 +77,14 @@ namespace F2B.Forms.Engine
                     list.Add("CellClick");
                     break;
 
+                case FormControlType.MixTable:
+                    // Click = Button/Link cell content; Change = TextBox/Combo/Check edits.
+                    list.Add("Click");
+                    list.Add("Change");
+                    list.Add("CellClick");
+                    list.Add("SelectionChanged");
+                    break;
+
                 case FormControlType.Label:
                 case FormControlType.Panel:
                 case FormControlType.GroupBox:
@@ -112,7 +120,8 @@ namespace F2B.Forms.Engine
                 FormControlType.PictureBox,
                 FormControlType.TabControl,
                 FormControlType.TabPage,
-                FormControlType.DataGrid
+                FormControlType.DataGrid,
+                FormControlType.MixTable
             };
         }
 

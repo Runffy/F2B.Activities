@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Control")]
     [DisplayName("Update Options List")]
     [Description("Update ComboBox options. Options is IEnumerable<string>.")]
     public sealed class UpdateOptionsListActivity : CodeActivity
@@ -27,6 +29,7 @@ namespace F2B.Forms.Activities
         [Description("IEnumerable<string> of option texts.")]
         [Category("Input.A")]
         public InArgument<IEnumerable<string>> Options { get; set; }
+
 
         [DisplayName("Clear Existing")]
         [Category("Input.B")]

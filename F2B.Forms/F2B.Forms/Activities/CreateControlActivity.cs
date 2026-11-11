@@ -3,17 +3,19 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
-    [DisplayName("Create Control")]
+    [ToolboxPath("Control")]
+    [DisplayName("Create")]
     [Description("Create a control inside a parent container (form / Panel / ScrollContainer / GroupBox / TabPage). For TableLayout cells use Create Control In Cell.")]
     public sealed class CreateControlActivity : CodeActivity
     {
         public CreateControlActivity()
         {
-            DisplayName = "Create Control";
+            DisplayName = "Create";
             X = new InArgument<string>("0");
             Y = new InArgument<string>("0");
         }
@@ -26,7 +28,7 @@ namespace F2B.Forms.Activities
 
         [RequiredArgument]
         [DisplayName("Type")]
-        [Description("Control type, e.g. Button, Label, TextBox, Panel, ScrollContainer, TableLayout, DataGrid, TabPage.")]
+        [Description("Control type, e.g. Button, Label, TextBox, Panel, ScrollContainer, TableLayout, DataGrid, MixTable, TabPage.")]
         [Category("Input.A")]
         public InArgument<string> Type { get; set; }
 
@@ -36,24 +38,29 @@ namespace F2B.Forms.Activities
         [Category("Input.A")]
         public InArgument<string> ControlId { get; set; }
 
+
         [DisplayName("Text")]
         [Category("Input.B")]
         public InArgument<string> Text { get; set; }
+
 
         [DisplayName("X")]
         [Description("Left offset relative to the parent container. Default 0.")]
         [Category("Input.B")]
         public InArgument<string> X { get; set; }
 
+
         [DisplayName("Y")]
         [Description("Top offset relative to the parent container. Default 0.")]
         [Category("Input.B")]
         public InArgument<string> Y { get; set; }
 
+
         [DisplayName("Width")]
         [Description("Width in pixels. Empty / 0 = default (120).")]
         [Category("Input.B")]
         public InArgument<string> Width { get; set; }
+
 
         [DisplayName("Height")]
         [Description("Height in pixels. Empty / 0 = default (30).")]

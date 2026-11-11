@@ -2,22 +2,25 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
-    [DisplayName("Get Control Value")]
+    [ToolboxPath("Control")]
+    [DisplayName("Get Value")]
     public sealed class GetControlValueActivity : CodeActivity<object>
     {
         public GetControlValueActivity()
         {
-            DisplayName = "Get Control Value";
+            DisplayName = "Get Value";
         }
 
         [RequiredArgument]
         [DisplayName("Control Id")]
         [Category("Input.A")]
         public InArgument<string> ControlId { get; set; }
+
 
         [DisplayName("Value")]
         [Category("Output")]

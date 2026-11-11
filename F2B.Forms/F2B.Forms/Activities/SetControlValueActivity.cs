@@ -2,17 +2,19 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
-    [DisplayName("Set Control Value")]
+    [ToolboxPath("Control")]
+    [DisplayName("Set Value")]
     [Description("Set a control value/state (TextBox text, CheckBox checked, ComboBox selection).")]
     public sealed class SetControlValueActivity : CodeActivity
     {
         public SetControlValueActivity()
         {
-            DisplayName = "Set Control Value";
+            DisplayName = "Set Value";
         }
 
         [RequiredArgument]

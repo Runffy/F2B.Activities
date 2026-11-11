@@ -85,6 +85,11 @@ namespace F2B.Forms.Engine
 
             if (control is DataGridView)
             {
+                if (MixTableBuilder.IsMixTableGrid(control))
+                {
+                    return FormControlType.MixTable;
+                }
+
                 return FormControlType.DataGrid;
             }
 

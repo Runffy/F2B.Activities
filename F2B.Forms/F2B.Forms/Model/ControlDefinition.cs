@@ -155,6 +155,26 @@ namespace F2B.Forms.Model
         [JsonProperty("column")]
         public int? Column { get; set; }
 
+        /// <summary>MixTable column schema (Label/TextBox/ComboBox/CheckBox/Button/Link).</summary>
+        [JsonProperty("columns")]
+        public List<MixTableColumnDefinition> Columns { get; set; }
+
+        /// <summary>
+        /// MixTable initial rows (designer canvas + runtime / Preview).
+        /// Each element is an object keyed by column name.
+        /// Prefers JSON key <c>initialRows</c>; legacy <c>previewRows</c> is still read.
+        /// </summary>
+        [JsonProperty("initialRows")]
+        public List<Dictionary<string, object>> InitialRows { get; set; }
+
+        /// <summary>Legacy read alias; do not serialize (use <see cref="InitialRows"/>).</summary>
+        [JsonIgnore]
+        public List<Dictionary<string, object>> PreviewRows
+        {
+            get { return InitialRows; }
+            set { InitialRows = value; }
+        }
+
         [JsonProperty("controls")]
         public List<ControlDefinition> Controls { get; set; }
 

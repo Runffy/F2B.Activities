@@ -46,7 +46,9 @@ namespace F2B.Forms.Designer
             Color foreColor,
             Color backColor,
             bool showResizeHandles = true,
-            bool textBoxSingleLine = true)
+            bool textBoxSingleLine = true,
+            string mixTableColumnsJson = null,
+            string mixTablePreviewRowsJson = null)
         {
             if (g == null || bounds.Width <= 0 || bounds.Height <= 0)
             {
@@ -162,6 +164,16 @@ namespace F2B.Forms.Designer
                     break;
                 case FormControlType.DataGrid:
                     DrawDataGrid(g, bounds, useFont, useFore, backColor);
+                    break;
+                case FormControlType.MixTable:
+                    DrawMixTable(
+                        g,
+                        bounds,
+                        useFont,
+                        useFore,
+                        backColor,
+                        mixTableColumnsJson,
+                        mixTablePreviewRowsJson);
                     break;
                 case FormControlType.GroupBox:
                     DrawGroupBox(g, bounds, displayText, enabled, useFont, useFore, backColor);
@@ -767,49 +779,477 @@ namespace F2B.Forms.Designer
 
         private static void DrawDataGrid(Graphics g, Rectangle bounds, Font font, Color foreColor, Color backColor)
         {
+            DrawTableChrome(g, bounds, font, foreColor, backColor, null, fallbackTitle: "DataGrid");
+        }
+
+        private static void DrawMixTable(
+            Graphics g,
+            Rectangle bounds,
+            Font font,
+            Color foreColor,
+            Color backColor,
+            string columnsJson,
+            string previewRowsJson)
+        {
+            List<MixTableColumnDefinition> columns = ParseMixTableColumns(columnsJson);
+            IList<Dictionary<string, object>> rows = ParseMixTablePreviewRows(previewRowsJson);
+            var headers = new List<string>();
+            foreach (MixTableColumnDefinition col in columns)
+            {
+                string title = !string.IsNullOrWhiteSpace(col.Text)
+                    ? col.Text.Trim()
+                    : (col.Name ?? string.Empty);
+                headers.Add(title);
+            }
+
+            DrawTableChrome(
+                g,
+                bounds,
+                font,
+                foreColor,
+                backColor,
+                headers,
+                columns,
+                rows,
+                fallbackTitle: "MixTable");
+        }
+
+        private static List<MixTableColumnDefinition> ParseMixTableColumns(string columnsJson)
+        {
+            var list = new List<MixTableColumnDefinition>();
+            if (string.IsNullOrWhiteSpace(columnsJson))
+            {
+                return list;
+            }
+
+            try
+            {
+                List<MixTableColumnDefinition> cols =
+                    Newtonsoft.Json.JsonConvert.DeserializeObject<List<MixTableColumnDefinition>>(columnsJson);
+                if (cols == null)
+                {
+                    return list;
+                }
+
+                foreach (MixTableColumnDefinition col in cols)
+                {
+                    if (col == null || string.IsNullOrWhiteSpace(col.Name))
+                    {
+                        continue;
+                    }
+
+                    list.Add(col);
+                }
+            }
+            catch
+            {
+                // Invalid JSON — empty columns → MixTable placeholder.
+            }
+
+            return list;
+        }
+
+        private static IList<Dictionary<string, object>> ParseMixTablePreviewRows(string previewRowsJson)
+        {
+            var rows = new List<Dictionary<string, object>>();
+            if (string.IsNullOrWhiteSpace(previewRowsJson))
+            {
+                return rows;
+            }
+
+            try
+            {
+                List<Dictionary<string, object>> parsed =
+                    Newtonsoft.Json.JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(previewRowsJson);
+                if (parsed == null)
+                {
+                    return rows;
+                }
+
+                foreach (Dictionary<string, object> row in parsed)
+                {
+                    if (row != null)
+                    {
+                        rows.Add(row);
+                    }
+                }
+            }
+            catch
+            {
+                // Invalid preview JSON — ignore rows.
+            }
+
+            return rows;
+        }
+
+        private static void DrawDataGridPlaceholderRows(
+            Graphics g,
+            Rectangle bounds,
+            int headerBottom,
+            int cols,
+            int[] widths,
+            Pen pen)
+        {
+            int rowH = Math.Max(16, (bounds.Height - (headerBottom - bounds.Y) - 2) / 4);
+            for (int r = 1; r < 4; r++)
+            {
+                int y = headerBottom + r * rowH;
+                if (y >= bounds.Bottom - 1)
+                {
+                    break;
+                }
+
+                g.DrawLine(pen, bounds.X + 1, y, bounds.Right - 2, y);
+            }
+        }
+
+        private static void DrawTableChrome(
+            Graphics g,
+            Rectangle bounds,
+            Font font,
+            Color foreColor,
+            Color backColor,
+            IList<string> headers,
+            string fallbackTitle)
+        {
+            DrawTableChrome(
+                g,
+                bounds,
+                font,
+                foreColor,
+                backColor,
+                headers,
+                columns: null,
+                previewRows: null,
+                fallbackTitle: fallbackTitle);
+        }
+
+        private static void DrawTableChrome(
+            Graphics g,
+            Rectangle bounds,
+            Font font,
+            Color foreColor,
+            Color backColor,
+            IList<string> headers,
+            IList<MixTableColumnDefinition> columns,
+            IList<Dictionary<string, object>> previewRows,
+            string fallbackTitle)
+        {
             using (var back = new SolidBrush(backColor.IsEmpty ? SystemColors.Window : backColor))
             {
                 g.FillRectangle(back, bounds);
             }
 
             ControlPaint.DrawBorder(g, bounds, SystemColors.ActiveBorder, ButtonBorderStyle.Solid);
-            int headerH = Math.Min(24, Math.Max(16, bounds.Height / 6));
+            int headerH = Math.Min(24, Math.Max(18, bounds.Height / 8));
             var header = new Rectangle(bounds.X + 1, bounds.Y + 1, bounds.Width - 2, headerH);
             using (var brush = new SolidBrush(SystemColors.Control))
             {
                 g.FillRectangle(brush, header);
             }
 
+            int cols = headers != null && headers.Count > 0 ? headers.Count : 3;
+            int[] widths = MeasureDesignColumnWidths(bounds.Width - 2, columns, headers);
+            Color textColor = foreColor.IsEmpty ? SystemColors.ControlText : foreColor;
+
             using (var pen = new Pen(SystemColors.ControlDark))
             {
                 g.DrawLine(pen, bounds.X + 1, header.Bottom, bounds.Right - 2, header.Bottom);
-                int cols = 3;
-                for (int c = 1; c < cols; c++)
+                int x = bounds.X + 1;
+                for (int c = 0; c < cols; c++)
                 {
-                    int x = bounds.X + (bounds.Width * c / cols);
-                    g.DrawLine(pen, x, bounds.Y + 1, x, bounds.Bottom - 1);
-                }
-
-                int rowH = Math.Max(16, (bounds.Height - headerH - 2) / 4);
-                for (int r = 1; r < 4; r++)
-                {
-                    int y = header.Bottom + r * rowH;
-                    if (y >= bounds.Bottom - 1)
+                    int w = widths[c];
+                    if (c > 0)
                     {
-                        break;
+                        g.DrawLine(pen, x, bounds.Y + 1, x, bounds.Bottom - 1);
                     }
 
-                    g.DrawLine(pen, bounds.X + 1, y, bounds.Right - 2, y);
+                    if (headers != null && headers.Count > 0 && c < headers.Count)
+                    {
+                        var cell = new Rectangle(x + 1, header.Y, Math.Max(0, w - 2), header.Height);
+                        string headerAlign = columns != null && c < columns.Count
+                            ? columns[c].HeaderAlign
+                            : null;
+                        TextRenderer.DrawText(
+                            g,
+                            headers[c],
+                            font,
+                            cell,
+                            textColor,
+                            MixTableAlign.ToTextFormatFlags(
+                                MixTableAlign.Parse(
+                                    headerAlign,
+                                    System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter)));
+                    }
+
+                    x += w;
+                }
+
+                bool hasPreview = previewRows != null && previewRows.Count > 0 && columns != null && columns.Count > 0;
+                if (hasPreview)
+                {
+                    int rowH = Math.Max(22, Math.Min(28, (bounds.Height - headerH - 4) / Math.Max(1, previewRows.Count)));
+                    int maxRows = Math.Max(1, (bounds.Height - headerH - 2) / rowH);
+                    int drawCount = Math.Min(previewRows.Count, maxRows);
+                    for (int r = 0; r < drawCount; r++)
+                    {
+                        int y = header.Bottom + r * rowH;
+                        if (y + 2 >= bounds.Bottom)
+                        {
+                            break;
+                        }
+
+                        g.DrawLine(pen, bounds.X + 1, y + rowH, bounds.Right - 2, y + rowH);
+                        DrawMixTablePreviewRow(
+                            g,
+                            bounds.X + 1,
+                            y,
+                            rowH,
+                            widths,
+                            columns,
+                            previewRows[r],
+                            font,
+                            textColor);
+                    }
+                }
+                else
+                {
+                    DrawDataGridPlaceholderRows(g, bounds, header.Bottom, cols, widths, pen);
                 }
             }
 
-            TextRenderer.DrawText(
-                g,
-                "DataGrid",
-                font,
-                header,
-                foreColor.IsEmpty ? SystemColors.ControlText : foreColor,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            if (headers == null || headers.Count == 0)
+            {
+                TextRenderer.DrawText(
+                    g,
+                    fallbackTitle,
+                    font,
+                    header,
+                    textColor,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            }
+        }
+
+        private static void DrawMixTablePreviewRow(
+            Graphics g,
+            int left,
+            int top,
+            int rowH,
+            int[] widths,
+            IList<MixTableColumnDefinition> columns,
+            Dictionary<string, object> row,
+            Font font,
+            Color textColor)
+        {
+            int x = left;
+            for (int c = 0; c < columns.Count && c < widths.Length; c++)
+            {
+                MixTableColumnDefinition col = columns[c];
+                int w = widths[c];
+                var cell = new Rectangle(x + 2, top + 2, Math.Max(0, w - 4), Math.Max(0, rowH - 4));
+                string value = LookupPreviewValue(row, col.Name);
+                if (string.IsNullOrEmpty(value) && !string.IsNullOrWhiteSpace(col.Text)
+                    && (col.Type == MixTableColumnType.Button || col.Type == MixTableColumnType.Link))
+                {
+                    value = col.Text.Trim();
+                }
+
+                DrawMixTablePreviewCell(g, cell, col.Type, value, font, textColor);
+                x += w;
+            }
+        }
+
+        private static string LookupPreviewValue(Dictionary<string, object> row, string columnName)
+        {
+            if (row == null || string.IsNullOrWhiteSpace(columnName))
+            {
+                return string.Empty;
+            }
+
+            foreach (KeyValuePair<string, object> pair in row)
+            {
+                if (string.Equals(pair.Key, columnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return pair.Value == null ? string.Empty : Convert.ToString(pair.Value);
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private static void DrawMixTablePreviewCell(
+            Graphics g,
+            Rectangle cell,
+            string type,
+            string value,
+            Font font,
+            Color textColor)
+        {
+            if (cell.Width <= 2 || cell.Height <= 2)
+            {
+                return;
+            }
+
+            string kind = type ?? MixTableColumnType.Label;
+            switch (kind)
+            {
+                case MixTableColumnType.CheckBox:
+                    {
+                        bool on = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)
+                            || value == "1"
+                            || string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase);
+                        int size = Math.Min(14, Math.Min(cell.Width, cell.Height) - 2);
+                        var box = new Rectangle(
+                            cell.X + Math.Max(0, (cell.Width - size) / 2),
+                            cell.Y + Math.Max(0, (cell.Height - size) / 2),
+                            size,
+                            size);
+                        ControlPaint.DrawCheckBox(
+                            g,
+                            box,
+                            on ? ButtonState.Checked : ButtonState.Normal);
+                        break;
+                    }
+                case MixTableColumnType.Button:
+                    {
+                        string label = string.IsNullOrEmpty(value) ? "-" : value;
+                        ButtonRenderer.DrawButton(g, cell, label, font, false, PushButtonState.Normal);
+                        break;
+                    }
+                case MixTableColumnType.ComboBox:
+                    {
+                        using (var back = new SolidBrush(SystemColors.Window))
+                        {
+                            g.FillRectangle(back, cell);
+                        }
+
+                        ControlPaint.DrawBorder(g, cell, SystemColors.ActiveBorder, ButtonBorderStyle.Solid);
+                        int arrow = Math.Min(16, cell.Width);
+                        var drop = new Rectangle(cell.Right - arrow, cell.Y, arrow, cell.Height);
+                        ControlPaint.DrawComboButton(g, drop, ButtonState.Normal);
+                        var textRect = new Rectangle(cell.X + 2, cell.Y, Math.Max(0, cell.Width - arrow - 2), cell.Height);
+                        TextRenderer.DrawText(
+                            g,
+                            value ?? string.Empty,
+                            font,
+                            textRect,
+                            textColor,
+                            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                        break;
+                    }
+                case MixTableColumnType.TextBox:
+                    {
+                        using (var back = new SolidBrush(SystemColors.Window))
+                        {
+                            g.FillRectangle(back, cell);
+                        }
+
+                        ControlPaint.DrawBorder(g, cell, SystemColors.ActiveBorder, ButtonBorderStyle.Solid);
+                        TextRenderer.DrawText(
+                            g,
+                            value ?? string.Empty,
+                            font,
+                            Rectangle.Inflate(cell, -2, 0),
+                            textColor,
+                            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                        break;
+                    }
+                case MixTableColumnType.Link:
+                    TextRenderer.DrawText(
+                        g,
+                        value ?? string.Empty,
+                        font,
+                        cell,
+                        Color.Blue,
+                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                    break;
+                default:
+                    TextRenderer.DrawText(
+                        g,
+                        value ?? string.Empty,
+                        font,
+                        cell,
+                        textColor,
+                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                    break;
+            }
+        }
+
+        private static int[] MeasureDesignColumnWidths(
+            int totalWidth,
+            IList<MixTableColumnDefinition> columns,
+            IList<string> headers)
+        {
+            int cols = columns != null && columns.Count > 0
+                ? columns.Count
+                : (headers != null && headers.Count > 0 ? headers.Count : 3);
+            var widths = new int[cols];
+            if (cols <= 0)
+            {
+                return widths;
+            }
+
+            int remaining = totalWidth;
+            int autofitCount = 0;
+            for (int i = 0; i < cols; i++)
+            {
+                int fixedW = 0;
+                if (columns != null && i < columns.Count && columns[i].Width.HasValue && columns[i].Width.Value > 0)
+                {
+                    fixedW = columns[i].Width.Value;
+                }
+
+                if (fixedW > 0)
+                {
+                    widths[i] = Math.Min(fixedW, Math.Max(1, remaining));
+                    remaining -= widths[i];
+                }
+                else
+                {
+                    widths[i] = -1;
+                    autofitCount++;
+                }
+            }
+
+            if (autofitCount == 0)
+            {
+                // All fixed — scale down if overflow so preview stays inside bounds.
+                int sum = 0;
+                for (int i = 0; i < cols; i++)
+                {
+                    sum += widths[i];
+                }
+
+                if (sum > totalWidth && sum > 0)
+                {
+                    for (int i = 0; i < cols; i++)
+                    {
+                        widths[i] = Math.Max(1, widths[i] * totalWidth / sum);
+                    }
+                }
+
+                return widths;
+            }
+
+            int share = Math.Max(1, remaining / autofitCount);
+            int given = 0;
+            int lastAutofit = -1;
+            for (int i = 0; i < cols; i++)
+            {
+                if (widths[i] < 0)
+                {
+                    widths[i] = share;
+                    given += share;
+                    lastAutofit = i;
+                }
+            }
+
+            if (lastAutofit >= 0)
+            {
+                widths[lastAutofit] = Math.Max(1, widths[lastAutofit] + (remaining - given));
+            }
+
+            return widths;
         }
 
         public const int TabHeaderHeight = 24;

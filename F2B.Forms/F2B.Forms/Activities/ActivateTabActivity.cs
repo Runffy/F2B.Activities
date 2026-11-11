@@ -2,10 +2,12 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Control")]
     [DisplayName("Activate Tab")]
     [Description("Activate a TabControl tab by TabPage control Id (e.g. tabPage1).")]
     public sealed class ActivateTabActivity : CodeActivity

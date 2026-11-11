@@ -2,17 +2,19 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
-    [DisplayName("Show Hide Control")]
+    [ToolboxPath("Control")]
+    [DisplayName("Show Hide")]
     [Description("Show or hide a control. Set Visible=false to hide.")]
     public sealed class ShowHideControlActivity : CodeActivity
     {
         public ShowHideControlActivity()
         {
-            DisplayName = "Show Hide Control";
+            DisplayName = "Show Hide";
             Visible = new InArgument<bool>(true);
         }
 

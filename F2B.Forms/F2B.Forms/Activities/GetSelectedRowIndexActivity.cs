@@ -2,10 +2,12 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
+    [ToolboxPath("Table")]
     [DisplayName("Get Selected Row Index")]
     [Description("Get the selected row index of a DataGrid (-1 if none).")]
     public sealed class GetSelectedRowIndexActivity : CodeActivity
@@ -19,6 +21,7 @@ namespace F2B.Forms.Activities
         [DisplayName("Control Id")]
         [Category("Input.A")]
         public InArgument<string> ControlId { get; set; }
+
 
         [DisplayName("Row Index")]
         [Category("Output")]

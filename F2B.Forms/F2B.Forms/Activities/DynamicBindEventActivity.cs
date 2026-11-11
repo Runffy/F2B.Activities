@@ -4,17 +4,19 @@ using System.ComponentModel;
 using System.Windows;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(BindEventDesigner), typeof(System.ComponentModel.Design.IDesigner))]
-    [DisplayName("Dynamic Bind Event")]
+    [ToolboxPath("Event")]
+    [DisplayName("Dynamic Bind")]
     [Description("Bind a control event at runtime (e.g. after Create Control). Place in Init Scope or any handler; the Handler body runs when the event fires.")]
     public sealed class DynamicBindEventActivity : NativeActivity, System.Activities.Presentation.IActivityTemplateFactory
     {
         public DynamicBindEventActivity()
         {
-            DisplayName = "Dynamic Bind Event";
+            DisplayName = "Dynamic Bind";
             UiBehavior = new InArgument<string>("NoLock");
         }
 
@@ -36,6 +38,7 @@ namespace F2B.Forms.Activities
         [Category("Input.A")]
         public InArgument<string> EventName { get; set; }
 
+
         [DisplayName("UI Behavior")]
         [Description("NoLock | LockQueue | LockIgnore. Controls UI while this handler runs.")]
         [Category("Input.B")]
@@ -48,7 +51,7 @@ namespace F2B.Forms.Activities
         {
             return new DynamicBindEventActivity
             {
-                DisplayName = "Dynamic Bind Event",
+                DisplayName = "Dynamic Bind",
                 UiBehavior = new InArgument<string>("NoLock"),
                 Handler = new System.Activities.Statements.Sequence { DisplayName = "Handler" }
             };

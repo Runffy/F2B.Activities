@@ -3,17 +3,19 @@ using System.Activities;
 using System.ComponentModel;
 using F2B.Forms.Designers;
 using F2B.Forms.Session;
+using F2B.Forms;
 
 namespace F2B.Forms.Activities
 {
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
-    [DisplayName("Set Control Position")]
+    [ToolboxPath("Control")]
+    [DisplayName("Set Position")]
     [Description("Move a control using X/Y relative to its parent container. Leave X or Y empty to keep that coordinate.")]
     public sealed class SetControlPositionActivity : CodeActivity
     {
         public SetControlPositionActivity()
         {
-            DisplayName = "Set Control Position";
+            DisplayName = "Set Position";
         }
 
         [RequiredArgument]
@@ -21,10 +23,12 @@ namespace F2B.Forms.Activities
         [Category("Input.A")]
         public InArgument<string> ControlId { get; set; }
 
+
         [DisplayName("X")]
         [Description("Left offset relative to the parent. Empty = keep current.")]
         [Category("Input.A")]
         public InArgument<string> X { get; set; }
+
 
         [DisplayName("Y")]
         [Description("Top offset relative to the parent. Empty = keep current.")]
