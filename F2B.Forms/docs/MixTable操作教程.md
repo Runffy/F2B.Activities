@@ -35,7 +35,7 @@ MixTable 是面向「业务表格」的控件，适合：
 3. 设置 `Id`（如 `mixtable1`）、`Width` / `Height`
 4. 选中画布上的 **MixTable**，在右侧属性 **Data** 中：
    - **Columns Json**：列定义。点右侧 **…** 打开 Columns Generator（增删改列、设 type/width 等），OK 后写回本字段；也可直接改 JSON。再次打开会按当前内容加载；语法无效时提示错误且不打开 Generator。
-   - **Initial Rows Json**：初始行（设计器预览 + 运行时/Preview 都会加载）
+   - **Initial Rows Json**：初始行。点右侧 **…** 打开 Initial Rows Generator（按当前 Columns 增删改行）。**须先有至少 1 个有效 Columns Json 列**，否则会提示先完成 Columns Json；亦可手改 JSON，合法内容可被 Generator 回读。
 
 画布会按列类型画出表头与初始行示意；`Preview` 按钮会打开真实 WinForms 窗体并加载初始行。
 
@@ -118,7 +118,24 @@ MixTable 是面向「业务表格」的控件，适合：
 
 用于业务固定起始数据，也会在 Designer 画布与 **Preview / 运行时打开表单** 时加载。
 
+设计器中可点 **Initial Rows Json** 右侧 **…** 用表格编辑；打开前会检查 **Columns Json** 至少有 1 个有效列（含非空 `name`），否则提示先完成列设计。Initial Rows Json 自身语法无效时也会报错且不打开。
+
 格式：对象数组，key = 列的 `name`。
+
+### 4.1 ComboBox 单元格：列默认 vs 行覆盖
+
+Columns Json 的 `items` 是该列**默认**可选项。Initial Rows 里同一列支持两种写法：
+
+| 写法 | 含义 |
+|------|------|
+| `"DisposalType": "TypeA"` | 简写：选中值；可选项用列上的 `items` |
+| `"DisposalType": { "value": "TypeX", "items": ["TypeX", "TypeY"] }` | 本行覆盖可选项；`value` 须在本行 `items` 中（可空） |
+
+规则：
+
+- 仅当对象里的 `items` **非空**时才算行级覆盖；只有 `{ "value": "..." }` 仍用列默认
+- Generator 默认输出简写；仅在你改过该行 options 时才写对象形态
+- 设计器：Combo 格内点 **…** / 双击 / 工具栏 **Edit Combo Items…** 编辑本行 options；**Reset to column default** 清除覆盖；有覆盖的单元格浅底提示
 
 ```json
 [
@@ -141,7 +158,7 @@ MixTable 是面向「业务表格」的控件，适合：
     "CR": "0",
     "DR": "50",
     "CLSLedger": "#PER CUSTO",
-    "DisposalType": "TypeB",
+    "DisposalType": { "value": "TypeX", "items": ["TypeX", "TypeY"] },
     "SecA": false,
     "SecondAccount": "ACC-2",
     "Memo": "row2"
@@ -152,7 +169,7 @@ MixTable 是面向「业务表格」的控件，适合：
 说明：
 
 - 未出现的列用默认值（空字符串 / `false` / 列上的 `text` 等）
-- 若之后在 Init 里执行 **Bind MixTable**，会**整表替换**这些初始行
+- 若之后在 Init 里执行 **Bind MixTable**，会**整表替换**这些初始行；行对象里同样可带 Combo 的 `{value,items}` 形态
 
 JSON 中亦可写作 `initialRows`；旧字段名 `previewRows` 仍可读入。
 
@@ -454,7 +471,7 @@ A: 请使用已支持 Initial Rows 运行时加载的版本；属性名现为 **
 A: 检查 JSON 是否合法；`type` 是否大小写完全匹配；改属性后失焦以刷新画布。
 
 **Q: ComboBox 选不中？**  
-A: 行里的值必须出现在该列 `items` 中。
+A: 值必须出现在**有效** items 中：若该行写了非空的 `items` 覆盖则用行级列表，否则用 Columns Json 列上的 `items`。
 
 **Q: 缓存了 Cell Control Id，删行后读错？**  
 A: Id 含行号，删行后需重新 Get MixTable Cell Control Id。

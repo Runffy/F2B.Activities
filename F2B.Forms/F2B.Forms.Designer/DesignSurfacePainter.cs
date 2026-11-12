@@ -1070,7 +1070,14 @@ namespace F2B.Forms.Designer
             {
                 if (string.Equals(pair.Key, columnName, StringComparison.OrdinalIgnoreCase))
                 {
-                    return pair.Value == null ? string.Empty : Convert.ToString(pair.Value);
+                    if (pair.Value == null)
+                    {
+                        return string.Empty;
+                    }
+
+                    // ComboBox may be { "value": "...", "items": [...] }.
+                    MixTableComboCellValue parsed = MixTableComboCellValue.Parse(pair.Value);
+                    return parsed.Value ?? string.Empty;
                 }
             }
 

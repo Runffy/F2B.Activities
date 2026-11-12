@@ -65,7 +65,7 @@ namespace F2B.Forms.Engine
                 return;
             }
 
-            DataTable seed = BuildBoundTable(schema, null);
+            // AddRow preserves ComboBox { value, items } payloads (DataTable would flatten them).
             foreach (Dictionary<string, object> values in seedRows)
             {
                 if (values == null)
@@ -73,26 +73,9 @@ namespace F2B.Forms.Engine
                     continue;
                 }
 
-                DataRow row = seed.NewRow();
-                foreach (MixTableColumnDefinition col in schema)
-                {
-                    object raw = null;
-                    foreach (KeyValuePair<string, object> pair in values)
-                    {
-                        if (string.Equals(pair.Key, col.Name, StringComparison.OrdinalIgnoreCase))
-                        {
-                            raw = UnwrapJsonValue(pair.Value);
-                            break;
-                        }
-                    }
-
-                    row[col.Name] = CoerceCellValue(col, raw);
-                }
-
-                seed.Rows.Add(row);
+                AddRow(grid, values);
             }
 
-            FillUnboundRows(grid, seed, schema);
             RefreshAutofitColumns(grid);
         }
 
@@ -271,13 +254,7 @@ namespace F2B.Forms.Engine
                 }
 
                 DataGridViewColumn col = grid.Columns[colDef.Name];
-                object coerced = CoerceCellValue(colDef, value);
-                viewRow.Cells[col.Index].Value = coerced;
-                viewRow.Cells[col.Index].Tag = new MixTableCellDisplayState
-                {
-                    Mode = MixTableCellDisplayMode.Control,
-                    Value = coerced
-                };
+                ApplyControlCell(viewRow.Cells[col.Index], col, colDef, value);
             }
 
             RefreshAutofitColumns(grid);
@@ -303,16 +280,60 @@ namespace F2B.Forms.Engine
                 foreach (MixTableColumnDefinition colDef in schema)
                 {
                     object raw = table.Columns.Contains(colDef.Name) ? dataRow[colDef.Name] : null;
-                    object coerced = CoerceCellValue(colDef, raw);
                     DataGridViewColumn col = grid.Columns[colDef.Name];
-                    viewRow.Cells[col.Index].Value = coerced;
-                    viewRow.Cells[col.Index].Tag = new MixTableCellDisplayState
-                    {
-                        Mode = MixTableCellDisplayMode.Control,
-                        Value = coerced
-                    };
+                    ApplyControlCell(viewRow.Cells[col.Index], col, colDef, raw);
                 }
             }
+        }
+
+        /// <summary>
+        /// Write a Control-mode cell, including ComboBox per-row items when payload is {value,items}.
+        /// </summary>
+        private static void ApplyControlCell(
+            DataGridViewCell cell,
+            DataGridViewColumn col,
+            MixTableColumnDefinition def,
+            object rawValue)
+        {
+            List<string> comboOverride = null;
+            object coerceInput = rawValue;
+            if (string.Equals(def.Type, MixTableColumnType.ComboBox, StringComparison.Ordinal))
+            {
+                MixTableComboCellValue parsed = MixTableComboCellValue.Parse(rawValue);
+                coerceInput = parsed.Value;
+                if (parsed.HasItemsOverride)
+                {
+                    comboOverride = new List<string>(parsed.ItemsOverride);
+                }
+            }
+
+            object coerced = CoerceCellValue(def, coerceInput);
+            DataGridViewCell target = cell;
+            DataGridViewComboBoxCell comboCell = cell as DataGridViewComboBoxCell;
+            if (comboCell == null && col is DataGridViewComboBoxColumn)
+            {
+                target = CloneTemplateCell(col);
+                DataGridView grid = cell.DataGridView;
+                if (grid != null && cell.RowIndex >= 0)
+                {
+                    grid.Rows[cell.RowIndex].Cells[cell.ColumnIndex] = target;
+                }
+
+                comboCell = target as DataGridViewComboBoxCell;
+            }
+
+            if (comboCell != null)
+            {
+                ApplyComboItems(comboCell, def, comboOverride);
+            }
+
+            target.Value = coerced;
+            target.Tag = new MixTableCellDisplayState
+            {
+                Mode = MixTableCellDisplayMode.Control,
+                Value = coerced,
+                ComboItemsOverride = comboOverride
+            };
         }
 
         public static void RemoveRow(DataGridView grid, int rowIndex)
@@ -366,17 +387,39 @@ namespace F2B.Forms.Engine
             DataGridViewColumn col = ResolveColumn(grid, column);
             MixTableColumnDefinition def = col.Tag as MixTableColumnDefinition
                 ?? new MixTableColumnDefinition { Name = col.Name, Type = MixTableColumnType.Label };
-            object coerced = CoerceCellValue(def, value);
 
             if (rowIndex < 0 || rowIndex >= grid.Rows.Count)
             {
                 throw new InvalidOperationException("Row index out of range: " + rowIndex);
             }
 
+            List<string> comboOverride = null;
+            object coerceInput = value;
+            if (string.Equals(def.Type, MixTableColumnType.ComboBox, StringComparison.Ordinal))
+            {
+                MixTableComboCellValue parsed = MixTableComboCellValue.Parse(value);
+                coerceInput = parsed.Value;
+                if (parsed.HasItemsOverride)
+                {
+                    comboOverride = new List<string>(parsed.ItemsOverride);
+                }
+                else
+                {
+                    MixTableCellDisplayState existing =
+                        grid.Rows[rowIndex].Cells[col.Index].Tag as MixTableCellDisplayState;
+                    if (existing != null && existing.ComboItemsOverride != null)
+                    {
+                        // Scalar set keeps prior per-row items override when present.
+                        comboOverride = new List<string>(existing.ComboItemsOverride);
+                    }
+                }
+            }
+
+            object coerced = CoerceCellValue(def, coerceInput);
             DataGridViewCell cell = grid.Rows[rowIndex].Cells[col.Index];
             MixTableCellDisplayState state = cell.Tag as MixTableCellDisplayState;
             string mode = state != null ? state.Mode : MixTableCellDisplayMode.Control;
-            ApplyCellDisplay(grid, rowIndex, col, def, mode, coerced);
+            ApplyCellDisplay(grid, rowIndex, col, def, mode, coerced, comboOverride);
             RefreshAutofitColumns(grid);
         }
 
@@ -407,24 +450,20 @@ namespace F2B.Forms.Engine
 
             if (!isSequence)
             {
-                object coerced = CoerceCellValue(def, values);
                 for (int r = 0; r < rowCount; r++)
                 {
-                    MixTableCellDisplayState state = grid.Rows[r].Cells[col.Index].Tag as MixTableCellDisplayState;
-                    string mode = state != null ? state.Mode : MixTableCellDisplayMode.Control;
-                    ApplyCellDisplay(grid, r, col, def, mode, coerced);
+                    SetCellValue(grid, r, column, values);
                     updated++;
                 }
+
+                return updated;
             }
             else
             {
                 int n = Math.Min(rowCount, sequence.Count);
                 for (int r = 0; r < n; r++)
                 {
-                    object coerced = CoerceCellValue(def, sequence[r]);
-                    MixTableCellDisplayState state = grid.Rows[r].Cells[col.Index].Tag as MixTableCellDisplayState;
-                    string mode = state != null ? state.Mode : MixTableCellDisplayMode.Control;
-                    ApplyCellDisplay(grid, r, col, def, mode, coerced);
+                    SetCellValue(grid, r, column, sequence[r]);
                     updated++;
                 }
             }
@@ -489,7 +528,11 @@ namespace F2B.Forms.Engine
 
             object current = GetCellValue(grid, rowIndex, column);
             object coerced = CoerceCellValue(def, current);
-            ApplyCellDisplay(grid, rowIndex, col, def, mode, coerced);
+            MixTableCellDisplayState prior = grid.Rows[rowIndex].Cells[col.Index].Tag as MixTableCellDisplayState;
+            List<string> comboOverride = prior != null && prior.ComboItemsOverride != null
+                ? new List<string>(prior.ComboItemsOverride)
+                : null;
+            ApplyCellDisplay(grid, rowIndex, col, def, mode, coerced, comboOverride);
             RefreshAutofitColumns(grid);
         }
 
@@ -511,7 +554,8 @@ namespace F2B.Forms.Engine
             DataGridViewColumn col,
             MixTableColumnDefinition def,
             string mode,
-            object coercedValue)
+            object coercedValue,
+            List<string> comboItemsOverride = null)
         {
             DataGridViewCell next;
             switch (mode)
@@ -532,6 +576,11 @@ namespace F2B.Forms.Engine
                     break;
                 default:
                     next = CloneTemplateCell(col);
+                    if (next is DataGridViewComboBoxCell comboCell)
+                    {
+                        ApplyComboItems(comboCell, def, comboItemsOverride);
+                    }
+
                     next.Value = coercedValue;
                     break;
             }
@@ -539,9 +588,33 @@ namespace F2B.Forms.Engine
             next.Tag = new MixTableCellDisplayState
             {
                 Mode = mode,
-                Value = coercedValue
+                Value = coercedValue,
+                ComboItemsOverride = comboItemsOverride == null ? null : new List<string>(comboItemsOverride)
             };
             grid.Rows[rowIndex].Cells[col.Index] = next;
+        }
+
+        private static void ApplyComboItems(
+            DataGridViewComboBoxCell comboCell,
+            MixTableColumnDefinition def,
+            IList<string> itemsOverride)
+        {
+            if (comboCell == null)
+            {
+                return;
+            }
+
+            List<string> items = MixTableComboCellValue.ResolveEffectiveItems(
+                def,
+                itemsOverride == null
+                    ? null
+                    : new MixTableComboCellValue { ItemsOverride = new List<string>(itemsOverride) });
+
+            comboCell.Items.Clear();
+            foreach (string item in items)
+            {
+                comboCell.Items.Add(item ?? string.Empty);
+            }
         }
 
         private static DataGridViewCell CloneTemplateCell(DataGridViewColumn col)
@@ -588,6 +661,9 @@ namespace F2B.Forms.Engine
         {
             public string Mode { get; set; }
             public object Value { get; set; }
+
+            /// <summary>Null = column default ComboBox items; non-null = per-row override.</summary>
+            public List<string> ComboItemsOverride { get; set; }
         }
 
         public static int GetRowCount(DataGridView grid)

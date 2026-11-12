@@ -4621,8 +4621,8 @@ namespace F2B.Forms.Designer
 
         [Category("Data")]
         [DisplayName("Initial Rows Json")]
-        [Description("Initial MixTable rows for designer + runtime/Preview. JSON array of objects keyed by column name. Still loaded when the form opens (unless Bind MixTable replaces them).")]
-        [Editor(typeof(MultilineStringEditor), typeof(UITypeEditor))]
+        [Description("Initial MixTable rows for designer + runtime/Preview. JSON array of objects keyed by column name. Click … to open Initial Rows Generator (requires at least one valid Columns Json column). Edit text directly when needed.")]
+        [Editor(typeof(MixTableInitialRowsGeneratorEditor), typeof(UITypeEditor))]
         public string InitialRowsJson { get; set; }
 
         [Category("Data")]
