@@ -3421,7 +3421,7 @@ namespace F2B.Forms.Designer
                     continue;
                 }
 
-                Point parentAbs = item.Parent == null ? Point.Empty : GetAbsoluteLocation(item.Parent);
+                Point parentAbs = GetParentClientOrigin(item);
                 int absX = Snap(Math.Max(0, pair.Value.X + deltaX));
                 int absY = Snap(Math.Max(0, pair.Value.Y + deltaY));
                 int newX = Math.Max(0, absX - parentAbs.X);
@@ -3448,7 +3448,7 @@ namespace F2B.Forms.Designer
         private void ApplyResizeDrag(Point mouse)
         {
             Rectangle next = BuildResizedBounds(_dragStartBoundsAbs, _dragHandle, _dragStartMouse, mouse);
-            Point parentAbs = _selected.Parent == null ? Point.Empty : GetAbsoluteLocation(_selected.Parent);
+            Point parentAbs = GetParentClientOrigin(_selected);
 
             int newX = Math.Max(0, next.X - parentAbs.X);
             int newY = Math.Max(0, next.Y - parentAbs.Y);
@@ -3738,12 +3738,13 @@ namespace F2B.Forms.Designer
                     && current.Parent != null
                     && FormControlType.IsTabControl(current.Parent.Type))
                 {
-                    // Content origin already includes the TabControl's absolute location.
+                    // GetTabContentAbsolute already walks outer TabControls via
+                    // GetAbsoluteLocation(tabControl). Do NOT continue to outer TabPages
+                    // or nested headers are stacked again (drag jump on nested tabs).
                     Point content = GetTabContentAbsolute(current.Parent);
                     x += content.X;
                     y += content.Y;
-                    current = current.Parent.Parent;
-                    continue;
+                    break;
                 }
 
                 x += current.X;
@@ -3752,6 +3753,28 @@ namespace F2B.Forms.Designer
             }
 
             return new Point(x, y);
+        }
+
+        /// <summary>
+        /// Parent client origin for a child's X/Y (matches paint/hit-test).
+        /// TabPage children are relative to the owning TabControl content area, not the TabPage node.
+        /// </summary>
+        private static Point GetParentClientOrigin(DesignItem child)
+        {
+            if (child == null || child.Parent == null)
+            {
+                return Point.Empty;
+            }
+
+            DesignItem parent = child.Parent;
+            if (FormControlType.IsTabPage(parent.Type)
+                && parent.Parent != null
+                && FormControlType.IsTabControl(parent.Parent.Type))
+            {
+                return GetTabContentAbsolute(parent.Parent);
+            }
+
+            return GetAbsoluteLocation(parent);
         }
 
         private void CanvasOnPaint(object sender, PaintEventArgs e)
