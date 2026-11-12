@@ -56,7 +56,8 @@ MixTable 是面向「业务表格」的控件，适合：
 | `text` | 否 | 表头文字；Button/Link 在值为空时也可作默认显示 |
 | `items` | 否 | 仅 `ComboBox`：下拉选项数组 |
 | `width` | 否 | 固定列宽（像素）。不写则按内容 autofit |
-| `headerAlign` | 否 | 表头对齐，默认 `middle-center` |
+| `headerAlign` | 否 | 表头对齐，默认 `middle-center`；设计期固定，运行时 Activity 不可改 |
+| `contentAlign` | 否 | **单元格内容**对齐，默认近似 `middle-left`；可用 **Set MixTable Align** 再改列/行/格 |
 | `readOnly` | 否 | 部分列可用（如 TextBox） |
 
 ### 3.2 合法 `type`（禁止缩写）
@@ -72,16 +73,17 @@ MixTable 是面向「业务表格」的控件，适合：
 
 **错误示例（会报错）：** `Text`、`Combo`、`Check`、`combobox` 等。
 
-### 3.3 `headerAlign` 取值
+### 3.3 `headerAlign` / `contentAlign` 取值
 
-不区分大小写，任选其一：
+不区分大小写，任选其一（两者共用同一套 token）：
 
 - `left-top` / `middle-top` / `right-top`
 - `left-center` / `middle-center` / `right-center`
 - `left-bottom` / `middle-bottom` / `right-bottom`
 
 也支持 WinForms 名：`TopLeft`、`MiddleCenter` 等。  
-未写时默认 **`middle-center`**。
+- `headerAlign` 未写时默认 **`middle-center`**（仅表头）  
+- `contentAlign` 未写时单元格用网格默认（约 **`middle-left`**）
 
 ### 3.4 完整列表示例
 
@@ -90,8 +92,8 @@ MixTable 是面向「业务表格」的控件，适合：
   { "name": "Select", "type": "Button", "text": "-", "width": 50, "headerAlign": "middle-center" },
   { "name": "AccountNo", "type": "Label", "text": "Account No", "width": 120 },
   { "name": "CCY", "type": "Label", "text": "CCY", "width": 60 },
-  { "name": "CR", "type": "Label", "text": "CR", "width": 90, "headerAlign": "right-center" },
-  { "name": "DR", "type": "Label", "text": "DR", "width": 90, "headerAlign": "right-center" },
+  { "name": "CR", "type": "Label", "text": "CR", "width": 90, "headerAlign": "right-center", "contentAlign": "right-center" },
+  { "name": "DR", "type": "Label", "text": "DR", "width": 90, "headerAlign": "right-center", "contentAlign": "right-center" },
   { "name": "CLSLedger", "type": "Link", "text": "CLSLedger_Rm" },
   {
     "name": "DisposalType",
@@ -211,6 +213,7 @@ AsyncForm
 | Get MixTable Row Count | 当前行数 |
 | Get MixTable Cell Control Id | 得到虚拟控件 Id，供 Get/Set Control Value/Text 使用 |
 | Set MixTable Style | 设置表默认 / 列 / 行 / 单元格的 Font 与颜色 |
+| Set MixTable Align | 设置列 / 行 / 单元格的**内容**对齐（不改表头；表头只用 Columns Json `headerAlign`） |
 | Set MixTable Cell Display | 指定某格展示为控件 / 纯文本 / 隐藏 |
 | Get MixTable Cell Display | 读取某格当前展示模式 |
 
@@ -294,6 +297,19 @@ AsyncForm
 - Fore Color = `Red`
 
 **注意：** `Bind MixTable` 整表重绑后，**行/单元格**上的样式可能丢失，需按需重设；**列默认**与**表默认**一般仍在。
+
+### 事件里改内容对齐
+
+使用 **Set MixTable Align**（只改**单元格内容**，**不改表头**；表头对齐只在 Columns Json 的 `headerAlign` 里定）：
+
+| 参数 | 说明 |
+|------|------|
+| Scope | `Column` \| `Row` \| `Cell` |
+| Row Index | Scope 为 Row / Cell 时必填 |
+| Column | Scope 为 Column / Cell 时必填 |
+| Align | 与 `contentAlign` 相同，如 `right-center`、`MiddleRight` |
+
+列级默认内容对齐也可在 Columns Json 写 `contentAlign`，运行时再用本 Activity 覆盖列/行/格。
 
 ---
 

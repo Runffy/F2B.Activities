@@ -8,7 +8,7 @@ namespace F2B.Forms.Activities
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [ToolboxPath("MixTable")]
     [DisplayName("Set MixTable Columns")]
-    [Description("Define MixTable columns JSON: [{name,type,text,items,width,headerAlign}]. type: Label|TextBox|ComboBox|CheckBox|Button|Link. headerAlign: left-top|middle-center|...")]
+    [Description("Define MixTable columns JSON: [{name,type,text,items,width,headerAlign,contentAlign}]. type: Label|TextBox|ComboBox|CheckBox|Button|Link. headerAlign/contentAlign: left-top|middle-center|...")]
     public sealed class SetMixTableColumnsActivity : CodeActivity
     {
         public SetMixTableColumnsActivity()

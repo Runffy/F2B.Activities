@@ -229,6 +229,19 @@ namespace F2B.Forms.Designer
                 "left-center", "middle-center", "right-center",
                 "left-bottom", "middle-bottom", "right-bottom");
             _grid.Columns.Add(alignCol);
+            var contentAlignCol = new DataGridViewComboBoxColumn
+            {
+                DataPropertyName = "ContentAlign",
+                HeaderText = "contentAlign",
+                FlatStyle = FlatStyle.Flat,
+                FillWeight = 90
+            };
+            contentAlignCol.Items.AddRange(
+                "",
+                "left-top", "middle-top", "right-top",
+                "left-center", "middle-center", "right-center",
+                "left-bottom", "middle-bottom", "right-bottom");
+            _grid.Columns.Add(contentAlignCol);
             _grid.Columns.Add(new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "ItemsText",
@@ -467,6 +480,7 @@ namespace F2B.Forms.Designer
             public string Text { get; set; }
             public string WidthText { get; set; }
             public string HeaderAlign { get; set; }
+            public string ContentAlign { get; set; }
             public string ItemsText { get; set; }
             public bool ReadOnly { get; set; }
             public string FontFamily { get; set; }
@@ -486,6 +500,7 @@ namespace F2B.Forms.Designer
                     Text = def.Text,
                     WidthText = def.Width.HasValue ? def.Width.Value.ToString() : string.Empty,
                     HeaderAlign = def.HeaderAlign ?? string.Empty,
+                    ContentAlign = def.ContentAlign ?? string.Empty,
                     ItemsText = def.Items == null || def.Items.Count == 0
                         ? string.Empty
                         : string.Join(", ", def.Items),
@@ -508,6 +523,7 @@ namespace F2B.Forms.Designer
                     Type = MixTableColumnType.Require(Type),
                     Text = string.IsNullOrWhiteSpace(Text) ? null : Text.Trim(),
                     HeaderAlign = string.IsNullOrWhiteSpace(HeaderAlign) ? null : HeaderAlign.Trim(),
+                    ContentAlign = string.IsNullOrWhiteSpace(ContentAlign) ? null : ContentAlign.Trim(),
                     ReadOnly = ReadOnly ? true : (bool?)null,
                     FontFamily = string.IsNullOrWhiteSpace(FontFamily) ? null : FontFamily.Trim(),
                     FontBold = FontBold ? true : (bool?)null,

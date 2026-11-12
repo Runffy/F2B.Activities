@@ -4615,7 +4615,7 @@ namespace F2B.Forms.Designer
 
         [Category("Data")]
         [DisplayName("Columns Json")]
-        [Description("MixTable columns JSON: [{name,type,text,items,width,headerAlign}]. type: Label|TextBox|ComboBox|CheckBox|Button|Link. headerAlign: left-top|middle-center|right-bottom|.... Click … to open Columns Generator; edit text directly when needed.")]
+        [Description("MixTable columns JSON: [{name,type,text,items,width,headerAlign,contentAlign}]. type: Label|TextBox|ComboBox|CheckBox|Button|Link. headerAlign/contentAlign: left-top|middle-center|.... Click … to open Columns Generator; edit text directly when needed.")]
         [Editor(typeof(MixTableColumnsGeneratorEditor), typeof(UITypeEditor))]
         public string ColumnsJson { get; set; }
 

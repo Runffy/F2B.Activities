@@ -1054,7 +1054,7 @@ namespace F2B.Forms.Designer
                     value = col.Text.Trim();
                 }
 
-                DrawMixTablePreviewCell(g, cell, col.Type, value, font, textColor);
+                DrawMixTablePreviewCell(g, cell, col.Type, value, font, textColor, col.ContentAlign);
                 x += w;
             }
         }
@@ -1090,12 +1090,19 @@ namespace F2B.Forms.Designer
             string type,
             string value,
             Font font,
-            Color textColor)
+            Color textColor,
+            string contentAlign = null)
         {
             if (cell.Width <= 2 || cell.Height <= 2)
             {
                 return;
             }
+
+            TextFormatFlags contentFlags = MixTableAlign.ToTextFormatFlags(
+                MixTableAlign.Parse(
+                    contentAlign,
+                    System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft))
+                | TextFormatFlags.EndEllipsis;
 
             string kind = type ?? MixTableColumnType.Label;
             switch (kind)
@@ -1141,7 +1148,7 @@ namespace F2B.Forms.Designer
                             font,
                             textRect,
                             textColor,
-                            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                            contentFlags);
                         break;
                     }
                 case MixTableColumnType.TextBox:
@@ -1158,7 +1165,7 @@ namespace F2B.Forms.Designer
                             font,
                             Rectangle.Inflate(cell, -2, 0),
                             textColor,
-                            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                            contentFlags);
                         break;
                     }
                 case MixTableColumnType.Link:
@@ -1168,7 +1175,7 @@ namespace F2B.Forms.Designer
                         font,
                         cell,
                         Color.Blue,
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                        contentFlags);
                     break;
                 default:
                     TextRenderer.DrawText(
@@ -1177,7 +1184,7 @@ namespace F2B.Forms.Designer
                         font,
                         cell,
                         textColor,
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                        contentFlags);
                     break;
             }
         }

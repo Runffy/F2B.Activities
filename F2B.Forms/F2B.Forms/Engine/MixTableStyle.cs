@@ -79,6 +79,49 @@ namespace F2B.Forms.Engine
             {
                 column.DefaultCellStyle.BackColor = back.Value;
             }
+
+            if (!string.IsNullOrWhiteSpace(def.ContentAlign))
+            {
+                column.DefaultCellStyle.Alignment = MixTableAlign.Parse(
+                    def.ContentAlign,
+                    DataGridViewContentAlignment.MiddleLeft);
+            }
+        }
+
+        /// <summary>
+        /// Content (cell) alignment only — never touches column header styles.
+        /// Scope: Column | Row | Cell.
+        /// </summary>
+        public static string NormalizeAlignScope(string scope)
+        {
+            if (string.IsNullOrWhiteSpace(scope))
+            {
+                throw new ArgumentException(
+                    "MixTable align scope must be Column | Row | Cell.",
+                    nameof(scope));
+            }
+
+            string s = scope.Trim();
+            if (string.Equals(s, "Column", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(s, "Col", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Column";
+            }
+
+            if (string.Equals(s, "Row", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Row";
+            }
+
+            if (string.Equals(s, "Cell", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Cell";
+            }
+
+            throw new ArgumentException(
+                "MixTable align scope must be Column | Row | Cell (header align is Columns Json only). Value: '"
+                + scope + "'.",
+                nameof(scope));
         }
 
         public static void ApplyPartial(

@@ -808,6 +808,67 @@ namespace F2B.Forms.Session
             });
         }
 
+        /// <summary>
+        /// Set MixTable <b>cell content</b> alignment for Column / Row / Cell.
+        /// Does not change header alignment (that stays as Columns Json headerAlign).
+        /// </summary>
+        public void SetMixTableAlign(
+            string controlId,
+            string scope,
+            int? rowIndex,
+            string column,
+            string align)
+        {
+            if (string.IsNullOrWhiteSpace(align))
+            {
+                throw new ArgumentException("Align is required.", nameof(align));
+            }
+
+            InvokeOnUi(() =>
+            {
+                DataGridView grid = GetMixTable(controlId);
+                string normalized = MixTableStyle.NormalizeAlignScope(scope);
+                DataGridViewContentAlignment alignment = MixTableAlign.Parse(
+                    align,
+                    DataGridViewContentAlignment.MiddleLeft);
+
+                switch (normalized)
+                {
+                    case "Column":
+                        {
+                            DataGridViewColumn col = ResolveMixTableColumn(grid, column);
+                            col.DefaultCellStyle.Alignment = alignment;
+                            break;
+                        }
+                    case "Row":
+                        {
+                            if (!rowIndex.HasValue)
+                            {
+                                throw new ArgumentException("Row Index is required for Row scope.");
+                            }
+
+                            EnsureMixTableRow(grid, rowIndex.Value);
+                            grid.Rows[rowIndex.Value].DefaultCellStyle.Alignment = alignment;
+                            break;
+                        }
+                    case "Cell":
+                        {
+                            if (!rowIndex.HasValue)
+                            {
+                                throw new ArgumentException("Row Index is required for Cell scope.");
+                            }
+
+                            DataGridViewColumn col = ResolveMixTableColumn(grid, column);
+                            EnsureMixTableRow(grid, rowIndex.Value);
+                            grid.Rows[rowIndex.Value].Cells[col.Index].Style.Alignment = alignment;
+                            break;
+                        }
+                }
+
+                FlushControlPaint(grid);
+            });
+        }
+
         private static void EnsureMixTableRow(DataGridView grid, int rowIndex)
         {
             int rows = MixTableBuilder.GetRowCount(grid);

@@ -33,9 +33,16 @@ namespace F2B.Forms.Model
         /// <summary>
         /// Header text align: left-top | middle-top | right-top | left-center | middle-center |
         /// right-center | left-bottom | middle-bottom | right-bottom (also accepts TopLeft etc.).
+        /// Fixed at design time; not changed by Set MixTable Align.
         /// </summary>
         [JsonProperty("headerAlign")]
         public string HeaderAlign { get; set; }
+
+        /// <summary>
+        /// Cell content align (same tokens as headerAlign). Applies to column DefaultCellStyle only.
+        /// </summary>
+        [JsonProperty("contentAlign")]
+        public string ContentAlign { get; set; }
 
         /// <summary>Optional column default font family (cells in this column).</summary>
         [JsonProperty("fontFamily")]

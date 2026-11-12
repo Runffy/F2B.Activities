@@ -175,6 +175,7 @@ namespace F2B.Forms.Engine
                         Width = raw.Width,
                         ReadOnly = raw.ReadOnly,
                         HeaderAlign = raw.HeaderAlign,
+                        ContentAlign = raw.ContentAlign,
                         FontFamily = raw.FontFamily,
                         FontSize = raw.FontSize,
                         FontBold = raw.FontBold,
