@@ -70,9 +70,16 @@
     <Compile Include="ActivityFaultPathBuilder.cs" />
     <Compile Include="ActivityBodyExpandHelper.cs" />
     <Compile Include="BasicDesignerShared.cs" />
+    <Compile Include="BasicGenericActivityDesigner.cs" />
+    <Compile Include="DumpJsonActivity.cs" />
     <Compile Include="ExpressionEditDialog.cs" />
     <Compile Include="FaultPathTrackingExtension.cs" />
+    <Compile Include="GenericArgumentTypeUpdater.cs" />
     <Compile Include="GetUserInformationActivity.cs" />
+    <Compile Include="JsonDumpMode.cs" />
+    <Compile Include="JsonFileHelper.cs" />
+    <Compile Include="LoadJsonFileActivity.cs" />
+    <Compile Include="LoadJsonKeyActivity.cs" />
     <Compile Include="GetRuntimeDirectoryActivity.cs" />
     <Compile Include="GetRuntimeDirectoryDesigner.cs" />
     <Compile Include="GetResourcePathActivity.cs" />
