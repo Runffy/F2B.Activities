@@ -23,12 +23,12 @@ namespace F2B.Basic
                 BorderThickness = new Thickness(1),
                 Padding = new Thickness(6),
                 MinWidth = 320,
-                HorizontalAlignment = HorizontalAlignment.Stretch
+                HorizontalAlignment = HorizontalAlignment.Left
             };
 
             var panel = new StackPanel
             {
-                HorizontalAlignment = HorizontalAlignment.Stretch
+                HorizontalAlignment = HorizontalAlignment.Left
             };
             panel.Children.Add(BasicDesignerShared.CreateLabeledExpressionEditor(
                 "Condition",
