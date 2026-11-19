@@ -1054,7 +1054,17 @@ namespace F2B.Forms.Designer
                     value = col.Text.Trim();
                 }
 
-                DrawMixTablePreviewCell(g, cell, col.Type, value, font, textColor, col.ContentAlign);
+                Color cellFore = textColor;
+                if (!string.IsNullOrWhiteSpace(col.ForeColor))
+                {
+                    Color? parsed = FontStyleUtil.ParseColor(col.ForeColor);
+                    if (parsed.HasValue)
+                    {
+                        cellFore = parsed.Value;
+                    }
+                }
+
+                DrawMixTablePreviewCell(g, cell, col.Type, value, font, cellFore, col.ContentAlign);
                 x += w;
             }
         }

@@ -37,6 +37,33 @@ namespace F2B.Forms.Engine
             grid.RowsDefaultCellStyle.Font = font;
             grid.RowsDefaultCellStyle.ForeColor = fore;
             grid.RowsDefaultCellStyle.BackColor = back;
+
+            // Re-apply after chrome colors so selection does not fall back to system Highlight blue.
+            MixTableBuilder.ApplySubtleSelectionStyle(grid);
+
+            // Grid DefaultCellStyle was just rewritten; restore per-column colors/fonts from schema.
+            ReapplyColumnDefinitionStyles(grid);
+            MixTableBuilder.ReapplyHeaderAlignments(grid);
+        }
+
+        /// <summary>
+        /// Re-apply each column's Columns Json style (foreColor / font / …) from column.Tag.
+        /// </summary>
+        public static void ReapplyColumnDefinitionStyles(DataGridView grid)
+        {
+            if (grid == null)
+            {
+                return;
+            }
+
+            foreach (DataGridViewColumn column in grid.Columns)
+            {
+                MixTableColumnDefinition def = column.Tag as MixTableColumnDefinition;
+                if (def != null)
+                {
+                    ApplyColumnDefinitionStyle(column, def);
+                }
+            }
         }
 
         public static void ApplyColumnDefinitionStyle(DataGridViewColumn column, MixTableColumnDefinition def)

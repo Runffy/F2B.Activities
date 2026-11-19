@@ -38,6 +38,14 @@ namespace F2B.Forms.Engine
                 EnableHeadersVisualStyles = false
             };
 
+            // Default header align center; per-column headerAlign overrides on HeaderCell.
+            grid.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            grid.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
+            grid.ColumnHeadersDefaultCellStyle.Padding = Padding.Empty;
+
+            // Suppress the default bright-blue full-row selection; keep a barely-visible cue.
+            ApplySubtleSelectionStyle(grid);
+
             grid.Tag = new MixTableHostTag();
             grid.DataError += (s, e) => { e.ThrowException = false; };
 
@@ -48,6 +56,160 @@ namespace F2B.Forms.Engine
             }
 
             return grid;
+        }
+
+        /// <summary>
+        /// Soften / neutralize DataGridView's default Highlight selection (blue + white text).
+        /// Selection still works for events; visual effect is nearly none.
+        /// </summary>
+        internal static void ApplySubtleSelectionStyle(DataGridView grid)
+        {
+            if (grid == null)
+            {
+                return;
+            }
+
+            Color back = grid.DefaultCellStyle.BackColor.IsEmpty
+                ? SystemColors.Window
+                : grid.DefaultCellStyle.BackColor;
+            Color fore = grid.DefaultCellStyle.ForeColor.IsEmpty
+                ? SystemColors.ControlText
+                : grid.DefaultCellStyle.ForeColor;
+
+            // Very light gray so selected row is barely distinguishable (not system Highlight blue).
+            Color selectionBack = Color.FromArgb(236, 236, 236);
+            if (selectionBack.ToArgb() == back.ToArgb())
+            {
+                selectionBack = Color.FromArgb(
+                    Math.Max(0, back.R - 12),
+                    Math.Max(0, back.G - 12),
+                    Math.Max(0, back.B - 12));
+            }
+
+            grid.DefaultCellStyle.SelectionBackColor = selectionBack;
+            grid.DefaultCellStyle.SelectionForeColor = fore;
+            grid.RowsDefaultCellStyle.SelectionBackColor = selectionBack;
+            grid.RowsDefaultCellStyle.SelectionForeColor = fore;
+            grid.RowTemplate.DefaultCellStyle.SelectionBackColor = selectionBack;
+            grid.RowTemplate.DefaultCellStyle.SelectionForeColor = fore;
+
+            // Alternating / per-column styles inherit selection unless set; keep grid-level defaults.
+            grid.ColumnHeadersDefaultCellStyle.SelectionBackColor =
+                grid.ColumnHeadersDefaultCellStyle.BackColor.IsEmpty
+                    ? SystemColors.Control
+                    : grid.ColumnHeadersDefaultCellStyle.BackColor;
+            grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = fore;
+        }
+
+        /// <summary>
+        /// Clicking outside any MixTable clears its row selection (form + nested containers).
+        /// Safe to call once per form; also tracks controls added later.
+        /// </summary>
+        public static void WireClearSelectionOnOutsideClick(Control root)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            AttachOutsideClickClear(root);
+        }
+
+        private static void AttachOutsideClickClear(Control control)
+        {
+            if (control == null || control.IsDisposed)
+            {
+                return;
+            }
+
+            if (IsMixTableGrid(control))
+            {
+                DataGridView grid = (DataGridView)control;
+                grid.LostFocus -= MixTableOnLostFocusClearSelection;
+                grid.LostFocus += MixTableOnLostFocusClearSelection;
+                return;
+            }
+
+            control.MouseDown -= OutsideClickClearMixTableSelection;
+            control.MouseDown += OutsideClickClearMixTableSelection;
+            control.ControlAdded -= OutsideClickOnControlAdded;
+            control.ControlAdded += OutsideClickOnControlAdded;
+
+            foreach (Control child in control.Controls)
+            {
+                AttachOutsideClickClear(child);
+            }
+        }
+
+        private static void OutsideClickOnControlAdded(object sender, ControlEventArgs e)
+        {
+            AttachOutsideClickClear(e.Control);
+        }
+
+        private static void OutsideClickClearMixTableSelection(object sender, MouseEventArgs e)
+        {
+            Control host = sender as Control;
+            if (host == null)
+            {
+                return;
+            }
+
+            Form form = host.FindForm() ?? (host as Form);
+            if (form == null || form.IsDisposed)
+            {
+                return;
+            }
+
+            ClearAllMixTableSelections(form);
+        }
+
+        private static void MixTableOnLostFocusClearSelection(object sender, EventArgs e)
+        {
+            DataGridView grid = sender as DataGridView;
+            if (grid == null || grid.IsDisposed)
+            {
+                return;
+            }
+
+            // Defer: cell editors briefly take focus while still belonging to the grid.
+            try
+            {
+                grid.BeginInvoke(new Action(() =>
+                {
+                    if (grid.IsDisposed)
+                    {
+                        return;
+                    }
+
+                    if (!grid.ContainsFocus)
+                    {
+                        grid.ClearSelection();
+                    }
+                }));
+            }
+            catch (InvalidOperationException)
+            {
+                // Handle not created yet / disposing.
+            }
+        }
+
+        private static void ClearAllMixTableSelections(Control root)
+        {
+            if (root == null || root.IsDisposed)
+            {
+                return;
+            }
+
+            if (IsMixTableGrid(root))
+            {
+                ((DataGridView)root).ClearSelection();
+                return;
+            }
+
+            foreach (Control child in root.Controls)
+            {
+                ClearAllMixTableSelections(child);
+            }
         }
 
         private static void ApplyInitialRows(DataGridView grid, ControlDefinition definition)
@@ -328,6 +490,9 @@ namespace F2B.Forms.Engine
                 ApplyComboItems(comboCell, def, comboOverride);
             }
 
+            // Pin column fore/back onto the cell so grid chrome / row styles cannot wash them out.
+            ApplyColumnColorsToCell(target, def);
+
             target.Value = coerced;
             target.Tag = new MixTableCellDisplayState
             {
@@ -335,6 +500,26 @@ namespace F2B.Forms.Engine
                 Value = coerced,
                 ComboItemsOverride = comboOverride
             };
+        }
+
+        private static void ApplyColumnColorsToCell(DataGridViewCell cell, MixTableColumnDefinition def)
+        {
+            if (cell == null || def == null)
+            {
+                return;
+            }
+
+            Color? fore = FontStyleUtil.ParseColor(def.ForeColor);
+            if (fore.HasValue)
+            {
+                cell.Style.ForeColor = fore.Value;
+            }
+
+            Color? back = FontStyleUtil.ParseColor(def.BackColor);
+            if (back.HasValue)
+            {
+                cell.Style.BackColor = back.Value;
+            }
         }
 
         public static void RemoveRow(DataGridView grid, int rowIndex)
@@ -584,6 +769,11 @@ namespace F2B.Forms.Engine
 
                     next.Value = coercedValue;
                     break;
+            }
+
+            if (mode != MixTableCellDisplayMode.Hidden)
+            {
+                ApplyColumnColorsToCell(next, def);
             }
 
             next.Tag = new MixTableCellDisplayState
@@ -859,14 +1049,15 @@ namespace F2B.Forms.Engine
             }
 
             column.Name = def.Name;
-            column.HeaderText = header;
             column.DataPropertyName = def.Name;
             column.Tag = def;
             column.MinimumWidth = 40;
-            column.HeaderCell.Style.Alignment = MixTableAlign.Parse(
-                def.HeaderAlign,
-                DataGridViewContentAlignment.MiddleCenter);
-            column.HeaderCell.Style.WrapMode = DataGridViewTriState.True;
+            // NotSortable alone is not enough — stock header still reserves sort-glyph gutter,
+            // which makes MiddleCenter look slightly left. Custom header paints full width.
+            column.SortMode = DataGridViewColumnSortMode.NotSortable;
+            column.HeaderCell = new MixTableColumnHeaderCell();
+            column.HeaderText = header;
+            ApplyHeaderAlign(column, def);
             MixTableStyle.ApplyColumnDefinitionStyle(column, def);
             if (def.Width.HasValue && def.Width.Value > 0)
             {
@@ -1026,6 +1217,121 @@ namespace F2B.Forms.Engine
 
             string tag = Convert.ToString(grid.Tag);
             return string.Equals(tag, FormControlType.MixTable, StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static void ApplyHeaderAlign(DataGridViewColumn column, MixTableColumnDefinition def)
+        {
+            if (column == null)
+            {
+                return;
+            }
+
+            column.SortMode = DataGridViewColumnSortMode.NotSortable;
+            if (!(column.HeaderCell is MixTableColumnHeaderCell))
+            {
+                string text = column.HeaderText;
+                column.HeaderCell = new MixTableColumnHeaderCell();
+                column.HeaderText = text;
+            }
+
+            column.HeaderCell.Style.Alignment = MixTableAlign.Parse(
+                def == null ? null : def.HeaderAlign,
+                DataGridViewContentAlignment.MiddleCenter);
+            column.HeaderCell.Style.WrapMode = DataGridViewTriState.False;
+            column.HeaderCell.Style.Padding = Padding.Empty;
+        }
+
+        /// <summary>Restore headerAlign after grid chrome styles are applied.</summary>
+        internal static void ReapplyHeaderAlignments(DataGridView grid)
+        {
+            if (grid == null)
+            {
+                return;
+            }
+
+            grid.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            grid.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
+            grid.ColumnHeadersDefaultCellStyle.Padding = Padding.Empty;
+
+            foreach (DataGridViewColumn column in grid.Columns)
+            {
+                ApplyHeaderAlign(column, column.Tag as MixTableColumnDefinition);
+            }
+        }
+
+        /// <summary>
+        /// Header cell that paints title across the full width (no sort-glyph gutter),
+        /// so middle-center / right-center align optically correctly.
+        /// </summary>
+        private sealed class MixTableColumnHeaderCell : DataGridViewColumnHeaderCell
+        {
+            protected override void Paint(
+                Graphics graphics,
+                Rectangle clipBounds,
+                Rectangle cellBounds,
+                int rowIndex,
+                DataGridViewElementStates dataGridViewElementState,
+                object value,
+                object formattedValue,
+                string errorText,
+                DataGridViewCellStyle cellStyle,
+                DataGridViewAdvancedBorderStyle advancedBorderStyle,
+                DataGridViewPaintParts paintParts)
+            {
+                base.Paint(
+                    graphics,
+                    clipBounds,
+                    cellBounds,
+                    rowIndex,
+                    dataGridViewElementState,
+                    value,
+                    formattedValue,
+                    errorText,
+                    cellStyle,
+                    advancedBorderStyle,
+                    paintParts & ~DataGridViewPaintParts.ContentForeground);
+
+                if ((paintParts & DataGridViewPaintParts.ContentForeground) == 0)
+                {
+                    return;
+                }
+
+                string text = formattedValue as string ?? Convert.ToString(formattedValue) ?? string.Empty;
+                if (text.Length == 0)
+                {
+                    return;
+                }
+
+                DataGridViewContentAlignment align = cellStyle == null
+                    ? DataGridViewContentAlignment.MiddleCenter
+                    : cellStyle.Alignment;
+                if (align == DataGridViewContentAlignment.NotSet)
+                {
+                    align = DataGridViewContentAlignment.MiddleCenter;
+                }
+
+                Font font = cellStyle != null && cellStyle.Font != null
+                    ? cellStyle.Font
+                    : SystemFonts.DefaultFont;
+                Color fore = cellStyle != null && !cellStyle.ForeColor.IsEmpty
+                    ? cellStyle.ForeColor
+                    : SystemColors.ControlText;
+
+                // Full header width minus a thin border inset — no asymmetric sort gutter.
+                Rectangle textBounds = new Rectangle(
+                    cellBounds.X + 2,
+                    cellBounds.Y + 1,
+                    Math.Max(0, cellBounds.Width - 4),
+                    Math.Max(0, cellBounds.Height - 2));
+
+                TextRenderer.DrawText(
+                    graphics,
+                    text,
+                    font,
+                    textBounds,
+                    fore,
+                    MixTableAlign.ToTextFormatFlags(align));
+            }
         }
     }
 }

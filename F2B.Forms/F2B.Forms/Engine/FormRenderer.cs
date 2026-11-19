@@ -65,6 +65,8 @@ namespace F2B.Forms.Engine
                 }
             }
 
+            MixTableBuilder.WireClearSelectionOnOutsideClick(form);
+
             return new FormRenderResult
             {
                 Form = form,
