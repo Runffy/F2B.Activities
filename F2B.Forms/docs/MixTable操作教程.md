@@ -205,6 +205,7 @@ AsyncForm
 |----------|------|
 | Set MixTable Columns | 运行时用 JSON 重设列（会清空行） |
 | Bind MixTable | 用 `DataTable` 整表填充行（列名对齐 `name`） |
+| Clear MixTable | 清空全部行（保留列与 schema） |
 | Add MixTable Row | 追加一行；输出新行 `Row Index` |
 | Remove MixTable Row | 按行号删除一行 |
 | Get MixTable Cell | 读单元格值（行号 + 列名） |
@@ -339,7 +340,15 @@ AsyncForm
 2. Handler 中：`Remove MixTable Row`  
    - Row Index = `F2B.Forms.GetLastRowIndex()`
 
-### 7.3 批量灌数
+### 7.3 清空全部行
+
+使用 **Clear MixTable**：
+
+- **Control Id**：`mixtable1`
+
+删除所有行，**列定义保留**。等价于用空 `DataTable` 做 Bind，但不需要构造表。
+
+### 7.4 批量灌数
 
 使用 **Bind MixTable**，传入列名与 MixTable `name` 一致的 `DataTable`。  
 会替换当前所有行（含 Initial Rows）。
@@ -472,6 +481,7 @@ MixTable **单元格内控件不能单独 Bind Event**。
 | 打开时批量加载 | Init → Bind MixTable |
 | 用户点按钮加一行 | 按钮 Click → Add MixTable Row |
 | 用户点行内删除 | MixTable Click → Remove（LastRowIndex） |
+| 清空全部行 | Clear MixTable |
 | 读/写指定格 | Get/Set MixTable Cell（行号+列名） |
 | 复用 Get Control Value | 先 Get MixTable Cell Control Id |
 | 区分谁点了哪格 | MixTable 事件 + GetLastRowIndex/ColumnName |

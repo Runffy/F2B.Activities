@@ -1483,6 +1483,26 @@ namespace F2B.Forms.Session
             });
         }
 
+        public void ClearMixTable(string controlId)
+        {
+            InvokeOnUi(() =>
+            {
+                DataGridView grid = GetMixTable(controlId);
+                bool prev = _acceptEvents;
+                _acceptEvents = false;
+                try
+                {
+                    MixTableBuilder.ClearRows(grid);
+                }
+                finally
+                {
+                    _acceptEvents = prev;
+                }
+
+                FlushControlPaint(grid);
+            });
+        }
+
         public object GetMixTableCellValue(string controlId, int rowIndex, string column)
         {
             object result = null;
@@ -2283,6 +2303,49 @@ namespace F2B.Forms.Session
             }
 
             return selected;
+        }
+
+        /// <summary>
+        /// Modal popup owned by the active form: message + text input + OK.
+        /// When <paramref name="isPassword"/> is true, uses a masked single-line text box;
+        /// otherwise a multiline text area. Blocks until OK or close (X → input null).
+        /// When <paramref name="allowNull"/> is false, a null input (dialog closed) throws.
+        /// </summary>
+        public string ShowInputPopup(
+            string title,
+            string message,
+            bool isPassword = false,
+            string buttonName = null,
+            bool allowNull = true)
+        {
+            string input = null;
+            InvokeOnUi(() =>
+            {
+                EnsureOpen();
+                if (_form != null && !_form.IsDisposed)
+                {
+                    FormNativeWindowActivator.SoftBringToFront(_form);
+                }
+
+                using (var popup = new InputPopupForm(
+                    title,
+                    message,
+                    isPassword,
+                    string.IsNullOrWhiteSpace(buttonName) ? "OK" : buttonName))
+                {
+                    popup.ShowDialog(_form);
+                    input = popup.InputText;
+                }
+            });
+
+            if (!allowNull && input == null)
+            {
+                throw new InvalidOperationException(
+                    "Input popup returned null but Allow Null is false "
+                    + "(the dialog was closed without OK).");
+            }
+
+            return input;
         }
 
         public string GetControlText(string controlId)

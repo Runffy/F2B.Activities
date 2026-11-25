@@ -549,6 +549,18 @@ namespace F2B.Forms.Engine
             grid.Rows.RemoveAt(rowIndex);
         }
 
+        public static void ClearRows(DataGridView grid)
+        {
+            if (grid == null)
+            {
+                throw new ArgumentNullException(nameof(grid));
+            }
+
+            grid.DataSource = null;
+            grid.Rows.Clear();
+            RefreshAutofitColumns(grid);
+        }
+
         public static object GetCellValue(DataGridView grid, int rowIndex, string column)
         {
             DataGridViewColumn col = ResolveColumn(grid, column);

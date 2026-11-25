@@ -8,7 +8,7 @@ namespace F2B.Forms.Activities
     [Designer(typeof(SimpleActivityDesigner), typeof(System.ComponentModel.Design.IDesigner))]
     [ToolboxPath("Dialog")]
     [DisplayName("Show Select On Form")]
-    [Description("Modal popup on the active form: message + dropdown + button. Blocks until OK or close (X → Selected Item null). Allow Null=false throws on null.")]
+    [Description("Modal popup: message + dropdown + button. Uses the active form when inside AsyncForm; otherwise standalone. Blocks until OK or close (X → Selected Item null). Allow Null=false throws on null.")]
     public sealed class ShowSelectOnFormActivity : CodeActivity<object>
     {
         public ShowSelectOnFormActivity()
@@ -48,8 +48,8 @@ namespace F2B.Forms.Activities
 
         protected override object Execute(CodeActivityContext context)
         {
-            FormSession session = FormSessionAccess.GetRequired(context);
-            object selected = session.ShowSelectPopup(
+            object selected = FormDialogAccess.ShowSelect(
+                context,
                 Title == null ? null : Title.Get(context),
                 Message.Get(context),
                 Options == null ? null : Options.Get(context),
