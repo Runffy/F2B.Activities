@@ -86,6 +86,7 @@ namespace F2B.Forms.Engine
                     break;
 
                 case FormControlType.Label:
+                case FormControlType.VersionLabel:
                 case FormControlType.Panel:
                 case FormControlType.GroupBox:
                 case FormControlType.ScrollContainer:

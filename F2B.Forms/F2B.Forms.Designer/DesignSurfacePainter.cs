@@ -82,6 +82,7 @@ namespace F2B.Forms.Designer
                         backColor);
                     break;
                 case FormControlType.Label:
+                case FormControlType.VersionLabel:
                     DrawLabel(
                         g,
                         bounds,

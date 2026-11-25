@@ -56,6 +56,9 @@ namespace F2B.Forms.Engine
             map[form.Name] = form;
             map["form"] = form;
 
+            // Form-wide VersionLabel version: align denormalized control fields before create.
+            VersionLabelUtil.NormalizeFormUiVersion(definition);
+
             if (definition.Controls != null)
             {
                 foreach (ControlDefinition child in definition.Controls)
@@ -316,6 +319,15 @@ namespace F2B.Forms.Engine
                         AutoSize = definition.Width <= 0
                     };
                     break;
+                case FormControlType.VersionLabel:
+                    control = new Label
+                    {
+                        Text = definition.Text
+                            ?? VersionLabelUtil.Compose(definition.Prefix, definition.Version),
+                        AutoSize = definition.Width <= 0,
+                        Tag = FormControlType.VersionLabel
+                    };
+                    break;
                 case FormControlType.TextBox:
                     control = CreateTextBox(
                         definition,
@@ -541,6 +553,7 @@ namespace F2B.Forms.Engine
         {
             return type == FormControlType.Button
                 || type == FormControlType.Label
+                || type == FormControlType.VersionLabel
                 || type == FormControlType.TextBox
                 || type == FormControlType.TextArea
                 || type == FormControlType.CheckBox
@@ -640,6 +653,7 @@ namespace F2B.Forms.Engine
             switch (type)
             {
                 case FormControlType.Label:
+                case FormControlType.VersionLabel:
                     var label = (Label)control;
                     label.AutoSize = false;
                     label.TextAlign = TextAlignUtil.ToContentAlignment(h, v);

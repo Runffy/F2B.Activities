@@ -28,6 +28,12 @@ namespace F2B.Forms.Engine
 
             if (control is Label)
             {
+                string labelTag = control.Tag as string;
+                if (string.Equals(labelTag, FormControlType.VersionLabel, StringComparison.OrdinalIgnoreCase))
+                {
+                    return FormControlType.VersionLabel;
+                }
+
                 return FormControlType.Label;
             }
 

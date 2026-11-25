@@ -35,6 +35,7 @@ namespace F2B.Forms.Designer
                         DrawButton(g);
                         break;
                     case FormControlType.Label:
+                    case FormControlType.VersionLabel:
                         DrawLabel(g);
                         break;
                     case FormControlType.TextBox:

@@ -558,6 +558,7 @@ namespace F2B.Forms.Designer
                 {
                     Tuple.Create("Button", FormControlType.Button),
                     Tuple.Create("Label", FormControlType.Label),
+                    Tuple.Create("VersionLabel", FormControlType.VersionLabel),
                     Tuple.Create("TextBox", FormControlType.TextBox),
                     Tuple.Create("TextArea", FormControlType.TextArea),
                     Tuple.Create("CheckBox", FormControlType.CheckBox),
@@ -1472,6 +1473,7 @@ namespace F2B.Forms.Designer
                     }
                 }
 
+                ReconcileSharedUiVersion(def.UiVersion);
                 _idCounter = Math.Max(1, snapshot.IdCounter);
                 RebuildTreePreserveSelection();
                 RestoreSelectionFromSnapshot(snapshot);
@@ -1562,6 +1564,7 @@ namespace F2B.Forms.Designer
             _formSettings.Height = 800;
             _formSettings.AllowResize = true;
             _formSettings.Culture = string.Empty;
+            _formSettings.UiVersion = null;
             RebuildTreePreserveSelection();
             SelectFormRoot(syncTree: true);
             UpdateDesignAreaSize();
@@ -1662,6 +1665,15 @@ namespace F2B.Forms.Designer
             {
                 item.SizeMode = "Zoom";
                 item.Text = string.Empty;
+            }
+
+            if (FormControlType.IsVersionLabel(type))
+            {
+                item.Prefix = VersionLabelUtil.DefaultPrefix;
+                // Follow existing form / sibling VersionLabel version (null until first dirty save).
+                EnsureFormUiVersionFromExistingLabels();
+                item.Version = _formSettings.UiVersion;
+                item.SyncVersionLabelDisplay();
             }
 
             if (FormControlType.IsTabControl(type))
@@ -2818,6 +2830,7 @@ namespace F2B.Forms.Designer
                 }
             }
 
+            ReconcileSharedUiVersion(def.UiVersion);
             _currentPath = path;
             RebuildTreePreserveSelection();
             SelectFormRoot(syncTree: true);
@@ -2848,10 +2861,126 @@ namespace F2B.Forms.Designer
                 }
             }
 
+            // Form-wide UI version: one bump per dirty save, then sync every VersionLabel.
+            if (_isDirty && HasAnyVersionLabel(_roots))
+            {
+                _formSettings.UiVersion = VersionLabelUtil.Bump(_formSettings.UiVersion, DateTime.Today);
+                ApplySharedUiVersionToAllVersionLabels(_formSettings.UiVersion);
+            }
+
             FormDefinition def = BuildDefinition();
             File.WriteAllText(_currentPath, FormJsonLoader.ToJson(def));
             ClearDirty(); // clears title dirty marker (*)
+            BindPropertyGridToSelection();
+            _canvas.Invalidate();
             return true;
+        }
+
+        private static bool HasAnyVersionLabel(IEnumerable<DesignItem> roots)
+        {
+            foreach (DesignItem item in EnumerateDesignItems(roots))
+            {
+                if (FormControlType.IsVersionLabel(item.Type))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void ApplySharedUiVersionToAllVersionLabels(string uiVersion)
+        {
+            foreach (DesignItem item in EnumerateDesignItems(_roots))
+            {
+                if (!FormControlType.IsVersionLabel(item.Type))
+                {
+                    continue;
+                }
+
+                item.Version = uiVersion;
+                item.SyncVersionLabelDisplay();
+            }
+        }
+
+        /// <summary>
+        /// If form uiVersion is empty, adopt the newest existing VersionLabel version (if any).
+        /// </summary>
+        private void EnsureFormUiVersionFromExistingLabels()
+        {
+            if (!string.IsNullOrWhiteSpace(_formSettings.UiVersion))
+            {
+                return;
+            }
+
+            var labelVersions = new List<string>();
+            foreach (DesignItem item in EnumerateDesignItems(_roots))
+            {
+                if (FormControlType.IsVersionLabel(item.Type) && !string.IsNullOrEmpty(item.Version))
+                {
+                    labelVersions.Add(item.Version);
+                }
+            }
+
+            _formSettings.UiVersion = VersionLabelUtil.ResolveSharedVersion(null, labelVersions);
+        }
+
+        /// <summary>
+        /// After load/undo: form <c>uiVersion</c> is source of truth; fall back to newest label version.
+        /// </summary>
+        private void ReconcileSharedUiVersion(string formUiVersionFromFile)
+        {
+            var labelVersions = new List<string>();
+            foreach (DesignItem item in EnumerateDesignItems(_roots))
+            {
+                if (FormControlType.IsVersionLabel(item.Type) && !string.IsNullOrEmpty(item.Version))
+                {
+                    labelVersions.Add(item.Version);
+                }
+            }
+
+            string shared = VersionLabelUtil.ResolveSharedVersion(formUiVersionFromFile, labelVersions);
+            _formSettings.UiVersion = shared;
+            if (labelVersions.Count > 0 || HasAnyVersionLabel(_roots))
+            {
+                ApplySharedUiVersionToAllVersionLabels(shared);
+            }
+        }
+
+        private static IEnumerable<DesignItem> EnumerateDesignItems(IEnumerable<DesignItem> roots)
+        {
+            if (roots == null)
+            {
+                yield break;
+            }
+
+            var stack = new Stack<DesignItem>();
+            foreach (DesignItem root in roots)
+            {
+                if (root != null)
+                {
+                    stack.Push(root);
+                }
+            }
+
+            while (stack.Count > 0)
+            {
+                DesignItem current = stack.Pop();
+                yield return current;
+                if (current.Children == null)
+                {
+                    continue;
+                }
+
+                for (int i = current.Children.Count - 1; i >= 0; i--)
+                {
+                    DesignItem child = current.Children[i];
+                    if (child != null)
+                    {
+                        stack.Push(child);
+                    }
+                }
+            }
         }
 
         private void ToggleWorkspaceMode()
@@ -2983,6 +3112,12 @@ namespace F2B.Forms.Designer
 
         private FormDefinition BuildDefinition()
         {
+            // Keep denormalized control.version in sync with form uiVersion before serialize.
+            if (HasAnyVersionLabel(_roots))
+            {
+                ApplySharedUiVersionToAllVersionLabels(_formSettings.UiVersion);
+            }
+
             return new FormDefinition
             {
                 SchemaVersion = "1.0",
@@ -2992,6 +3127,7 @@ namespace F2B.Forms.Designer
                 Height = _formSettings.Height,
                 AllowResize = _formSettings.AllowResize,
                 Culture = string.IsNullOrWhiteSpace(_formSettings.Culture) ? null : _formSettings.Culture.Trim(),
+                UiVersion = string.IsNullOrWhiteSpace(_formSettings.UiVersion) ? null : _formSettings.UiVersion.Trim(),
                 Controls = _roots.Select(i => i.ToDefinition()).ToList()
             };
         }
@@ -4067,6 +4203,8 @@ namespace F2B.Forms.Designer
                     return "Button";
                 case FormControlType.Label:
                     return "Label";
+                case FormControlType.VersionLabel:
+                    return VersionLabelUtil.DefaultPrefix;
                 case FormControlType.CheckBox:
                     return "CheckBox";
                 case FormControlType.RadioButton:
@@ -4124,6 +4262,8 @@ namespace F2B.Forms.Designer
                     return 0;
                 case FormControlType.Label:
                     return 80;
+                case FormControlType.VersionLabel:
+                    return 220;
                 case FormControlType.CheckBox:
                 case FormControlType.RadioButton:
                     return 100;
@@ -4426,6 +4566,12 @@ namespace F2B.Forms.Designer
         [TypeConverter(typeof(FormCultureTypeConverter))]
         public string Culture { get; set; } = string.Empty;
 
+        [Category("Appearance")]
+        [DisplayName("UI Version")]
+        [Description("Shared VersionLabel version for this form (yyyy.MM.dd.batch). Updated automatically on dirty saves.")]
+        [ReadOnly(true)]
+        public string UiVersion { get; set; }
+
         [Browsable(false)]
         public bool ViewOnlyProperties { get; set; }
 
@@ -4536,8 +4682,40 @@ namespace F2B.Forms.Designer
 
         [Category("Appearance")]
         [DisplayName("Text")]
+        [Description("For VersionLabel this is Prefix + Version (read-only). Edit Prefix instead.")]
         [Editor(typeof(MultilineStringEditor), typeof(UITypeEditor))]
         public string Text { get; set; }
+
+        [Category("Appearance")]
+        [DisplayName("Prefix")]
+        [Description("VersionLabel only. Editable prefix; Text shows Prefix + version.")]
+        public string Prefix
+        {
+            get { return _prefix ?? string.Empty; }
+            set
+            {
+                _prefix = value ?? string.Empty;
+                if (FormControlType.IsVersionLabel(Type))
+                {
+                    SyncVersionLabelDisplay();
+                }
+            }
+        }
+
+        [Browsable(false)]
+        public string Version
+        {
+            get { return _version; }
+            set { _version = value; }
+        }
+
+        private string _prefix;
+        private string _version;
+
+        public void SyncVersionLabelDisplay()
+        {
+            Text = VersionLabelUtil.Compose(Prefix, Version);
+        }
 
         [Category("Appearance")]
         [DisplayName("Text Align H")]
@@ -4813,12 +4991,23 @@ namespace F2B.Forms.Designer
                     continue;
                 }
 
-                filtered.Add(ViewOnlyProperties
-                    ? TypeDescriptor.CreateProperty(
+                PropertyDescriptor descriptor = property;
+                if (ViewOnlyProperties)
+                {
+                    descriptor = TypeDescriptor.CreateProperty(
                         typeof(DesignItem),
                         property,
-                        new ReadOnlyAttribute(true))
-                    : property);
+                        new ReadOnlyAttribute(true));
+                }
+                else if (property.Name == "Text" && FormControlType.IsVersionLabel(Type))
+                {
+                    descriptor = TypeDescriptor.CreateProperty(
+                        typeof(DesignItem),
+                        property,
+                        new ReadOnlyAttribute(true));
+                }
+
+                filtered.Add(descriptor);
             }
 
             return new PropertyDescriptorCollection(filtered.ToArray());
@@ -4870,6 +5059,7 @@ namespace F2B.Forms.Designer
                 case "Text":
                     return type == FormControlType.Button
                         || type == FormControlType.Label
+                        || type == FormControlType.VersionLabel
                         || type == FormControlType.TextBox
                         || type == FormControlType.TextArea
                         || type == FormControlType.CheckBox
@@ -4881,9 +5071,13 @@ namespace F2B.Forms.Designer
                         || type == FormControlType.GroupBox
                         || type == FormControlType.TabPage;
 
+                case "Prefix":
+                    return FormControlType.IsVersionLabel(type);
+
                 case "TextAlignH":
                     return type == FormControlType.Button
                         || type == FormControlType.Label
+                        || type == FormControlType.VersionLabel
                         || type == FormControlType.TextBox
                         || type == FormControlType.TextArea
                         || type == FormControlType.MaskedTextBox
@@ -4894,6 +5088,7 @@ namespace F2B.Forms.Designer
                     // WinForms TextBox only supports horizontal alignment.
                     return type == FormControlType.Button
                         || type == FormControlType.Label
+                        || type == FormControlType.VersionLabel
                         || type == FormControlType.CheckBox
                         || type == FormControlType.RadioButton;
 
@@ -4978,6 +5173,11 @@ namespace F2B.Forms.Designer
 
         public ControlDefinition ToDefinition()
         {
+            if (FormControlType.IsVersionLabel(Type))
+            {
+                SyncVersionLabelDisplay();
+            }
+
             var def = new ControlDefinition
             {
                 Id = Id,
@@ -4991,6 +5191,12 @@ namespace F2B.Forms.Designer
                 Visible = Visible,
                 Culture = string.IsNullOrWhiteSpace(Culture) ? null : Culture.Trim()
             };
+
+            if (FormControlType.IsVersionLabel(Type))
+            {
+                def.Prefix = Prefix;
+                def.Version = string.IsNullOrEmpty(Version) ? null : Version;
+            }
 
             if (SupportsTextAlign(Type))
             {
@@ -5150,6 +5356,7 @@ namespace F2B.Forms.Designer
         {
             return type == FormControlType.Button
                 || type == FormControlType.Label
+                || type == FormControlType.VersionLabel
                 || type == FormControlType.TextBox
                 || type == FormControlType.TextArea
                 || type == FormControlType.MaskedTextBox
@@ -5161,6 +5368,7 @@ namespace F2B.Forms.Designer
         {
             return type == FormControlType.Button
                 || type == FormControlType.Label
+                || type == FormControlType.VersionLabel
                 || type == FormControlType.CheckBox
                 || type == FormControlType.RadioButton;
         }
@@ -5169,6 +5377,7 @@ namespace F2B.Forms.Designer
         {
             return type == FormControlType.Button
                 || type == FormControlType.Label
+                || type == FormControlType.VersionLabel
                 || type == FormControlType.TextBox
                 || type == FormControlType.TextArea
                 || type == FormControlType.MaskedTextBox
@@ -5240,6 +5449,14 @@ namespace F2B.Forms.Designer
                 BackColor = FontStyleUtil.ParseColor(c.BackColor) ?? Color.Empty,
                 Parent = parent
             };
+
+            if (FormControlType.IsVersionLabel(item.Type))
+            {
+                VersionLabelUtil.ResolveFromDefinition(c, out string prefix, out string version);
+                item._prefix = prefix ?? VersionLabelUtil.DefaultPrefix;
+                item._version = version;
+                item.SyncVersionLabelDisplay();
+            }
 
             if (c.Controls != null)
             {

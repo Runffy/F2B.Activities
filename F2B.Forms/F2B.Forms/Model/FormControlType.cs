@@ -6,6 +6,7 @@ namespace F2B.Forms.Model
     {
         public const string Button = "Button";
         public const string Label = "Label";
+        public const string VersionLabel = "VersionLabel";
         public const string TextBox = "TextBox";
         public const string TextArea = "TextArea";
         public const string CheckBox = "CheckBox";
@@ -39,6 +40,7 @@ namespace F2B.Forms.Model
             {
                 case Button:
                 case Label:
+                case VersionLabel:
                 case TextBox:
                 case TextArea:
                 case CheckBox:
@@ -63,6 +65,25 @@ namespace F2B.Forms.Model
                 default:
                     return false;
             }
+        }
+
+        public static bool IsVersionLabel(string type)
+        {
+            return !string.IsNullOrWhiteSpace(type)
+                && string.Equals(type.Trim(), VersionLabel, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>Label or VersionLabel (both render as WinForms Label).</summary>
+        public static bool IsLabelLike(string type)
+        {
+            if (string.IsNullOrWhiteSpace(type))
+            {
+                return false;
+            }
+
+            string t = type.Trim();
+            return string.Equals(t, Label, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(t, VersionLabel, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsListControl(string type)

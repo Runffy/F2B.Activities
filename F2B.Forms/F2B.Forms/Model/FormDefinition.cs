@@ -36,6 +36,13 @@ namespace F2B.Forms.Model
         [JsonProperty("culture")]
         public string Culture { get; set; }
 
+        /// <summary>
+        /// Shared UI version for all VersionLabel controls on this form (<c>yyyy.MM.dd.batch</c>).
+        /// Bumped by Designer on dirty saves; each VersionLabel keeps its own prefix.
+        /// </summary>
+        [JsonProperty("uiVersion")]
+        public string UiVersion { get; set; }
+
         [JsonProperty("controls")]
         public List<ControlDefinition> Controls { get; set; } = new List<ControlDefinition>();
     }

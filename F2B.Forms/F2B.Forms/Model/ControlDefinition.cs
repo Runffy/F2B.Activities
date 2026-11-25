@@ -15,6 +15,19 @@ namespace F2B.Forms.Model
         [JsonProperty("text")]
         public string Text { get; set; }
 
+        /// <summary>
+        /// VersionLabel only: editable prefix. Display text is <c>prefix + version</c>.
+        /// </summary>
+        [JsonProperty("prefix")]
+        public string Prefix { get; set; }
+
+        /// <summary>
+        /// VersionLabel only: denormalized copy of form <c>uiVersion</c> (<c>yyyy.MM.dd.batch</c>).
+        /// All VersionLabels on a form share the same value; edit via Designer dirty-save bump.
+        /// </summary>
+        [JsonProperty("version")]
+        public string Version { get; set; }
+
         [JsonProperty("x")]
         public int X { get; set; }
 
