@@ -211,6 +211,9 @@ AsyncForm
 | Get MixTable Cell | 读单元格值（行号 + 列名） |
 | Set MixTable Cell | 写单元格值 |
 | Set MixTable Column | 批量写一列（单值整列，或序列按行索引对齐） |
+| Get MixTable DataTable | 整表导出为新的 `DataTable` |
+| Get MixTable DataRow | 导出一行，得到 `DataRow`（单行表） |
+| Get MixTable DataColumn | 导出一列，得到 `DataColumn`（单列表；值在 `DataColumn.Table.Rows`） |
 | Get MixTable Row Count | 当前行数 |
 | Get MixTable Cell Control Id | 得到虚拟控件 Id，供 Get/Set Control Value/Text 使用 |
 | Set MixTable Style | 设置表默认 / 列 / 行 / 单元格的 Font 与颜色 |

@@ -1602,6 +1602,36 @@ namespace F2B.Forms.Session
             return count;
         }
 
+        public DataTable GetMixTableDataTable(string controlId)
+        {
+            DataTable table = null;
+            InvokeOnUi(() =>
+            {
+                table = MixTableBuilder.ToDataTable(GetMixTable(controlId));
+            });
+            return table;
+        }
+
+        public DataRow GetMixTableDataRow(string controlId, int rowIndex)
+        {
+            DataRow row = null;
+            InvokeOnUi(() =>
+            {
+                row = MixTableBuilder.ToDataRow(GetMixTable(controlId), rowIndex);
+            });
+            return row;
+        }
+
+        public DataColumn GetMixTableDataColumn(string controlId, string column)
+        {
+            DataColumn dataColumn = null;
+            InvokeOnUi(() =>
+            {
+                dataColumn = MixTableBuilder.ToDataColumn(GetMixTable(controlId), column);
+            });
+            return dataColumn;
+        }
+
         /// <summary>
         /// Virtual control id for a MixTable cell; usable with Get/Set Control Value and Get/Set Text.
         /// </summary>

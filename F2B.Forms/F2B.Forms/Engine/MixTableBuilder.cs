@@ -880,6 +880,87 @@ namespace F2B.Forms.Engine
             return table != null ? table.Rows.Count : grid.Rows.Count;
         }
 
+        /// <summary>
+        /// Export all MixTable rows to a new <see cref="DataTable"/> (column names = schema <c>name</c>).
+        /// Cell values use the same rules as <see cref="GetCellValue"/>.
+        /// </summary>
+        public static DataTable ToDataTable(DataGridView grid)
+        {
+            if (grid == null)
+            {
+                throw new ArgumentNullException(nameof(grid));
+            }
+
+            List<MixTableColumnDefinition> schema = GetSchema(grid);
+            if (schema.Count == 0)
+            {
+                throw new InvalidOperationException("MixTable has no columns.");
+            }
+
+            var table = new DataTable();
+            foreach (MixTableColumnDefinition colDef in schema)
+            {
+                table.Columns.Add(colDef.Name, typeof(object));
+            }
+
+            int rowCount = GetRowCount(grid);
+            for (int r = 0; r < rowCount; r++)
+            {
+                DataRow dataRow = table.NewRow();
+                foreach (MixTableColumnDefinition colDef in schema)
+                {
+                    object value = GetCellValue(grid, r, colDef.Name);
+                    dataRow[colDef.Name] = value == null ? DBNull.Value : value;
+                }
+
+                table.Rows.Add(dataRow);
+            }
+
+            return table;
+        }
+
+        /// <summary>
+        /// One MixTable row as a <see cref="DataRow"/> (owned by a new single-row <see cref="DataTable"/>).
+        /// </summary>
+        public static DataRow ToDataRow(DataGridView grid, int rowIndex)
+        {
+            DataTable full = ToDataTable(grid);
+            if (rowIndex < 0 || rowIndex >= full.Rows.Count)
+            {
+                throw new InvalidOperationException("Row index out of range: " + rowIndex);
+            }
+
+            DataTable single = full.Clone();
+            single.ImportRow(full.Rows[rowIndex]);
+            return single.Rows[0];
+        }
+
+        /// <summary>
+        /// One MixTable column as a <see cref="DataColumn"/> owned by a new single-column
+        /// <see cref="DataTable"/> (row values in <c>column.Table.Rows</c>).
+        /// </summary>
+        public static DataColumn ToDataColumn(DataGridView grid, string column)
+        {
+            if (grid == null)
+            {
+                throw new ArgumentNullException(nameof(grid));
+            }
+
+            DataGridViewColumn viewCol = ResolveColumn(grid, column);
+            string columnName = viewCol.Name;
+            var table = new DataTable();
+            DataColumn dataColumn = table.Columns.Add(columnName, typeof(object));
+
+            int rowCount = GetRowCount(grid);
+            for (int r = 0; r < rowCount; r++)
+            {
+                object value = GetCellValue(grid, r, columnName);
+                table.Rows.Add(value == null ? DBNull.Value : value);
+            }
+
+            return dataColumn;
+        }
+
         public static List<MixTableColumnDefinition> ParseColumnsJson(string columnsJson)
         {
             if (string.IsNullOrWhiteSpace(columnsJson))
